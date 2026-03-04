@@ -88,5 +88,6 @@
   "intermediateSubWorkoutSelection": "I’ve got some experience",
   "advancedSubWorkoutSelection": "Experienced and consistent",
   "selectExpLevel": "Pick the level that matches your progress 💪",
-  "continue": "Continue"
+  "continue": "Continue",
+  "start": "Start"
 }

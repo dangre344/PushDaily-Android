@@ -17,4 +17,5 @@ export const colors = {
   lightRed: "#DF7C7C",
   grey: "#D3D3D3",
   green: "#008000",
+  lightColor: "#F7FAFC",
 };

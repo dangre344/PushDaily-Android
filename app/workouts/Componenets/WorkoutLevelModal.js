@@ -1,10 +1,11 @@
 import { useRouter } from "expo-router";
 import { useForm } from "react-hook-form";
-import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { OptionCardController } from "../../../../components/ui/OptionCard.js";
-import { colors } from "../../../../constants/colors.js";
+import { Modal, StyleSheet, Text, View } from "react-native";
+import { Button } from "../../../components/ui/Button.js";
+import { OptionCardController } from "../../../components/ui/OptionCard.js";
+import { colors } from "../../../constants/colors.js";
 
-const WorkoutLevelModal = ({ visible, onClose, form, t }) => {
+const WorkoutLevelModal = ({ visible, onClose, form, t, setOpenModal }) => {
   const { control, handleSubmit } = useForm({
     defaultValues: {
       experience: "",
@@ -16,7 +17,7 @@ const WorkoutLevelModal = ({ visible, onClose, form, t }) => {
       visible={visible}
       transparent
       animationType="fade"
-      onRequestClose={onClose}
+      onRequestClose={() => setOpenModal(false)}
     >
       <View style={styles.overlay}>
         <View style={styles.content}>
@@ -49,14 +50,22 @@ const WorkoutLevelModal = ({ visible, onClose, form, t }) => {
             />
           </View>
 
-          <TouchableOpacity
+          <Button
+            title={t("continue")}
+            onPress={() => {
+              setOpenModal(false);
+              router.navigate("/workouts/workoutlisting");
+            }}
+          />
+
+          {/* <TouchableOpacity
             style={styles.closeBtn}
             onPress={() => {
-              router.push("../../workouts/workoutlisting");
+              // router.push("../../workouts/workoutlisting");
             }}
           >
             <Text style={styles.closeText}>{t("continue")}</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
       </View>
     </Modal>

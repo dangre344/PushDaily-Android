@@ -1,36 +1,41 @@
 import { AntDesign, Octicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { Image, StyleSheet, Text, View } from "react-native";
-import IconWithText from "../../../../components/ui/IconWithText";
-import { colors } from "../../../../constants/colors";
-import { scaling } from "../../../../constants/useScaling";
+
+import IconWithText from "../../../components/ui/IconWithText";
+import { colors } from "../../../constants/colors";
+import { scaling } from "../../../constants/useScaling";
 const { scaleHeight, scaleWidth, moderateScale } = scaling();
 
-export default function PopularItem({ item }) {
+export default function HIITCard({ item }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.hiitContainer}>
       <Image
         style={{
           borderRadius: 10,
-          width: scaleWidth(60),
-          height: scaleHeight(60),
-          marginVertical: 10,
+          width: "auto",
+          height: scaleHeight(150),
+          marginTop: 10,
         }}
         source={{ uri: item.photo }}
         resizeMode="cover"
       />
 
-      <View style={{ marginHorizontal: 20, gap: 5 }}>
-        <Text
-          style={styles.bodyPartName}
-          numberOfLines={1}
-          ellipsizeMode="tail"
-        >
-          {item.name}
-        </Text>
+      <View style={styles.weeklyAttContainer}>
+        <View>
+          <Text
+            style={styles.bodyPartName}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {item.name}
+          </Text>
 
-        <Text style={styles.expLevel} numberOfLines={1} ellipsizeMode="tail">
-          {item.level}
-        </Text>
+          <Text style={styles.expLevel} numberOfLines={1} ellipsizeMode="tail">
+            {item.exerciseLevel}
+          </Text>
+        </View>
 
         <View
           style={{
@@ -52,7 +57,7 @@ export default function PopularItem({ item }) {
             label="280 Cal"
             size={12}
             textStyle={{ fontSize: moderateScale(10) }}
-            color={colors.primary}
+            color={colors.textLight}
             orientation="horizontal"
           />
         </View>
@@ -60,13 +65,14 @@ export default function PopularItem({ item }) {
     </View>
   );
 }
+
 const styles = StyleSheet.create({
   hiitContainer: {
     marginTop: 10,
     alignContent: "center",
-
-    flexDirection: "row",
-
+    justifyContent: "space-between",
+    width: scaleWidth(280),
+    height: "auto",
     borderWidth: 0.2,
     borderRadius: 10,
     paddingHorizontal: 10,

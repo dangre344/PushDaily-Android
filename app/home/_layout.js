@@ -7,9 +7,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { colors } from "../../constants/colors.js";
 import { scaling } from "../../constants/useScaling";
+import WorkoutScreen from "../workouts/workoutscreen.js";
 import ProfileScreen from "./ProfileScreen.js";
 import ProgressScreen from "./ProgressScreen.js";
-import WorkoutScreen from "./workouts/WorkoutScreen.js";
 
 const { scaleHeight, scaleWidth, moderateScale } = scaling();
 
@@ -45,7 +45,11 @@ export default function Home() {
           },
         })}
       >
-        <Tab.Screen name="Workout" component={WorkoutScreen} />
+        <Tab.Screen
+          name="Workout"
+          options={{ headerShown: false }}
+          component={WorkoutScreen}
+        />
         <Tab.Screen name="Progress" component={ProgressScreen} />
         <Tab.Screen name="Profile" component={ProfileScreen} />
       </Tab.Navigator>

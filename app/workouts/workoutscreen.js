@@ -1,3 +1,4 @@
+import { Logger } from "@/constants/Logger";
 import {
   AntDesign,
   Entypo,
@@ -5,22 +6,25 @@ import {
   Ionicons,
   Octicons,
 } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Dimensions,
+  FlatList,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { FemaleIcon } from "../../../assets/AllSvgs";
-import CircularImage from "../../../components/ui/CircularImage";
-import IconWithText from "../../../components/ui/IconWithText";
-import { colors } from "../../../constants/colors";
-import { scaling } from "../../../constants/useScaling";
-import { getDay } from "../../../constants/utils";
+
+import { FemaleIcon } from "../../assets/AllSvgs";
+import CircularImage from "../../components/ui/CircularImage";
+import IconWithText from "../../components/ui/IconWithText";
+import { colors } from "../../constants/colors";
+import { scaling } from "../../constants/useScaling";
+import { getDay } from "../../constants/utils";
 import HIITCard from "./Componenets/HIITCard";
 import PopularItem from "./Componenets/PopularItem";
 import WorkoutLevelModal from "./Componenets/WorkoutLevelModal";
@@ -35,52 +39,52 @@ export default function WorkoutScreen() {
 
   let bodyParts = [
     {
-      image: require("../../../assets/images/chest.png"),
+      image: require("../../assets/images/chest.png"),
       bodyPart: "Chest",
     },
 
     {
-      image: require("../../../assets/images/chest.png"),
+      image: require("../../assets/images/chest.png"),
       bodyPart: "Shoulder",
     },
 
     {
-      image: require("../../../assets/images/chest.png"),
+      image: require("../../assets/images/chest.png"),
       bodyPart: "Back",
     },
 
     {
-      image: require("../../../assets/images/chest.png"),
+      image: require("../../assets/images/chest.png"),
       bodyPart: "Biceps",
     },
 
     {
-      image: require("../../../assets/images/chest.png"),
+      image: require("../../assets/images/chest.png"),
       bodyPart: "Triceps",
     },
 
     {
-      image: require("../../../assets/images/chest.png"),
+      image: require("../../assets/images/chest.png"),
       bodyPart: "Legs",
     },
 
     {
-      image: require("../../../assets/images/chest.png"),
+      image: require("../../assets/images/chest.png"),
       bodyPart: "Upper Body",
     },
 
     {
-      image: require("../../../assets/images/chest.png"),
+      image: require("../../assets/images/chest.png"),
       bodyPart: "Lower Body",
     },
 
     {
-      image: require("../../../assets/images/chest.png"),
+      image: require("../../assets/images/chest.png"),
       bodyPart: "Abs",
     },
 
     {
-      image: require("../../../assets/images/chest.png"),
+      image: require("../../assets/images/chest.png"),
       bodyPart: "Neck",
     },
   ];
@@ -358,6 +362,8 @@ export default function WorkoutScreen() {
     },
   ];
 
+  const router = useRouter();
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -450,7 +456,10 @@ export default function WorkoutScreen() {
               {bodyParts.map((item, index) => {
                 return (
                   <Pressable
+                    key={index}
                     onPress={() => {
+                      Logger.log("Navigate to Workout Listing");
+
                       setOpenModal(true);
                     }}
                   >
@@ -478,41 +487,58 @@ export default function WorkoutScreen() {
             <Ionicons name="fitness" size={20} color={colors.errorRed} />
           </View>
 
-          <ScrollView
+          <FlatList
             horizontal
             showsHorizontalScrollIndicator={false}
-            snapToInterval={scaleWidth(300) + 20}
-            decelerationRate="fast"
+            data={hiitWorkouts}
+            keyExtractor={(item, index) => `hiit-${item.id || index}`}
+            renderItem={({ item }) => <HIITCard item={item} />}
+            contentContainerStyle={{ paddingHorizontal: 10 }}
+            snapToInterval={scaleWidth(300)} // Card width + margin
             snapToAlignment="center"
-          >
-            {hiitWorkouts.map((item, index) => (
-              <HIITCard key={index} item={item} />
-            ))}
-          </ScrollView>
+            decelerationRate="fast"
+            bounces={false}
+            pagingEnabled={false} // Use snapToInterval instead
+            getItemLayout={(data, index) => ({
+              length: scaleWidth(300) + 20,
+              offset: (scaleWidth(300) + 20) * index,
+              index,
+            })}
+          />
 
           <View style={{ flexDirection: "row", marginTop: 15 }}>
             <Text style={styles.popularTitle}>{t("popularWorkouts")}</Text>
             <Feather name="trending-up" size={20} color={colors.green} />
           </View>
 
-          <ScrollView
+          <FlatList
             horizontal
             showsHorizontalScrollIndicator={false}
+            data={popularWorkouts}
+            keyExtractor={(item, index) => `hiit-${item.id || index}`}
+            renderItem={({ item }) => <PopularItem item={item} />}
+            contentContainerStyle={{ paddingHorizontal: 10 }}
+            snapToInterval={scaleWidth(300) - scaleWidth(25)} // Card width + margin
+            snapToAlignment="center"
             decelerationRate="fast"
-            contentContainerStyle={{ marginBottom: 20 }}
-          >
-            {popularWorkouts.map((item, index) => (
-              <PopularItem key={index} item={item} />
-            ))}
-          </ScrollView>
+            bounces={false}
+            pagingEnabled={false} // Use snapToInterval instead
+            getItemLayout={(data, index) => ({
+              length: scaleWidth(300) + 20,
+              offset: (scaleWidth(300) + 20) * index,
+              index,
+            })}
+          />
         </View>
       </ScrollView>
 
-      <WorkoutLevelModal
-        visible={openModal}
-        onClose={() => setOpenModal(false)}
-        t={t}
-      />
+      {openModal ? (
+        <WorkoutLevelModal
+          visible={openModal}
+          setOpenModal={setOpenModal}
+          t={t}
+        />
+      ) : null}
     </View>
   );
 }
