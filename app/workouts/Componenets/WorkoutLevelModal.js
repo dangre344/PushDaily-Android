@@ -1,17 +1,45 @@
 import { useRouter } from "expo-router";
 import { useForm } from "react-hook-form";
 import { Modal, StyleSheet, Text, View } from "react-native";
+import * as Yup from "yup";
 import { Button } from "../../../components/ui/Button.js";
 import { OptionCardController } from "../../../components/ui/OptionCard.js";
 import { colors } from "../../../constants/colors.js";
+import { Logger } from "../../../constants/Logger.js";
 
-const WorkoutLevelModal = ({ visible, onClose, form, t, setOpenModal }) => {
+const WorkoutLevelModal = ({
+  visible,
+  onClose,
+  form,
+  t,
+  setOpenModal,
+  selectedBodyPart,
+}) => {
+  Logger.log(
+    "WorkoutLevelModal rendered with selectedBodyPart:",
+    selectedBodyPart,
+  );
   const { control, handleSubmit } = useForm({
     defaultValues: {
-      experience: "",
+      experience: Yup.string().required("Please select your experience level"),
     },
   });
   const router = useRouter();
+
+  function next(data) {
+    Logger.log("Form submitted with data:", data.experience);
+    setOpenModal(false);
+    router.push({
+      pathname: "/workouts/workoutlisting",
+      params: {
+        selectedBodyPart: JSON.stringify({
+          id: selectedBodyPart?.id,
+          name: selectedBodyPart?.bodyPart,
+          level: data.experience,
+        }),
+      },
+    });
+  }
   return (
     <Modal
       visible={visible}
@@ -53,8 +81,9 @@ const WorkoutLevelModal = ({ visible, onClose, form, t, setOpenModal }) => {
           <Button
             title={t("continue")}
             onPress={() => {
-              setOpenModal(false);
-              router.navigate("/workouts/workoutlisting");
+              Logger.log("Continue pressed");
+
+              handleSubmit(next)();
             }}
           />
 

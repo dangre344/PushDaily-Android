@@ -41,6 +41,7 @@ export default function RootLayout() {
 
   return (
     <UserProvider>
+      {/* <SQLiteProvider > */}
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
         <Stack initialRouteName="Splash">
           <Stack.Screen name="Splash" options={{ headerShown: false }} />
@@ -53,9 +54,10 @@ export default function RootLayout() {
 
           <Stack.Screen name="workouts" options={{ headerShown: false }} />
 
+          <Stack.Screen name="stats" options={{ headerShown: false }} />
+
+
           <Stack.Screen name="modal" options={{ presentation: "modal" }} />
-
-
 
 
         </Stack>
@@ -63,6 +65,7 @@ export default function RootLayout() {
 
         <ToastManager useModal={false} />
       </ThemeProvider>
+      {/* </SQLiteProvider> */}
     </UserProvider>
   );
 }

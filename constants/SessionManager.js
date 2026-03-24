@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Logger } from "./Logger";
 
 const SESSION_KEY = "@user_session";
 
@@ -23,6 +24,8 @@ export const saveSession = async (sessionData) => {
 export const getSession = async () => {
   try {
     const jsonValue = await AsyncStorage.getItem(SESSION_KEY);
+
+    Logger.log("🔍 Retrieved session JSON:", jsonValue);
     return jsonValue != null ? JSON.parse(jsonValue) : null;
   } catch (e) {
     console.error("❌ Error reading session:", e);

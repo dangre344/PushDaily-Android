@@ -16,6 +16,9 @@ import MeasurementsStep from "../../components/ui/MeasurementStep.js";
 import MultipleSelector from "../../components/ui/MultipleSelector.js";
 import StepContainer from "../../components/ui/StepContainer.js";
 
+import { useUser } from "@/constants/UserContext.js";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 import { OptionCardController } from "../../components/ui/OptionCard.js";
 import SliderSelector from "../../components/ui/SliderSelector.js";
 import { colors } from "../../constants/colors.js";
@@ -28,17 +31,63 @@ export default function Signup() {
   const [step, setStep] = useState(1);
   const progress = (step / totalSteps) * 100;
 
+  const { user } = useUser();
+
+  Logger.log("user--Signup-->", user);
+
+  const schema = yup.object().shape({
+    name: yup
+      .string()
+      .trim()
+      .required("Name is required")
+      .min(1, "Name cannot be empty"),
+
+    gender: yup.string().trim().required("Gender is required"),
+
+    age: yup
+      .number()
+      .typeError("Age is required")
+      .required("Age is required")
+      .min(10, "Too young")
+      .max(100, "Invalid age"),
+
+    height: yup
+      .string()
+      .trim()
+      .required("Height is required")
+      .min(1, "Height cannot be empty"),
+
+    weight: yup
+      .string()
+      .trim()
+      .required("Weight is required")
+      .min(1, "Weight cannot be empty"),
+
+    experience: yup.string().trim().required("Experience is required"),
+
+    goal: yup.string().trim().required("Goal is required"),
+
+    days: yup
+      .array()
+      .of(yup.string())
+      .min(1, "Select at least one day")
+      .required("Days are required"),
+
+    time: yup.string().trim().required("Workout time is required"),
+  });
+
   const form = useForm({
+    resolver: yupResolver(schema),
     defaultValues: {
-      name: "",
-      gender: "",
-      age: 20,
-      height: "",
-      weight: "",
-      experience: "",
-      goal: "",
-      days: [],
-      time: "",
+      name: user?.name || "",
+      gender: user?.gender || "",
+      age: user?.age || 20,
+      height: user?.height || "",
+      weight: user?.weight || "",
+      experience: user?.experience || "",
+      goal: user?.goal || "",
+      days: user?.days || [],
+      time: user?.time || "",
     },
   });
 
@@ -54,10 +103,10 @@ export default function Signup() {
     if (step == 1 && form.getValues("gender") == "") {
       Toast.error(t("selectGender"), "top");
       return;
-    } else if (step == 2 && form.getValues("age") == "") {
-      Toast.error(t("selectAge"), "top");
+    } else if (step == 2 && form.getValues("name") == "") {
+      Toast.error(t("enterName"), "top");
       return;
-    } else if (step == 2 && form.getValues("age") == "") {
+    } else if (step == 2 && form.getValues("age") == 0) {
       Toast.error(t("selectAge"), "top");
       return;
     } else if (step == 4 && form.getValues("experience") == "") {
@@ -135,7 +184,7 @@ export default function Signup() {
 
         <InputText
           form={form}
-          isOptional={true}
+          isOptional={false}
           titleTextLabel={t("enterName")}
           fieldName={"name"}
           inputType="text"

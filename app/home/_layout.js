@@ -1,55 +1,214 @@
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { useTranslation } from "react-i18next";
-import { StatusBar, StyleSheet } from "react-native";
+import {
+  Animated,
+  Dimensions,
+  StatusBar,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { useEffect, useRef } from "react";
 import { colors } from "../../constants/colors.js";
 import { scaling } from "../../constants/useScaling";
+import ProfileScreen from "../profile/ProfileScreen.js";
+import ProgressScreen from "../progress/ProgressScreen.js";
 import WorkoutScreen from "../workouts/workoutscreen.js";
-import ProfileScreen from "./ProfileScreen.js";
-import ProgressScreen from "./ProgressScreen.js";
 
 const { scaleHeight, scaleWidth, moderateScale } = scaling();
 
-export default function Home() {
-  const { t } = useTranslation();
+const Tab = createBottomTabNavigator();
+const ms = (n) => scaling().moderateScale(n);
+const { width } = Dimensions.get("window");
 
-  const Tab = createBottomTabNavigator();
+const TABS = [
+  { name: "Workout", icon: "barbell-outline", activeIcon: "barbell" },
+  { name: "Progress", icon: "stats-chart-outline", activeIcon: "stats-chart" },
+  { name: "Profile", icon: "person-outline", activeIcon: "person" },
+];
+
+// ─── Single tab button ────────────────────────────────────────────────────────
+const TabButton = ({ tab, isFocused, onPress }) => {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const translateAnim = useRef(new Animated.Value(0)).current;
+  const opacityAnim = useRef(new Animated.Value(isFocused ? 1 : 0)).current;
+  const labelOpacity = useRef(new Animated.Value(isFocused ? 1 : 0)).current;
+  const labelTranslate = useRef(new Animated.Value(isFocused ? 0 : 6)).current;
+
+  useEffect(() => {
+    if (isFocused) {
+      // Pop + rise animation on focus
+      Animated.parallel([
+        Animated.sequence([
+          Animated.spring(scaleAnim, {
+            toValue: 1.25,
+            tension: 80,
+            friction: 5,
+            useNativeDriver: true,
+          }),
+          Animated.spring(scaleAnim, {
+            toValue: 1,
+            tension: 80,
+            friction: 6,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.spring(translateAnim, {
+          toValue: -6,
+          tension: 70,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(labelOpacity, {
+          toValue: 1,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+        Animated.spring(labelTranslate, {
+          toValue: 0,
+          tension: 70,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.spring(translateAnim, {
+          toValue: 0,
+          tension: 70,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(labelOpacity, {
+          toValue: 1,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+        Animated.spring(labelTranslate, {
+          toValue: 0,
+          tension: 70,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [isFocused]);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
-
-      <Tab.Navigator
-        screenOptions={({ route }) => ({
-          headerShown: false,
-          tabBarShowLabel: true,
-          tabBarActiveTintColor: colors.primary, // 🔥 Primary color
-          tabBarInactiveTintColor: "#999",
-          tabBarStyle: {
-            backgroundColor: "#fff",
-            borderTopLeftRadius: 20,
-            borderTopRightRadius: 20,
-            height: scaleHeight(70),
-            paddingBottom: 10,
-          },
-          tabBarIcon: ({ color, size }) => {
-            let iconName;
-            if (route.name === "Workout") iconName = "barbell-outline";
-            else if (route.name === "Progress")
-              iconName = "stats-chart-outline";
-            else if (route.name === "Profile") iconName = "person-outline";
-            return <Ionicons name={iconName} size={size} color={color} />;
-          },
-        })}
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.85}
+      style={tabStyles.btn}
+    >
+      <Animated.View
+        style={[
+          tabStyles.iconWrap,
+          { transform: [{ translateY: translateAnim }, { scale: scaleAnim }] },
+        ]}
       >
-        <Tab.Screen
-          name="Workout"
-          options={{ headerShown: false }}
-          component={WorkoutScreen}
+        {/* Active pill background */}
+        <Animated.View
+          style={[tabStyles.activePill, { opacity: opacityAnim }]}
         />
+
+        <Ionicons
+          name={isFocused ? tab.activeIcon : tab.icon}
+          size={ms(22)}
+          color={isFocused ? colors.primary : colors.muted}
+        />
+      </Animated.View>
+
+      {/* Label slides up and fades in when active */}
+      <Animated.Text
+        style={[
+          tabStyles.label,
+          {
+            color: isFocused ? colors.primary : colors.muted, // ✅ FIX
+            opacity: labelOpacity,
+            transform: [{ translateY: labelTranslate }],
+          },
+        ]}
+      >
+        {tab.name}
+      </Animated.Text>
+    </TouchableOpacity>
+  );
+};
+
+// ─── Custom tab bar ───────────────────────────────────────────────────────────
+const CustomTabBar = ({ state, navigation }) => {
+  const slideAnim = useRef(new Animated.Value(60)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  // Entrance animation on mount
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        tension: 60,
+        friction: 10,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  return (
+    <Animated.View
+      style={[
+        tabStyles.container,
+        {
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }],
+        },
+      ]}
+    >
+      {/* Glow line at top */}
+      <View style={tabStyles.glowLine} />
+
+      <View style={tabStyles.inner}>
+        {TABS.map((tab, index) => (
+          <TabButton
+            key={tab.name}
+            tab={tab}
+            isFocused={state.index === index}
+            onPress={() => navigation.navigate(tab.name)}
+          />
+        ))}
+      </View>
+    </Animated.View>
+  );
+};
+
+// ═════════════════════════════════════════════════════════════════════════════
+// MAIN LAYOUT
+// ═════════════════════════════════════════════════════════════════════════════
+export default function AppLayout() {
+  return (
+    <SafeAreaView style={layoutStyles.container}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <Tab.Navigator
+        tabBar={(props) => <CustomTabBar {...props} />}
+        screenOptions={{ headerShown: false }}
+      >
+        <Tab.Screen name="Workout" component={WorkoutScreen} />
         <Tab.Screen name="Progress" component={ProgressScreen} />
         <Tab.Screen name="Profile" component={ProfileScreen} />
       </Tab.Navigator>
@@ -57,160 +216,73 @@ export default function Home() {
   );
 }
 
-const styles = StyleSheet.create({
+// ─── Styles ───────────────────────────────────────────────────────────────────
+const tabStyles = StyleSheet.create({
+  container: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: colors.white,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    borderTopLeftRadius: ms(24),
+    borderTopRightRadius: ms(24),
+    overflow: "hidden",
+    paddingBottom: ms(4),
+
+    // Shadow
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 20,
+  },
+  glowLine: {
+    height: 1,
+    marginHorizontal: ms(40),
+    backgroundColor: colors.primary,
+    opacity: 0.4,
+    borderRadius: 1,
+  },
+  inner: {
+    flexDirection: "row",
+    paddingTop: ms(8),
+    paddingHorizontal: ms(8),
+  },
+  btn: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: ms(6),
+    minHeight: ms(52),
+  },
+  iconWrap: {
+    width: ms(46),
+    height: ms(36),
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: ms(12),
+  },
+  activePill: {
+    position: "absolute",
+    width: ms(46),
+    height: ms(36),
+    borderRadius: ms(12),
+    backgroundColor: colors.primary + "20",
+    borderWidth: 1,
+    borderColor: colors.primary + "35",
+  },
+  label: {
+    fontFamily: "OpenSans_600SemiBold",
+    fontSize: ms(10),
+    marginTop: ms(3),
+  },
+});
+
+const layoutStyles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontFamily: "OpenSans_700Bold",
-    color: colors.text,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    fontFamily: "OpenSans_400Regular",
-    color: colors.textLight,
-    marginTop: 4,
-  },
-  progressBarContainer: {
-    height: 4,
-    backgroundColor: colors.border,
-    marginHorizontal: 20,
-    borderRadius: 2,
-    overflow: "hidden",
-  },
-  progressBar: {
-    height: "100%",
-    backgroundColor: colors.primary,
-  },
-  content: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 20,
-  },
-  stepContainer: {
-    flex: 1,
-  },
-  stepTitle: {
-    fontSize: 24,
-    fontFamily: "OpenSans_700Bold",
-    color: colors.text,
-    marginBottom: 8,
-  },
-  stepSubtitle: {
-    fontSize: 14,
-    fontFamily: "OpenSans_400Regular",
-    color: colors.textLight,
-    marginBottom: 32,
-  },
-  optionsContainer: {
-    marginTop: 8,
-  },
-  input: {
-    backgroundColor: colors.background,
-    borderWidth: 2,
-    borderColor: colors.border,
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    fontFamily: "OpenSans_400Regular",
-    color: colors.text,
-  },
-  row: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  halfInput: {
-    flex: 1,
-  },
-  label: {
-    fontSize: 14,
-    fontFamily: "OpenSans_600SemiBold",
-    color: colors.text,
-    marginBottom: 8,
-  },
-  daysGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 15,
-    marginTop: 8,
-  },
-  dayButton: {
-    flex: 1,
-    minWidth: "28%",
-    paddingVertical: 16,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
-    alignItems: "center",
-  },
-
-  inputMargin: {
-    marginTop: 15,
-    marginBottom: 5,
-  },
-  dayButtonSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary,
-  },
-  dayText: {
-    fontSize: 16,
-    fontFamily: "OpenSans_600SemiBold",
-    color: colors.text,
-  },
-  dayTextSelected: {
-    color: colors.white,
-  },
-  quickActions: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 20,
-  },
-  quickButton: {
-    flex: 1,
-    paddingVertical: 12,
-    backgroundColor: colors.surface,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  quickButtonText: {
-    fontSize: 14,
-    fontFamily: "OpenSans_600SemiBold",
-    color: colors.text,
-  },
-  footer: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 10,
-    backgroundColor: colors.background,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  buttonRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    width: "100%",
-  },
-  backButton: {
-    flex: 1,
-  },
-  nextButton: {
-    flex: 2,
-  },
-  skipText: {
-    textAlign: "center",
-    marginTop: 12,
-    fontSize: 14,
-    fontFamily: "OpenSans_400Regular",
-    color: colors.textLight,
   },
 });

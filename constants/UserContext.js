@@ -11,12 +11,19 @@ export const useUser = () => useContext(UserContext);
 export default function UserProvider({ children }) {
   const [user, setUser] = useState(null);
 
+  Logger.log("user--UserProvider->", user);
+
   useEffect(() => {
-    (async () => {
+    const loadSession = async () => {
       const session = await getSession();
-      Logger.log("session--->", session);
-      if (session) setUser(session);
-    })();
+      console.log("session--->", session);
+
+      if (session) {
+        setUser(session);
+      }
+    };
+
+    loadSession();
   }, []);
 
   const updateUser = (data) => {

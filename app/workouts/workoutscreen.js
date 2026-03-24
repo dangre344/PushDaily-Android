@@ -7,7 +7,7 @@ import {
   Octicons,
 } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Dimensions,
@@ -19,12 +19,24 @@ import {
   View,
 } from "react-native";
 
+import { StatusBar } from "expo-status-bar";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { FemaleIcon } from "../../assets/AllSvgs";
 import CircularImage from "../../components/ui/CircularImage";
 import IconWithText from "../../components/ui/IconWithText";
 import { colors } from "../../constants/colors";
+import {
+  bodyParts,
+  DAY_LABELS,
+  useWeeklyWorkouts,
+} from "../../constants/Constants";
 import { scaling } from "../../constants/useScaling";
-import { getDay } from "../../constants/utils";
+import { getShortBodyPartName } from "../../constants/utils";
+import {
+  getAllWorkouts,
+  getWorkoutsForCurrentWeek,
+  initDB,
+} from "../../offlinedb/workoutdb";
 import HIITCard from "./Componenets/HIITCard";
 import PopularItem from "./Componenets/PopularItem";
 import WorkoutLevelModal from "./Componenets/WorkoutLevelModal";
@@ -36,102 +48,25 @@ const { scaleHeight, scaleWidth, moderateScale } = scaling();
 export default function WorkoutScreen() {
   const { t } = useTranslation();
   const [openModal, setOpenModal] = useState(false);
+  const [selectedBodyPart, setSelectedBodyPart] = useState(null);
 
-  let bodyParts = [
-    {
-      image: require("../../assets/images/chest.png"),
-      bodyPart: "Chest",
-    },
+  const [allWorkouts, setAllHistoryWorkouts] = useState([]);
 
-    {
-      image: require("../../assets/images/chest.png"),
-      bodyPart: "Shoulder",
-    },
+  const [weekWorkouts, setWeekWorkouts] = useState([]);
 
-    {
-      image: require("../../assets/images/chest.png"),
-      bodyPart: "Back",
-    },
+  useEffect(() => {
+    const setup = async () => {
+      await initDB();
+      const week = await getWorkoutsForCurrentWeek();
+      Logger.log("Current week workouts--->", week);
+      setWeekWorkouts(week);
+    };
+    setup();
+  }, []); // only on mount — current week doesn't change
 
-    {
-      image: require("../../assets/images/chest.png"),
-      bodyPart: "Biceps",
-    },
+  const { weeklyWorkouts, attendedDays } = useWeeklyWorkouts(weekWorkouts);
 
-    {
-      image: require("../../assets/images/chest.png"),
-      bodyPart: "Triceps",
-    },
-
-    {
-      image: require("../../assets/images/chest.png"),
-      bodyPart: "Legs",
-    },
-
-    {
-      image: require("../../assets/images/chest.png"),
-      bodyPart: "Upper Body",
-    },
-
-    {
-      image: require("../../assets/images/chest.png"),
-      bodyPart: "Lower Body",
-    },
-
-    {
-      image: require("../../assets/images/chest.png"),
-      bodyPart: "Abs",
-    },
-
-    {
-      image: require("../../assets/images/chest.png"),
-      bodyPart: "Neck",
-    },
-  ];
-
-  let weeklyWorkouts = [
-    {
-      day: 0,
-      isWorkout: true,
-      workoutName: "Arms",
-    },
-
-    {
-      day: 1,
-      isWorkout: false,
-      workoutName: "Chest",
-    },
-
-    {
-      day: 2,
-      isWorkout: false,
-      workoutName: "Shoulder",
-    },
-
-    {
-      day: 3,
-      isWorkout: true,
-      workoutName: "Lower Body",
-    },
-
-    {
-      day: 4,
-      isWorkout: true,
-      workoutName: "Abs",
-    },
-
-    {
-      day: 5,
-      isWorkout: true,
-      workoutName: "Legs",
-    },
-
-    {
-      day: 6,
-      isWorkout: false,
-      workoutName: "Back",
-    },
-  ];
+  Logger.log("Weekly workouts for display--->", weeklyWorkouts);
 
   let hiitWorkouts = [
     {
@@ -364,8 +299,20 @@ export default function WorkoutScreen() {
 
   const router = useRouter();
 
+  useEffect(() => {
+    const setup = async () => {
+      await initDB();
+      let allWorkouts = await getAllWorkouts();
+      Logger.log("All workouts after insertion--->", allWorkouts);
+
+      setAllHistoryWorkouts(allWorkouts);
+    };
+    setup();
+  }, []);
+
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
       <View style={styles.header}>
         <View style={styles.nameContainer}>
           <FemaleIcon
@@ -407,20 +354,20 @@ export default function WorkoutScreen() {
               <Text style={styles.headerTitle}>{t("weeklyAttendance")}</Text>
 
               <IconWithText
-                icon={<Octicons name="dot-fill" size={24} />}
-                label="3 Days"
+                icon={<Octicons name="dot-fill" size={scaleHeight(20)} />}
+                label={`${attendedDays} Day${attendedDays !== 1 ? "s" : ""}`}
                 size={16}
-                textStyle={{ fontSize: moderateScale(10) }}
+                textStyle={{ fontSize: scaling().moderateScale(10) }}
                 color={colors.green}
                 orientation="horizontal"
               />
             </View>
 
-            <View style={styles.weekContainer}>
-              {weeklyWorkouts.map((item) => {
-                return (
+            <View style={styles.weeklyAttContainer}>
+              <View style={styles.weekContainer}>
+                {weeklyWorkouts.map((item) => (
                   <View style={styles.weekItem} key={item.day}>
-                    <Text style={styles.weekTitle}>{getDay(item.day)}</Text>
+                    <Text style={styles.weekTitle}>{DAY_LABELS[item.day]}</Text>
 
                     {item.isWorkout ? (
                       <Octicons
@@ -441,11 +388,13 @@ export default function WorkoutScreen() {
                       numberOfLines={1}
                       ellipsizeMode="tail"
                     >
-                      {item.isWorkout ? item.workoutName : "--"}
+                      {item.isWorkout
+                        ? getShortBodyPartName(item.bodyPart)
+                        : "--"}
                     </Text>
                   </View>
-                );
-              })}
+                ))}
+              </View>
             </View>
           </View>
 
@@ -460,6 +409,7 @@ export default function WorkoutScreen() {
                     onPress={() => {
                       Logger.log("Navigate to Workout Listing");
 
+                      setSelectedBodyPart(item);
                       setOpenModal(true);
                     }}
                   >
@@ -535,11 +485,12 @@ export default function WorkoutScreen() {
       {openModal ? (
         <WorkoutLevelModal
           visible={openModal}
+          selectedBodyPart={selectedBodyPart}
           setOpenModal={setOpenModal}
           t={t}
         />
       ) : null}
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -550,7 +501,7 @@ const styles = StyleSheet.create({
   },
 
   bodyPartName: {
-    fontSize: 12,
+    fontSize: moderateScale(12),
     textAlign: "center",
     fontFamily: "OpenSans_700Bold",
     color: colors.primary,
@@ -609,13 +560,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   headerTitle: {
-    fontSize: 15,
+    fontSize: moderateScale(14),
     fontFamily: "OpenSans_700Bold",
     color: colors.text,
   },
 
   streakTitle: {
-    fontSize: 12,
+    fontSize: moderateScale(12),
     fontFamily: "OpenSans_400Regular",
     color: colors.text,
     paddingVertical: 5,
@@ -644,36 +595,38 @@ const styles = StyleSheet.create({
   },
 
   weekTitle: {
-    fontSize: 13,
-
+    fontSize: scaling().moderateScale(12),
+    fontFamily: "OpenSans_600SemiBold",
     color: "#222",
     marginBottom: 4,
   },
 
+  workoutNameSub: {
+    fontSize: scaling().moderateScale(11),
+    fontFamily: "OpenSans_600SemiBold",
+    marginTop: 5,
+    color: "#222",
+  },
   subTitle: {
-    fontSize: 12,
+    fontSize: moderateScale(12),
+    fontFamily: "OpenSans_400Regular",
     color: "#666",
     marginTop: 4,
   },
 
-  workoutNameSub: {
-    fontSize: 10,
-    color: "#666",
-    marginTop: 4,
-  },
   item: {
     marginEnd: 15,
   },
 
   hiitTitle: {
     marginTop: 15,
-    fontSize: 15,
+    fontSize: moderateScale(15),
     fontFamily: "OpenSans_700Bold",
     color: colors.text,
   },
 
   popularTitle: {
-    fontSize: 15,
+    fontSize: moderateScale(15),
     fontFamily: "OpenSans_700Bold",
     color: colors.text,
     marginEnd: 10,

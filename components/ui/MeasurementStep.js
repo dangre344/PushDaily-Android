@@ -13,10 +13,13 @@ const MeasurementsStep = ({ form, selectedWeight, selectedHeight }) => {
   Logger.log("selectedHeight---->" + selectedHeight);
   Logger.log("selectedHeight---->" + selectedHeight);
   const { t } = useTranslation();
-  const [heightCm, setHeightCm] = useState(140);
-  const [weightKg, setWeightKg] = useState(65);
+  const [heightCm, setHeightCm] = useState(form.getValues("height") || 140);
+  const [weightKg, setWeightKg] = useState(form.getValues("weight") || 65);
 
   Logger.log("heightCm--->" + form.getValues("height"));
+
+  Logger.log("heightCm--->" + heightCm);
+  Logger.log("weightKg--->" + weightKg);
 
   const cmToFeetInches = (cm) => {
     const inchesTotal = cm / 2.54;

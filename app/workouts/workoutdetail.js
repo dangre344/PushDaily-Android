@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import {
   Animated,
@@ -10,143 +11,67 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "../../constants/colors";
+import { workoutListGlobal } from "../../constants/Constants";
+import { Logger } from "../../constants/Logger";
+import { scaling } from "../../constants/useScaling";
 import CongratsScreen from "./Componenets/CongratsScreen";
 import CurrentWorkout from "./Componenets/CurrentWorkout";
 import NextWorkoutInfo from "./Componenets/NextWorkoutInfo";
 
 export default function WorkoutDetail() {
-  const workouts = {
-    bodyPart: "Chest",
-    level: "Intermediate",
-    calories: 400,
-    img: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
-    workoutList: [
-      {
-        id: 1,
-        name: "Push Ups",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
-        time: "25 min",
-        reps: 20,
-        calories: "200",
-        level: "Intermediate",
-        description:
-          "A classic bodyweight exercise that targets chest, shoulders, and triceps",
-        steps: [
-          "Start in plank position",
-          "Lower your body until chest nearly touches the floor",
-          "Push back up to starting position",
-        ],
-        focus: ["Chest", "Shoulders", "Triceps"],
-      },
-      {
-        id: 2,
-        name: "Bench Press",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
-        time: "30 min",
-        reps: 12,
-        calories: "250",
-        level: "Advanced",
-        description:
-          "Compound exercise that builds upper body strength and muscle mass",
-        steps: [
-          "Lie on bench with feet flat",
-          "Grip barbell slightly wider than shoulders",
-          "Lower bar to chest and push back up",
-        ],
-        focus: ["Chest", "Triceps", "Shoulders"],
-      },
-      {
-        id: 3,
-        name: "Chest Fly",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
-        time: "20 min",
-        reps: 12,
-        calories: "180",
-        level: "Beginner",
-        description:
-          "Isolation exercise for chest development and muscle definition",
-        steps: [
-          "Lie on bench with dumbbells",
-          "Start with arms extended",
-          "Lower weights in arc motion",
-          "Return to starting position",
-        ],
-        focus: ["Chest", "Shoulders"],
-      },
-      {
-        id: 4,
-        name: "Incline Press",
-        reps: 10,
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
-        time: "35 min",
-        calories: "300",
-        level: "Intermediate",
-        description: "Targets upper chest for balanced chest development",
-        steps: [
-          "Set bench to 30-45 degree incline",
-          "Grip barbell at shoulder width",
-          "Press upward until arms are extended",
-        ],
-        focus: ["Upper Chest", "Shoulders"],
-      },
-      {
-        id: 5,
-        name: "Decline Pushups",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
-        time: "28 min",
-        reps: 10,
-        calories: "220",
-        level: "Intermediate",
-        description: "Advanced pushup variation targeting lower chest",
-        steps: [
-          "Elevate feet on bench",
-          "Assume pushup position",
-          "Lower body with control",
-          "Push back to starting position",
-        ],
-        focus: ["Lower Chest", "Core"],
-      },
-      {
-        id: 6,
-        name: "Dumbbell Press",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
-        time: "32 min",
-        reps: 8,
-        calories: "280",
-        level: "Intermediate",
-        description:
-          "Free weight exercise for chest development with stability challenge",
-        steps: [
-          "Lie on bench with dumbbells",
-          "Press weights upward",
-          "Maintain control throughout movement",
-        ],
-        focus: ["Chest", "Stabilizers"],
-      },
-    ],
+  const { id, name, level } = useLocalSearchParams();
+
+  const bodyPartObj = {
+    id: Number(id),
+    name,
+    level,
   };
 
-  const [index, setIndex] = useState(0);
-  const [workoutCompletedCount, setWorkoutCompletedCount] = useState(0);
+  Logger.log("Received WorkoutDetail bodyPart:", bodyPartObj);
 
-  const workout = workouts.workoutList[index];
+  const [index, setIndex] = useState(0);
+  const [workoutCompletedWorkouts, setWorkoutCompletedWorkouts] = useState([]);
+
+  const workoutsListForBodyPart = workoutListGlobal.find(
+    (item) =>
+      Number(item.workoutId) === Number(bodyPartObj.id) &&
+      item.bodyPart == bodyPartObj.name &&
+      item.level == bodyPartObj.level,
+  );
+
+  Logger.log("Received workoutsListForBodyPart:", workoutsListForBodyPart);
+
+  const workouts = workoutsListForBodyPart;
+
+  Logger.log("FilteredWorkouts:---->", workouts);
 
   const [loadingPage, setLoadingPage] = useState("play_workout");
 
   console.log("Loading Page:", loadingPage);
-  console.log("workoutCompletedCount----->", workoutCompletedCount);
+  console.log("workoutCompletedWorkouts----->", workoutCompletedWorkouts);
   console.log("index------->", index);
 
   const handlePrev = () => {
     if (index > 0) {
       // setLoadingPage("play_workout");
-      setWorkoutCompletedCount((prev) => prev - 1);
+      setWorkoutCompletedWorkouts((prev) => {
+        const id = workouts.workoutList[index].id;
+        if (prev.includes(id)) {
+          return prev.filter((item) => item !== id);
+        } else {
+          // Add the ID if it doesn't exist
+          return [...prev, id];
+        }
+      });
       setIndex(index - 1);
     }
   };
 
   const onNextWorkout = () => {
-    setWorkoutCompletedCount((prev) => prev + 1);
+    setWorkoutCompletedWorkouts((prev) => [
+      ...prev,
+      workouts.workoutList[index],
+    ]);
     setLoadingPage("next_workout");
     setIndex(index + 1);
   };
@@ -155,7 +80,11 @@ export default function WorkoutDetail() {
     <SafeAreaView style={styles.container}>
       <Animated.View style={styles.header}>
         <TouchableOpacity style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={colors.primary} />
+          <Ionicons
+            name="arrow-back"
+            size={scaling().moderateScale(24)}
+            color={colors.primary}
+          />
         </TouchableOpacity>
 
         <View style={styles.headerCenter}>
@@ -173,7 +102,7 @@ export default function WorkoutDetail() {
         {index === workouts.workoutList.length - 1 ? (
           <CongratsScreen
             workouts={workouts}
-            workoutCompletedCount={workoutCompletedCount}
+            workoutCompletedWorkouts={workoutCompletedWorkouts}
           />
         ) : loadingPage === "next_workout" ? (
           <NextWorkoutInfo
@@ -184,7 +113,7 @@ export default function WorkoutDetail() {
           />
         ) : loadingPage && loadingPage === "play_workout" ? (
           <CurrentWorkout
-            workout={workout}
+            workout={workouts.workoutList[index]}
             index={index}
             setIndex={setIndex}
             setLoadingPage={setLoadingPage}
@@ -215,7 +144,7 @@ export default function WorkoutDetail() {
           </TouchableOpacity>
         </View>
       ) : null}
-      // prev and next buttons
+
       {loadingPage &&
       loadingPage === "next_workout" &&
       index !== workouts.workoutList.length - 1 ? (
@@ -305,18 +234,19 @@ export const styles = StyleSheet.create({
 
   headerCenter: {
     alignItems: "center",
+    marginStart: 10,
   },
 
   headerTitle: {
     fontFamily: "OpenSans_700Bold",
-    fontSize: 18,
+    fontSize: scaling().moderateScale(18),
     color: colors.secondary,
   },
 
   headerSubtitle: {
     fontFamily: "OpenSans_400Regular",
-    fontSize: 12,
-    marginStart: 10,
+    fontSize: scaling().moderateScale(12),
+
     color: "#718096",
     marginTop: 2,
   },
@@ -341,7 +271,7 @@ export const styles = StyleSheet.create({
 
   progressText: {
     fontFamily: "OpenSans_600SemiBold",
-    fontSize: 14,
+    fontSize: scaling().moderateScale(14),
     color: colors.secondary,
   },
 
@@ -367,13 +297,13 @@ export const styles = StyleSheet.create({
 
   skipText: {
     fontFamily: "OpenSans_500Medium",
-    fontSize: 14,
+    fontSize: scaling().moderateScale(14),
     color: colors.secondary,
   },
 
   progressDotActive: {
     backgroundColor: colors.primary,
-    width: 16,
+    width: scaling().moderateScale(14),
   },
 
   progressDotCompleted: {
@@ -381,16 +311,16 @@ export const styles = StyleSheet.create({
   },
 
   progressBar: {
-    height: 4,
+    height: scaling().moderateScale(4),
     backgroundColor: "#E2E8F0",
-    borderRadius: 2,
+    borderRadius: scaling().moderateScale(2),
     overflow: "hidden",
   },
 
   progressFill: {
     height: "100%",
     backgroundColor: colors.primary,
-    borderRadius: 2,
+    borderRadius: scaling().moderateScale(2),
   },
 
   // Image Card
@@ -417,7 +347,7 @@ export const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 120,
+    height: scaling().moderateScale(120),
     padding: 16,
     justifyContent: "flex-end",
   },
@@ -432,7 +362,7 @@ export const styles = StyleSheet.create({
 
   imageBadgeText: {
     fontFamily: "OpenSans_600SemiBold",
-    fontSize: 12,
+    fontSize: scaling().moderateScale(12),
     color: "#FFFFFF",
   },
 
@@ -445,7 +375,7 @@ export const styles = StyleSheet.create({
 
   exerciseName: {
     fontFamily: "opensans_700bold",
-    fontSize: 18,
+    fontSize: scaling().moderateScale(18),
     color: colors.text,
     marginBottom: 10,
   },
@@ -467,14 +397,14 @@ export const styles = StyleSheet.create({
 
   statText: {
     fontFamily: "OpenSans_600SemiBold",
-    fontSize: 12,
+    fontSize: scaling().moderateScale(12),
     color: colors.secondary,
     marginTop: 5,
   },
 
   exerciseDescription: {
     fontFamily: "OpenSans_400Regular",
-    fontSize: 12,
+    fontSize: scaling().moderateScale(12),
 
     color: "#4A5568",
     marginBottom: 15,
@@ -487,7 +417,7 @@ export const styles = StyleSheet.create({
 
   sectionTitle: {
     fontFamily: "OpenSans_600SemiBold",
-    fontSize: 20,
+    fontSize: scaling().moderateScale(20),
     color: colors.text,
     marginBottom: 12,
   },
@@ -509,7 +439,7 @@ export const styles = StyleSheet.create({
 
   muscleTagText: {
     fontFamily: "OpenSans_500Medium",
-    fontSize: 10,
+    fontSize: scaling().moderateScale(10),
     color: colors.secondary,
   },
 
@@ -530,7 +460,7 @@ export const styles = StyleSheet.create({
 
   stepsToggleText: {
     fontFamily: "OpenSans_600SemiBold",
-    fontSize: 16,
+    fontSize: scaling().moderateScale(16),
     color: colors.primary,
   },
 
@@ -545,9 +475,9 @@ export const styles = StyleSheet.create({
   },
 
   stepNumber: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: scaling().moderateScale(14),
+    height: scaling().moderateScale(30),
+    borderRadius: scaling().moderateScale(15),
     backgroundColor: colors.primary,
     justifyContent: "center",
     alignItems: "center",
@@ -557,16 +487,16 @@ export const styles = StyleSheet.create({
 
   stepNumberText: {
     fontFamily: "OpenSans_700Bold",
-    fontSize: 14,
+    fontSize: scaling().moderateScale(14),
     color: "#FFFFFF",
   },
 
   stepText: {
     flex: 1,
     fontFamily: "OpenSans_400Regular",
-    fontSize: 16,
+    fontSize: scaling().moderateScale(16),
     color: "#4A5568",
-    lineHeight: 24,
+    lineHeight: scaling().moderateScale(24),
   },
 
   videoButton: {
@@ -582,7 +512,7 @@ export const styles = StyleSheet.create({
 
   videoButtonText: {
     fontFamily: "OpenSans_600SemiBold",
-    fontSize: 16,
+    fontSize: scaling().moderateScale(16),
     color: colors.primary,
   },
 
@@ -609,7 +539,7 @@ export const styles = StyleSheet.create({
 
   timer: {
     fontFamily: "OpenSans_700Bold",
-    fontSize: 48,
+    fontSize: scaling().moderateScale(48),
     color: colors.primary,
     marginBottom: 20,
   },
@@ -630,7 +560,7 @@ export const styles = StyleSheet.create({
 
   timeButtonText: {
     fontFamily: "OpenSans_500Medium",
-    fontSize: 14,
+    fontSize: scaling().moderateScale(14),
     color: colors.secondary,
   },
 
@@ -705,14 +635,14 @@ export const styles = StyleSheet.create({
 
   navButtonText: {
     fontFamily: "OpenSans_600SemiBold",
-    fontSize: 16,
+    fontSize: scaling().moderateScale(16),
     paddingVertical: 10,
     color: colors.secondary,
   },
 
   nextButtonText: {
     fontFamily: "OpenSans_600SemiBold",
-    fontSize: 16,
+    fontSize: scaling().moderateScale(16),
     color: "#FFFFFF",
   },
 

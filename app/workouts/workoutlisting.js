@@ -1,6 +1,7 @@
 import { Ionicons, Octicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
+
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -13,14 +14,23 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Icon from "react-native-vector-icons/Ionicons";
 import { Button } from "../../components/ui/Button.js";
 import IconWithText from "../../components/ui/IconWithText";
 import { colors } from "../../constants/colors";
+import { workoutListGlobal } from "../../constants/Constants.js";
+import { Logger } from "../../constants/Logger.js";
+import { scaling } from "../../constants/useScaling.js";
 
 export default function WorkoutListingScreen({ route }) {
   const navigation = useNavigation();
   const scrollY = useRef(new Animated.Value(0)).current;
+
+  const { selectedBodyPart } = useLocalSearchParams();
+  const bodyPartObj = selectedBodyPart ? JSON.parse(selectedBodyPart) : null;
+
+  console.log("Received bodyPart:", bodyPartObj);
+
+  Logger.log("Received bodyPart in WorkoutListingScreen:", selectedBodyPart);
 
   const HEADER_MAX_HEIGHT = 250;
   const HEADER_MIN_HEIGHT = 90;
@@ -29,57 +39,14 @@ export default function WorkoutListingScreen({ route }) {
   const { t } = useTranslation();
   const router = useRouter();
 
-  const workouts = {
-    bodyPart: "Chest",
-    level: "Intermediate",
-    calories: 400,
-    img: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
-    workoutList: [
-      {
-        name: "Push Ups",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
-        time: "25 min",
-        calories: "200",
-        level: "Intermediate",
-      },
-      {
-        name: "Bench Press",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
-        time: "30 min",
-        calories: "250",
-        level: "Advanced",
-      },
-      {
-        name: "Chest Fly",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
-        time: "20 min",
-        calories: "180",
-        level: "Beginner",
-      },
-      {
-        name: "Incline Press",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
-        time: "35 min",
-        calories: "300",
-        level: "Intermediate",
-      },
-      {
-        name: "Decline Pushups",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
-        time: "28 min",
-        calories: "220",
-        level: "Intermediate",
-      },
-      {
-        name: "Dumbbell Press",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
-        time: "32 min",
-        calories: "280",
-        level: "Intermediate",
-      },
-    ],
-  };
+  const workouts = workoutListGlobal.find(
+    (item) =>
+      item.workoutId === bodyPartObj.id &&
+      item.bodyPart === bodyPartObj.name &&
+      item.level === bodyPartObj.level,
+  );
 
+  Logger.log("ReceivedImg----", workouts?.img);
   // Animation interpolations
   const headerHeight = scrollY.interpolate({
     inputRange: [0, HEADER_SCROLL_DISTANCE],
@@ -128,8 +95,20 @@ export default function WorkoutListingScreen({ route }) {
         <Text style={styles.workoutName} numberOfLines={1}>
           {item.name}
         </Text>
-        <Text style={styles.workoutLevel}>{item.level}</Text>
-        <View style={styles.workoutDetails}>
+        {item.reps ? (
+          <Text style={styles.workoutLevel}>{"x " + item.reps + " reps"}</Text>
+        ) : (
+          <View style={styles.workoutDetails}>
+            <IconWithText
+              icon={<Octicons name="clock" size={14} color="#666" />}
+              label={item.time}
+              size={12}
+              textStyle={styles.detailText}
+              orientation="horizontal"
+            />
+          </View>
+        )}
+        {/* <View style={styles.workoutDetails}>
           <IconWithText
             icon={<Octicons name="clock" size={14} color="#666" />}
             label={item.time}
@@ -144,7 +123,7 @@ export default function WorkoutListingScreen({ route }) {
             textStyle={styles.detailText}
             orientation="horizontal"
           />
-        </View>
+        </View> */}
       </View>
     </View>
   );
@@ -178,7 +157,7 @@ export default function WorkoutListingScreen({ route }) {
                 Level: {workouts.level}
               </Text>
               <Text style={styles.overlayCalories}>
-                {workouts.calories} Calories burn
+                {workouts.calories} Kcal
               </Text>
             </View>
           </View>
@@ -187,7 +166,7 @@ export default function WorkoutListingScreen({ route }) {
 
       <Animated.View style={[styles.header, { height: headerHeight }]}>
         <Animated.Image
-          source={{ uri: workouts.img }}
+          source={workouts?.img}
           style={[
             styles.headerImage,
             {
@@ -225,9 +204,7 @@ export default function WorkoutListingScreen({ route }) {
             }}
           >
             <Text style={styles.overlayLevel}>Level: {workouts.level}</Text>
-            <Text style={styles.overlayCalories}>
-              {workouts.calories} Calories burn
-            </Text>
+            <Text style={styles.overlayCalories}>{workouts.calories} Kcal</Text>
           </View>
         </Animated.View>
       </Animated.View>
@@ -249,7 +226,26 @@ export default function WorkoutListingScreen({ route }) {
         title={t("start")}
         style={{ paddingVertical: 20, marginHorizontal: 20, marginBottom: 10 }}
         onPress={() => {
-          router.push("/workouts/workoutdetail");
+          Logger.log(
+            "Navigating to WorkoutDetail with selectedBodyPart:",
+            bodyPartObj?.id,
+          );
+          Logger.log(
+            "Navigating to WorkoutDetail with bodyPartObj:",
+            JSON.stringify({
+              id: bodyPartObj?.id,
+              name: bodyPartObj?.name,
+              level: bodyPartObj?.level,
+            }),
+          );
+          router.push({
+            pathname: "/workouts/workoutdetail",
+            params: {
+              id: bodyPartObj?.id,
+              name: bodyPartObj?.name,
+              level: bodyPartObj?.level,
+            },
+          });
         }}
       />
     </SafeAreaView>
@@ -406,15 +402,16 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   workoutName: {
-    fontSize: 16,
+    fontSize: scaling().moderateScale(16),
+
     fontFamily: "OpenSans_600SemiBold",
     color: "#000",
     marginBottom: 4,
   },
   workoutLevel: {
-    fontSize: 12,
-    color: "#666",
-    fontFamily: "OpenSans_400Regular",
+    fontSize: scaling().moderateScale(16),
+    color: "#000000",
+    fontFamily: "OpenSans_500Medium",
     marginBottom: 8,
   },
   workoutDetails: {
@@ -423,8 +420,8 @@ const styles = StyleSheet.create({
     gap: 15,
   },
   detailText: {
-    fontSize: 11,
-    fontFamily: "OpenSans_400Regular",
-    color: "#666",
+    fontSize: scaling().moderateScale(16),
+    fontFamily: "OpenSans_500Medium",
+    color: "#000000",
   },
 });

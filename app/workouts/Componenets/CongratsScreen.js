@@ -15,17 +15,30 @@ import {
 
 import Icon from "react-native-vector-icons/Ionicons";
 import { colors } from "../../../constants/colors";
+import { Logger } from "../../../constants/Logger";
 import { scaling } from "../../../constants/useScaling";
+import {
+  getAllWorkouts,
+  initDB,
+  insertMultipleWorkouts,
+} from "../../../offlinedb/workoutdb";
 
 const { width, height } = Dimensions.get("window");
 
-const CongratsScreen = ({ workouts, navigation, workoutCompletedCount }) => {
+const CongratsScreen = ({ workouts, navigation, workoutCompletedWorkouts }) => {
   // Animation values
   const confettiAnim = useRef(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const slideUpAnim = useRef(new Animated.Value(30)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
+
+  Logger.log(
+    "CongratsScreen workoutCompletedWorkouts--->",
+    workoutCompletedWorkouts,
+  );
+
+  Logger.log("CongratsScreen workoutId--->", workouts.workoutId);
 
   // State for calories details
   const [showCaloriesDetails, setShowCaloriesDetails] = useState(false);
@@ -51,7 +64,8 @@ const CongratsScreen = ({ workouts, navigation, workoutCompletedCount }) => {
       }),
       Animated.timing(progressAnim, {
         toValue:
-          (workoutCompletedCount + 1) / (workouts.workoutList?.length || 1),
+          (workoutCompletedWorkouts.length + 1) /
+          (workouts.workoutList?.length || 1),
         duration: 1000,
         useNativeDriver: false,
       }),
@@ -78,10 +92,34 @@ const CongratsScreen = ({ workouts, navigation, workoutCompletedCount }) => {
     }).start();
 
     Animated.timing(animatedWorkouts, {
-      toValue: workoutCompletedCount + 1 || 0,
+      toValue: workoutCompletedWorkouts.length + 1 || 0,
       duration: 1000,
       useNativeDriver: false,
     }).start();
+  }, []);
+
+  useEffect(() => {
+    const setup = async () => {
+      await initDB(); // Initialize DB
+
+      let completedWorkouts = workoutCompletedWorkouts.map((workoutItem) => {
+        return {
+          workoutId: workouts.workoutId,
+          calories: workoutItem.calories,
+          name: workoutItem.name,
+          bodyPart: workouts.bodyPart,
+          level: workouts.level,
+        };
+      });
+
+      Logger.log("CompletedWorkouts to Insert--->", completedWorkouts);
+
+      await insertMultipleWorkouts(completedWorkouts);
+
+      let allWorkouts = await getAllWorkouts();
+      Logger.log("All workouts after insertion--->", allWorkouts);
+    };
+    setup();
   }, []);
 
   const CaloriesDetailsModal = () => (
@@ -247,8 +285,11 @@ const CongratsScreen = ({ workouts, navigation, workoutCompletedCount }) => {
               <Text style={styles.statCardTitle}>Workouts Completed</Text>
               <Animated.Text style={styles.statCardValue}>
                 {animatedWorkouts.interpolate({
-                  inputRange: [0, workoutCompletedCount || 0],
-                  outputRange: ["0", (workoutCompletedCount || 0).toString()],
+                  inputRange: [0, workoutCompletedWorkouts.length || 0],
+                  outputRange: [
+                    "0",
+                    (workoutCompletedWorkouts.length || 0).toString(),
+                  ],
                 })}
               </Animated.Text>
               <Text style={styles.statCardUnit}>exercises</Text>
@@ -280,8 +321,8 @@ const CongratsScreen = ({ workouts, navigation, workoutCompletedCount }) => {
             />
           </View>
           <Text style={styles.progressText}>
-            {workoutCompletedCount > 0
-              ? `${(((workoutCompletedCount + 1) / workouts.workoutList?.length) * 100).toFixed(2)}%`
+            {workoutCompletedWorkouts.length > 0
+              ? `${(((workoutCompletedWorkouts.length + 1) / workouts.workoutList?.length) * 100).toFixed(0)}% `
               : "0%"}
             Complete! 🎯
           </Text>
@@ -409,7 +450,7 @@ const styles = StyleSheet.create({
   statCardGradient: {
     padding: 20,
     alignItems: "center",
-    height: scaling().scaleHeight(200),
+
     borderRadius: 20,
     marginBottom: 10,
   },

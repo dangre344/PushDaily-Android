@@ -1,4 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
@@ -8,6 +7,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { StatusBar } from "expo-status-bar";
 import { colors } from "../constants/colors";
+import { Logger } from "../constants/Logger";
+import { useUser } from "../constants/UserContext";
 import { scaling } from "../constants/useScaling";
 const { width, height } = Dimensions.get("window");
 
@@ -17,28 +18,37 @@ export default function Splash() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
 
+  const { user, updateUser } = useUser();
+
+  Logger.log("user--Splash-->", user);
+
   useEffect(() => {
+    if (user === undefined) return; // optional guard
     async function prepare() {
       await SplashScreen.preventAutoHideAsync();
 
       // Check if user has completed signup
-      const userName = await AsyncStorage.getItem("userName");
+
+      Logger.log("user--prepare-->", user?.name);
+      const userName = user?.name || null;
 
       // Optional: Keep splash visible for 2 seconds
-      await new Promise((res) => setTimeout(res, 3000));
+      await new Promise((res) => setTimeout(res, 2000));
+
+      Logger.log("User name from storage--->", userName);
 
       // Navigate
       if (userName) {
         // router.replace("/signup");
         router.replace("/home");
       } else {
-        router.replace("/home");
+        router.replace("/signup");
       }
 
       await SplashScreen.hideAsync();
     }
     prepare();
-  }, []);
+  }, [user]);
 
   return (
     <SafeAreaView style={styles.container}>

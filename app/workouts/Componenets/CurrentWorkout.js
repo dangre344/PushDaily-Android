@@ -18,6 +18,12 @@ import { scaling } from "../../../constants/useScaling";
 
 const { scaleHeight, scaleWidth, moderateScale } = scaling();
 
+const frames = [
+  require("../../../assets/images/chestImages/w1.png"),
+  require("../../../assets/images/chestImages/w2.png"),
+  require("../../../assets/images/chestImages/w1.png"),
+];
+
 export default function CurrentWorkout({
   workout,
   onNext,
@@ -29,6 +35,16 @@ export default function CurrentWorkout({
   const [isTimerActive, setIsTimerActive] = useState(true);
   const [showStepsModal, setShowStepsModal] = useState(false);
   const [isVoiceMuted, setIsVoiceMuted] = useState(false);
+
+  const [frame, setFrame] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setFrame((prev) => (prev + 1) % frames.length);
+    }, 500); // speed of animation
+
+    return () => clearInterval(interval);
+  }, []);
 
   const timerRef = useRef(null);
   const soundRef = useRef(null);
@@ -388,7 +404,7 @@ export default function CurrentWorkout({
 
           <View style={styles.imageGradient}>
             <Image
-              source={{ uri: workout.photo }}
+              source={frames[frame]}
               style={styles.exerciseImage}
               resizeMode="cover"
             />
