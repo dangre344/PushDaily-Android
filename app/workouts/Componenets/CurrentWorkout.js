@@ -14,15 +14,16 @@ import {
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { colors } from "../../../constants/colors";
+import { Logger } from "../../../constants/Logger";
 import { scaling } from "../../../constants/useScaling";
 
 const { scaleHeight, scaleWidth, moderateScale } = scaling();
 
-const frames = [
-  require("../../../assets/images/chestImages/w1.png"),
-  require("../../../assets/images/chestImages/w2.png"),
-  require("../../../assets/images/chestImages/w1.png"),
-];
+// const frames = [
+//   require("../../../assets/images/chestImages/w1.png"),
+//   require("../../../assets/images/chestImages/w2.png"),
+//   require("../../../assets/images/chestImages/w1.png"),
+// ];
 
 export default function CurrentWorkout({
   workout,
@@ -31,20 +32,22 @@ export default function CurrentWorkout({
   setIndex,
   setLoadingPage,
 }) {
-  const [timeLeft, setTimeLeft] = useState(workout.duration || 30);
+  const [timeLeft, setTimeLeft] = useState(
+    workout.time?.replace("s", "") || 30,
+  );
   const [isTimerActive, setIsTimerActive] = useState(true);
   const [showStepsModal, setShowStepsModal] = useState(false);
   const [isVoiceMuted, setIsVoiceMuted] = useState(false);
 
-  const [frame, setFrame] = useState(0);
+  // const [frame, setFrame] = useState(0);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setFrame((prev) => (prev + 1) % frames.length);
-    }, 500); // speed of animation
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     setFrame((prev) => (prev + 1) % frames.length);
+  //   }, 500); // speed of animation
 
-    return () => clearInterval(interval);
-  }, []);
+  //   return () => clearInterval(interval);
+  // }, []);
 
   const timerRef = useRef(null);
   const soundRef = useRef(null);
@@ -64,7 +67,7 @@ export default function CurrentWorkout({
   useEffect(() => {
     // Component is active
     isActive.current = true;
-    console.log(`CurrentWorkout ${workout.name} mounted`);
+    Logger.log(`CurrentWorkout ${workout.name} mounted`);
 
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -86,13 +89,8 @@ export default function CurrentWorkout({
       startVoiceInstructions();
     }
 
-    if (workout.hasTimer) {
-      startTimer();
-      startTimerPulse();
-    }
-
     return () => {
-      console.log(`CurrentWorkout ${workout.name} unmounting, cleaning up...`);
+      Logger.log(`CurrentWorkout ${workout.name} unmounting, cleaning up...`);
       isActive.current = false;
 
       // Stop all speech
@@ -128,31 +126,34 @@ export default function CurrentWorkout({
           "workout_start.mp3": require("../../../assets/mp3/refree.mp3"),
         };
 
-        // Unload previous sound if exists
+        // cleanup previous sound
         if (soundRef.current) {
           try {
             await soundRef.current.unloadAsync();
-          } catch (error) {
-            console.error("Error unloading previous sound:", error);
-          }
+          } catch (e) {}
         }
 
-        // Play the new sound
-        const { sound } = await Audio.Sound.createAsync(
-          soundFiles[soundFileName] || soundFiles["workout_start.mp3"],
-          { shouldPlay: true },
-        );
+        return new Promise(async (resolve, reject) => {
+          const { sound } = await Audio.Sound.createAsync(
+            soundFiles[soundFileName] || soundFiles["workout_start.mp3"],
+            { shouldPlay: true },
+          );
 
-        soundRef.current = sound;
+          soundRef.current = sound;
 
-        sound.setOnPlaybackStatusUpdate((status) => {
-          if (status.didJustFinish && isActive.current) {
-            sound.unloadAsync();
-            soundRef.current = null;
-          }
+          sound.setOnPlaybackStatusUpdate(async (status) => {
+            if (!status.isLoaded) return;
+
+            if (status.didJustFinish) {
+              try {
+                await sound.unloadAsync();
+              } catch (e) {}
+
+              soundRef.current = null;
+              resolve(); // ✅ IMPORTANT: tells caller "finished"
+            }
+          });
         });
-
-        return sound;
       } catch (error) {
         console.error(`Error playing sound ${soundFileName}:`, error);
       }
@@ -190,7 +191,7 @@ export default function CurrentWorkout({
 
     try {
       // Introduction
-      const introText = `Starting ${workout.name}. You need to do ${workout.reps} repetitions.`;
+      const introText = `Starting ${workout.name}. You need to perform ${workout.reps ? `${workout.reps} repetitions.` : ` ${workout.time} seconds.`}`;
       await speakText(introText);
 
       // Wait a moment
@@ -204,9 +205,9 @@ export default function CurrentWorkout({
       await speakText(stepsText);
 
       // Timer announcement if applicable
-      if (workout.hasTimer) {
+      if (workout.time) {
         await delay(500);
-        const timerText = `Hold this position for ${workout.duration} seconds. The timer starts now.`;
+        const timerText = `Hold this position for ${workout.time} seconds. The timer starts now.`;
         await speakText(timerText);
       } else {
         await delay(500);
@@ -215,6 +216,9 @@ export default function CurrentWorkout({
 
         if (!isVoiceMuted && isActive.current) {
           await playSoundFromAssets("workout_start.mp3");
+
+          startTimer();
+          startTimerPulse();
         }
       }
     } catch (error) {
@@ -388,6 +392,7 @@ export default function CurrentWorkout({
             {
               opacity: fadeAnim,
               transform: [{ translateY: slideUpAnim }],
+              height: workout.time ? scaleHeight(300) : scaleHeight(400),
             },
           ]}
         >
@@ -404,13 +409,12 @@ export default function CurrentWorkout({
 
           <View style={styles.imageGradient}>
             <Image
-              source={frames[frame]}
+              source={workout?.photo}
               style={styles.exerciseImage}
-              resizeMode="cover"
+              resizeMode="contain"
             />
           </View>
 
-          {/* Mute Button - Left Side */}
           <TouchableOpacity
             style={styles.muteButton}
             onPress={toggleVoiceMute}
@@ -451,18 +455,10 @@ export default function CurrentWorkout({
           <View style={styles.titleContainer}>
             <Text
               style={styles.exerciseName}
-            >{`${workout.name} X ${workout.reps}`}</Text>
+            >{`${workout.name} X ${workout.reps ? workout.reps : workout.time}`}</Text>
           </View>
 
-          <View style={styles.tagsContainer}>
-            {workout.focus.map((muscle, index) => (
-              <View key={index} style={styles.tag}>
-                <Text style={styles.tagText}>{muscle}</Text>
-              </View>
-            ))}
-          </View>
-
-          {workout.hasTimer && (
+          {workout.time && (
             <Animated.View
               style={[
                 styles.timerContainer,
@@ -499,6 +495,14 @@ export default function CurrentWorkout({
               </View>
             </Animated.View>
           )}
+
+          <View style={styles.tagsContainer}>
+            {workout.focus.map((muscle, index) => (
+              <View key={index} style={styles.tag}>
+                <Text style={styles.tagText}>{muscle}</Text>
+              </View>
+            ))}
+          </View>
         </Animated.View>
       </ScrollView>
 
@@ -565,13 +569,12 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   imageContainer: {
-    height: scaleHeight(400),
     width: "100%",
     position: "relative",
     borderBottomLeftRadius: 40,
     borderBottomRightRadius: 40,
     overflow: "hidden",
-    backgroundColor: "#E2E8F0",
+    backgroundColor: "#fff",
   },
   exerciseImage: {
     width: "100%",
@@ -687,7 +690,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    marginBottom: 16,
+    marginBottom: 10,
   },
   timerTitle: {
     fontSize: 18,

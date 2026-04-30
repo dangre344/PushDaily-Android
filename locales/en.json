@@ -83,11 +83,12 @@
   "weeklyAttendance": "Weekly Attendance",
   "quickWorkouts": "Quick Workouts",
   "HIITWorkout": "HIIT Workout",
-  "popularWorkouts": "Popular Workouts",
+  "popularWorkouts": "Trending Workouts",
   "beginnerSubWorkoutSelection": "I’m just getting started",
   "intermediateSubWorkoutSelection": "I’ve got some experience",
   "advancedSubWorkoutSelection": "Experienced and consistent",
   "selectExpLevel": "Pick the level that matches your progress 💪",
   "continue": "Continue",
-  "start": "Start"
+  "start": "Start",
+  "selectExperience": "Please select your experience level"
 }

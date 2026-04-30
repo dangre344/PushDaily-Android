@@ -1,5 +1,6 @@
 import { AntDesign, Ionicons } from "@expo/vector-icons";
-import { useEffect, useMemo, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FlatList, StyleSheet, Text, View } from "react-native";
 import { Calendar } from "react-native-calendars";
@@ -118,11 +119,11 @@ const WorkoutCard = ({ item }) => (
     </View>
 
     {/* Calories */}
-    <View style={cardStyles.calBox}>
+    {/* <View style={cardStyles.calBox}>
       <AntDesign name="fire" size={13} color={colors.primary} />
       <Text style={cardStyles.calNum}>{parseCalories(item.calories)}</Text>
       <Text style={cardStyles.calUnit}>kcal</Text>
-    </View>
+    </View> */}
   </View>
 );
 
@@ -199,26 +200,38 @@ export default function ProgressScreen() {
     return `${MONTHS[parseInt(m, 10) - 1]} ${parseInt(d, 10)}, ${y}`;
   })();
 
-  useEffect(() => {
-    Logger.log("ProgressScreen selectedDate---->", selectedDate);
-    const setup = async () => {
-      await initDB();
+  useFocusEffect(
+    useCallback(() => {
+      Logger.log("ProgressScreen selectedDate---->", selectedDate);
 
-      const dateWorkouts = await getAllWorkoutsBydate(selectedDate);
-      Logger.log("Workouts for date--->", dateWorkouts);
-      setAllHistoryWorkouts(dateWorkouts);
+      let isActive = true;
 
-      const cal = await getTotalCalories();
-      Logger.log("Total calories--->", cal);
-      setTotalCalories(cal);
+      const setup = async () => {
+        await initDB();
 
-      const dates = await getAllWorkoutDates();
-      Logger.log("Workout dates for calendar--->", dates);
-      setWorkoutDates(dates);
-    };
+        const dateWorkouts = await getAllWorkoutsBydate(selectedDate);
+        Logger.log("Workouts for date--->", dateWorkouts);
 
-    setup();
-  }, [selectedDate]); // ← re-runs every time selectedDate changes
+        const cal = await getTotalCalories();
+        Logger.log("Total calories--->", cal);
+
+        const dates = await getAllWorkoutDates();
+        Logger.log("Workout dates for calendar--->", dates);
+
+        if (isActive) {
+          setAllHistoryWorkouts(dateWorkouts);
+          setTotalCalories(cal);
+          setWorkoutDates(dates);
+        }
+      };
+
+      setup();
+
+      return () => {
+        isActive = false;
+      };
+    }, [selectedDate]),
+  );
 
   return (
     <View style={styles.screen}>
@@ -346,7 +359,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: scaleWidth(16),
-    paddingBottom: scaleHeight(40),
+    paddingBottom: scaleHeight(100),
   },
 
   // Header
@@ -631,7 +644,7 @@ const cardStyles = StyleSheet.create({
   },
   badgeText: {
     fontFamily: "OpenSans_400Regular",
-    fontSize: scaling().moderateScale(10),
+    fontSize: scaling().moderateScale(12),
     color: colors.textMuted,
   },
   calBox: {

@@ -1,8 +1,8 @@
-import { Text } from "react-native";
+import { Alert, Platform, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { daysArr } from "@/constants/utils.js";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { ScrollView, StatusBar, StyleSheet, View } from "react-native";
@@ -18,6 +18,9 @@ import StepContainer from "../../components/ui/StepContainer.js";
 
 import { useUser } from "@/constants/UserContext.js";
 import { yupResolver } from "@hookform/resolvers/yup";
+
+import * as Notifications from "expo-notifications";
+
 import * as yup from "yup";
 import { OptionCardController } from "../../components/ui/OptionCard.js";
 import SliderSelector from "../../components/ui/SliderSelector.js";
@@ -76,6 +79,20 @@ export default function Signup() {
     time: yup.string().trim().required("Workout time is required"),
   });
 
+  useEffect(() => {
+    const setupNotificationChannel = async () => {
+      if (Platform.OS === "android") {
+        await Notifications.setNotificationChannelAsync("default", {
+          name: "default",
+          importance: Notifications.AndroidImportance.MAX,
+          sound: "default",
+        });
+      }
+    };
+
+    setupNotificationChannel();
+  }, []);
+
   const form = useForm({
     resolver: yupResolver(schema),
     defaultValues: {
@@ -96,6 +113,108 @@ export default function Signup() {
     await saveSession(data);
 
     router.replace("/home");
+  };
+
+  const getNotificationTime = (time) => {
+    // return { hour: 10, minute: 43 };
+    switch (time) {
+      case "Morning 6-10 AM":
+        return { hour: 6, minute: 0 };
+
+      case "Afternoon 12-4":
+        return { hour: 12, minute: 0 };
+
+      case "Evening 5-7":
+        return { hour: 17, minute: 0 };
+
+      case "Night 8-10":
+        return { hour: 20, minute: 0 };
+
+      default:
+        return null;
+    }
+  };
+
+  const requestNotificationPermission = async () => {
+    const { status: existingStatus } =
+      await Notifications.getPermissionsAsync();
+
+    let finalStatus = existingStatus;
+
+    if (existingStatus !== "granted") {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+
+    return finalStatus === "granted";
+  };
+
+  const scheduleNotification = async (timeValue) => {
+    const notificationTime = getNotificationTime(timeValue);
+
+    Logger.log("Scheduling notification for:", notificationTime);
+
+    if (!notificationTime) return;
+
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "Time to Move 💪",
+        body: "Small steps every day lead to big results. Stay consistent!",
+        sound: true,
+
+        // Android only
+        vibrate: [0, 250, 250, 250],
+        autoDismiss: true,
+        data: {
+          screen: "Home", // change to your screen name
+        },
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+        seconds: 10,
+        channelId: "default",
+      },
+    });
+  };
+
+  const submitForm = () => {
+    Logger.log(" totalSteps:", form?.formState?.errors);
+    Logger.log("getValues:--->", form.getValues());
+    form.handleSubmit(onSubmit)();
+  };
+
+  const askNotificationPopup = async () => {
+    const alreadyGranted = await requestNotificationPermission();
+
+    if (alreadyGranted) {
+      await scheduleNotification(form.getValues("time"));
+      submitForm();
+      return;
+    }
+
+    Alert.alert(
+      "Never miss your notification",
+      "Allow notifications so we can remind you at your selected time.",
+      [
+        {
+          text: "Later",
+          style: "cancel",
+          onPress: submitForm,
+        },
+        {
+          text: "Yes",
+          onPress: async () => {
+            const granted = await requestNotificationPermission();
+
+            if (granted) {
+              await scheduleNotification(form.getValues("time"));
+            }
+
+            submitForm();
+          },
+        },
+      ],
+    );
   };
 
   const nextStep = () => {
@@ -123,8 +242,14 @@ export default function Signup() {
       return;
     }
 
-    if (step < totalSteps) setStep(step + 1);
-    else form.handleSubmit(onSubmit)();
+    Logger.log(" step:", step);
+    Logger.log(" totalSteps:", totalSteps);
+
+    if (step < totalSteps) {
+      setStep(step + 1);
+    } else {
+      askNotificationPopup();
+    }
   };
 
   const prevStep = () => step > 1 && setStep(step - 1);
@@ -295,12 +420,6 @@ export default function Signup() {
   };
 
   const TimeStep = () => {
-    const times = [
-      { value: "06:00", label: "🌅 Morning", time: "6-8 AM" },
-      { value: "12:00", label: "🌞 Afternoon", time: "12-2 PM" },
-      { value: "17:00", label: "🌆 Evening", time: "5-7 PM" },
-      { value: "20:00", label: "🌙 Night", time: "8-10 PM" },
-    ];
     return (
       <View style={styles.stepContainer}>
         <Text style={styles.stepTitle}>Preferred workout time?</Text>
@@ -317,14 +436,14 @@ export default function Signup() {
                 title: t("morning"),
                 description: t("morningSub"),
                 value: "06:00",
-                time: "6-8 AM",
+                time: "6-10 AM",
               },
               {
                 emoji: "🌞",
                 title: t("afternoon"),
                 description: t("afternoonSub"),
                 value: "12:00",
-                time: "12-2 PM",
+                time: "12-4 PM",
               },
               {
                 emoji: "🌆",

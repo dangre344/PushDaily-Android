@@ -1,13 +1,7 @@
 import { Logger } from "@/constants/Logger";
-import {
-  AntDesign,
-  Entypo,
-  Feather,
-  Ionicons,
-  Octicons,
-} from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { AntDesign, Entypo, Ionicons, Octicons } from "@expo/vector-icons";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Dimensions,
@@ -20,8 +14,7 @@ import {
 } from "react-native";
 
 import { StatusBar } from "expo-status-bar";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { FemaleIcon } from "../../assets/AllSvgs";
+import { FemaleIcon, ManIconSVG } from "../../assets/AllSvgs";
 import CircularImage from "../../components/ui/CircularImage";
 import IconWithText from "../../components/ui/IconWithText";
 import { colors } from "../../constants/colors";
@@ -29,16 +22,18 @@ import {
   bodyParts,
   DAY_LABELS,
   useWeeklyWorkouts,
+  workoutListGlobal,
 } from "../../constants/Constants";
+import { useUser } from "../../constants/UserContext";
 import { scaling } from "../../constants/useScaling";
 import { getShortBodyPartName } from "../../constants/utils";
 import {
   getAllWorkouts,
+  getProfileStats,
   getWorkoutsForCurrentWeek,
   initDB,
 } from "../../offlinedb/workoutdb";
 import HIITCard from "./Componenets/HIITCard";
-import PopularItem from "./Componenets/PopularItem";
 import WorkoutLevelModal from "./Componenets/WorkoutLevelModal";
 
 const { width } = Dimensions.get("window");
@@ -47,6 +42,7 @@ const { scaleHeight, scaleWidth, moderateScale } = scaling();
 
 export default function WorkoutScreen() {
   const { t } = useTranslation();
+  const { user } = useUser();
   const [openModal, setOpenModal] = useState(false);
   const [selectedBodyPart, setSelectedBodyPart] = useState(null);
 
@@ -54,248 +50,75 @@ export default function WorkoutScreen() {
 
   const [weekWorkouts, setWeekWorkouts] = useState([]);
 
-  useEffect(() => {
-    const setup = async () => {
+  const [stats, setStats] = useState({
+    totalWorkouts: 0,
+    totalCalories: 0,
+    activeDays: 0,
+  });
+
+  const loadData = async () => {
+    try {
       await initDB();
-      const week = await getWorkoutsForCurrentWeek();
+
+      const [week, data] = await Promise.all([
+        getWorkoutsForCurrentWeek(),
+        getProfileStats(),
+      ]);
+
+      Logger.log("Profile stats--->", data);
       Logger.log("Current week workouts--->", week);
+
+      setStats(data);
       setWeekWorkouts(week);
-    };
-    setup();
-  }, []); // only on mount — current week doesn't change
+    } catch (error) {
+      Logger.log("Error loading screen data:", error);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, []),
+  );
 
   const { weeklyWorkouts, attendedDays } = useWeeklyWorkouts(weekWorkouts);
 
   Logger.log("Weekly workouts for display--->", weeklyWorkouts);
 
-  let hiitWorkouts = [
-    {
-      name: "Full Body HIIT Blast",
-      calories: 350,
-      workoutSteps: [
-        "Jumping Jacks - 40 sec",
-        "High Knees - 30 sec",
-        "Burpees - 20 sec",
-        "Rest - 20 sec",
-        "Mountain Climbers - 30 sec",
-      ],
-      time: "20 mins",
-      exerciseLevel: "Intermediate",
-      photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
-    },
-    {
-      name: "Fat Burner HIIT",
-      calories: 420,
-      workoutSteps: [
-        "Fast Squats - 45 sec",
-        "Jump Lunges - 30 sec",
-        "Burpees - 30 sec",
-        "Plank Hold - 40 sec",
-      ],
-      time: "25 mins",
-      exerciseLevel: "Advanced",
-      photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
-    },
-    {
-      name: "Beginner Cardio HIIT",
-      calories: 210,
-      workoutSteps: [
-        "March on place - 1 min",
-        "Side Steps - 40 sec",
-        "Light Squats - 30 sec",
-        "Rest - 30 sec",
-      ],
-      time: "15 mins",
-      exerciseLevel: "Beginner",
-      photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
-    },
-    {
-      name: "Core HIIT Burner",
-      calories: 315,
-      workoutSteps: [
-        "Plank - 45 sec",
-        "Bicycle Crunches - 40 sec",
-        "Leg Raises - 30 sec",
-        "Sit Ups - 45 sec",
-      ],
-      time: "18 mins",
-      exerciseLevel: "Intermediate",
-      photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
-    },
-    {
-      name: "Lower Body HIIT",
-      calories: 330,
-      workoutSteps: [
-        "Squat Jump - 45 sec",
-        "Lunges - 30 sec",
-        "Glute Bridge - 40 sec",
-        "Wall Sit - 30 sec",
-      ],
-      time: "22 mins",
-      exerciseLevel: "Intermediate",
-      photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
-    },
-  ];
+  const { hiitWorkouts } = useMemo(() => {
+    const targetMuscles = ["Upper Body", "Full Body", "Lower Body"];
 
-  let popularWorkouts = [
-    // BEGINNER
-    {
-      name: "Beginner Chest Burn",
-      bodyPart: "Chest",
-      calories: 180,
-      time: "12 mins",
-      level: "Beginner",
-      photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+    const hiitSet = new Set();
 
-      workouts: [
-        {
-          workoutName: "Wall Pushups",
-          reps: "12 reps",
-          photo: "https://yavuzceliker.github.io/sample-images/image-1022.jpg",
-          steps: [
-            "Stand one arm distance from wall",
-            "Place palms on wall at chest height",
-            "Slowly lean forward",
-            "Push back to starting position",
-          ],
-        },
-        {
-          workoutName: "Knee Pushups",
-          reps: "10 reps",
-          photo: "https://yavuzceliker.github.io/sample-images/image-1023.jpg",
-          steps: [
-            "Place knees on floor",
-            "Hands shoulder width apart",
-            "Lower chest to floor",
-            "Push up and repeat",
-          ],
-        },
-        {
-          workoutName: "Rest",
-          time: "20 sec",
-          photo: "https://yavuzceliker.github.io/sample-images/image-1035.jpg",
-          steps: ["Breathe slowly", "Stay relaxed"],
-        },
-      ],
-    },
+    const result = {
+      hiitWorkouts: [],
+    };
 
-    // INTERMEDIATE
-    {
-      name: "Chest Pump",
-      bodyPart: "Chest",
-      calories: 300,
-      time: "18 mins",
-      level: "Intermediate",
-      photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+    workoutListGlobal.forEach((item) => {
+      // Only Beginner workouts
+      if (item.level !== "Beginner") return;
 
-      workouts: [
-        {
-          workoutName: "Push Ups",
-          reps: "15 reps",
-          photo: "https://yavuzceliker.github.io/sample-images/image-1030.jpg",
-          steps: [
-            "Keep body straight",
-            "Lower chest down",
-            "Push up explosively",
-          ],
-        },
-        {
-          workoutName: "Decline Pushups",
-          reps: "12 reps",
-          photo: "https://yavuzceliker.github.io/sample-images/image-1031.jpg",
-          steps: [
-            "Place feet on elevated surface",
-            "Lower chest slowly",
-            "Push up with control",
-          ],
-        },
-        {
-          workoutName: "Burpees",
-          time: "30 sec",
-          photo: "https://yavuzceliker.github.io/sample-images/image-1032.jpg",
-          steps: [
-            "Jump down to squat",
-            "Kick legs back",
-            "Pushup",
-            "Jump back up",
-          ],
-        },
-      ],
-    },
+      // ---------- HIIT SECTION ----------
+      let hiitCategory = null;
 
-    {
-      name: "Core HIIT Burner",
-      bodyPart: "Core",
-      calories: 315,
-      time: "18 mins",
-      level: "Intermediate",
-      photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+      if (item.bodyPart === "HIIT") {
+        hiitCategory = "HIIT";
+      } else if (targetMuscles.includes(item.bodyPart)) {
+        hiitCategory = item.bodyPart;
+      } else if (item.bodyPart === "Glutes") {
+        hiitCategory = "Glutes";
+      } else if (item.bodyPart === "Posture Correction") {
+        hiitCategory = "Posture Correction";
+      }
 
-      workouts: [
-        {
-          workoutName: "Plank",
-          time: "45 sec",
-          photo: "https://yavuzceliker.github.io/sample-images/image-1040.jpg",
-          steps: [
-            "Keep elbows under shoulders",
-            "Maintain straight body line",
-            "Engage core",
-          ],
-        },
-        {
-          workoutName: "Bicycle Crunch",
-          reps: "20 reps",
-          photo: "https://yavuzceliker.github.io/sample-images/image-1041.jpg",
-          steps: ["Lift legs", "Twist torso", "Touch knee with opposite elbow"],
-        },
-        {
-          workoutName: "Leg Raises",
-          reps: "15 reps",
-          photo: "https://yavuzceliker.github.io/sample-images/image-1042.jpg",
-          steps: [
-            "Keep lower back pressed",
-            "Lift legs slowly",
-            "Lower without touching ground",
-          ],
-        },
-      ],
-    },
+      if (hiitCategory && !hiitSet.has(hiitCategory)) {
+        hiitSet.add(hiitCategory);
+        result.hiitWorkouts.push(item);
+      }
+    });
 
-    // ADVANCED
-    {
-      name: "Advanced Chest Shredder",
-      bodyPart: "Chest",
-      calories: 450,
-      time: "25 mins",
-      level: "Advanced",
-      photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
-
-      workouts: [
-        {
-          workoutName: "Explosive Pushups",
-          reps: "12 reps",
-          photo: "https://yavuzceliker.github.io/sample-images/image-1051.jpg",
-          steps: [
-            "Push up quickly",
-            "Lift hands slightly off floor",
-            "Land softly",
-          ],
-        },
-        {
-          workoutName: "Plyo Pushups",
-          reps: "10 reps",
-          photo: "https://yavuzceliker.github.io/sample-images/image-1052.jpg",
-          steps: ["Drop chest fast", "Explode upward", "Repeat continuously"],
-        },
-        {
-          workoutName: "Burpees",
-          time: "40 sec",
-          photo: "https://yavuzceliker.github.io/sample-images/image-1054.jpg",
-          steps: ["Jump down", "Pushup", "Explode upward"],
-        },
-      ],
-    },
-  ];
+    return result;
+  }, [workoutListGlobal]);
 
   const router = useRouter();
 
@@ -311,19 +134,33 @@ export default function WorkoutScreen() {
   }, []);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
       <View style={styles.header}>
         <View style={styles.nameContainer}>
-          <FemaleIcon
-            width={scaleWidth(40)}
-            height={scaleHeight(40)}
-            color={colors.primary}
-          />
+          {user?.gender === "Female" ? (
+            <FemaleIcon
+              width={scaling().scaleWidth(40)}
+              height={scaling().scaleHeight(40)}
+              color={colors.primary}
+            />
+          ) : user?.gender === "Male" ? (
+            <ManIconSVG
+              width={scaling().scaleWidth(40)}
+              height={scaling().scaleHeight(40)}
+              color={colors.primary}
+            />
+          ) : (
+            <FemaleIcon
+              width={scaling().scaleWidth(40)}
+              height={scaling().scaleHeight(40)}
+              color={colors.primary}
+            />
+          )}
 
           <View>
             <Text style={styles.headerTitle}>
-              {t("welcome", { name: "Gagan" })}
+              {t("welcome", { name: user?.name || "" })}
             </Text>
 
             <Text style={styles.subTitle}>Sore today, strong tomorrow.</Text>
@@ -332,7 +169,7 @@ export default function WorkoutScreen() {
 
         <View style={styles.calorieContainer}>
           <AntDesign name="fire" size={16} color={colors.primary} />
-          <Text style={styles.streakTitle}>432</Text>
+          <Text style={styles.streakTitle}>{stats.totalCalories}</Text>
         </View>
       </View>
 
@@ -349,7 +186,7 @@ export default function WorkoutScreen() {
         contentContainerStyle={styles.workoutContainer}
       >
         <View>
-          <View style={styles.weeklyAttContainer}>
+          <View style={styles.weeklyAttContainerMain}>
             <View style={styles.weeklyAttTitles}>
               <Text style={styles.headerTitle}>{t("weeklyAttendance")}</Text>
 
@@ -369,25 +206,27 @@ export default function WorkoutScreen() {
                   <View style={styles.weekItem} key={item.day}>
                     <Text style={styles.weekTitle}>{DAY_LABELS[item.day]}</Text>
 
-                    {item.isWorkout ? (
+                    {item.isWorkout === true ? (
                       <Octicons
                         name="check-circle-fill"
                         size={20}
                         color={colors.green}
                       />
-                    ) : (
+                    ) : item.isWorkout === false ? (
                       <Entypo
                         name="circle-with-cross"
                         size={20}
                         color={colors.errorRed}
                       />
+                    ) : (
+                      <Entypo
+                        name="circle"
+                        size={20}
+                        color={colors.textLight} // ⚪ future days
+                      />
                     )}
 
-                    <Text
-                      style={styles.workoutNameSub}
-                      numberOfLines={1}
-                      ellipsizeMode="tail"
-                    >
+                    <Text style={styles.workoutNameSub} numberOfLines={1}>
                       {item.isWorkout
                         ? getShortBodyPartName(item.bodyPart)
                         : "--"}
@@ -401,40 +240,35 @@ export default function WorkoutScreen() {
           <View style={styles.quickWorkoutContainer}>
             <Text style={styles.headerTitle}>{t("quickWorkouts")}</Text>
 
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {bodyParts.map((item, index) => {
-                return (
-                  <Pressable
-                    key={index}
-                    onPress={() => {
-                      Logger.log("Navigate to Workout Listing");
-
-                      setSelectedBodyPart(item);
-                      setOpenModal(true);
-                    }}
-                  >
-                    <View style={styles.item} key={index}>
-                      <CircularImage
-                        source={item.image}
-                        size={scaleHeight(80)}
-                      />
-                      <Text
-                        style={styles.bodyPartName}
-                        numberOfLines={1}
-                        ellipsizeMode="tail"
-                      >
-                        {item.bodyPart}
-                      </Text>
-                    </View>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
+            <View style={styles.gridContainer}>
+              {bodyParts.map((item, index) => (
+                <Pressable
+                  key={index}
+                  style={styles.gridItem}
+                  onPress={() => {
+                    setSelectedBodyPart(item);
+                    setOpenModal(true);
+                  }}
+                >
+                  <View style={styles.item}>
+                    <CircularImage source={item.image} size={scaleHeight(80)} />
+                    <Text
+                      style={styles.bodyPartName}
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                    >
+                      {item.bodyPart}
+                    </Text>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
           </View>
 
-          <View style={{ flexDirection: "row", marginTop: 15 }}>
-            <Text style={styles.popularTitle}>{t("HIITWorkout")}</Text>
-            <Ionicons name="fitness" size={20} color={colors.errorRed} />
+          <View style={{ flexDirection: "row", paddingHorizontal: 20 }}>
+            <Text style={styles.popularTitle}>{t("popularWorkouts")}</Text>
+
+            <Ionicons name="trending-up" size={24} color={colors.green} />
           </View>
 
           <FlatList
@@ -442,33 +276,18 @@ export default function WorkoutScreen() {
             showsHorizontalScrollIndicator={false}
             data={hiitWorkouts}
             keyExtractor={(item, index) => `hiit-${item.id || index}`}
-            renderItem={({ item }) => <HIITCard item={item} />}
-            contentContainerStyle={{ paddingHorizontal: 10 }}
+            renderItem={({ item }) => (
+              <HIITCard
+                item={item}
+                onClick={(item) => {
+                  Logger.log("Selected HIIT workout--->", item);
+                  setSelectedBodyPart(item);
+                  setOpenModal(true);
+                }}
+              />
+            )}
+            contentContainerStyle={{ marginStart: 20, marginBottom: 30 }}
             snapToInterval={scaleWidth(300)} // Card width + margin
-            snapToAlignment="center"
-            decelerationRate="fast"
-            bounces={false}
-            pagingEnabled={false} // Use snapToInterval instead
-            getItemLayout={(data, index) => ({
-              length: scaleWidth(300) + 20,
-              offset: (scaleWidth(300) + 20) * index,
-              index,
-            })}
-          />
-
-          <View style={{ flexDirection: "row", marginTop: 15 }}>
-            <Text style={styles.popularTitle}>{t("popularWorkouts")}</Text>
-            <Feather name="trending-up" size={20} color={colors.green} />
-          </View>
-
-          <FlatList
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            data={popularWorkouts}
-            keyExtractor={(item, index) => `hiit-${item.id || index}`}
-            renderItem={({ item }) => <PopularItem item={item} />}
-            contentContainerStyle={{ paddingHorizontal: 10 }}
-            snapToInterval={scaleWidth(300) - scaleWidth(25)} // Card width + margin
             snapToAlignment="center"
             decelerationRate="fast"
             bounces={false}
@@ -490,7 +309,7 @@ export default function WorkoutScreen() {
           t={t}
         />
       ) : null}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -529,12 +348,31 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
 
-  quickWorkoutContainer: {
-    marginTop: 15,
-    gap: 10,
-
+  weeklyAttContainerMain: {
+    marginTop: 5,
     alignContent: "center",
     justifyContent: "space-between",
+    paddingHorizontal: 20,
+  },
+
+  quickWorkoutContainer: {
+    marginTop: 10,
+    gap: 10,
+    paddingHorizontal: 20,
+    alignContent: "center",
+    justifyContent: "space-between",
+  },
+
+  gridContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+
+  gridItem: {
+    width: "33.33%", // 3 items per row (approx)
+    marginBottom: 16,
+    alignItems: "center",
   },
 
   nameContainer: {
@@ -586,7 +424,8 @@ const styles = StyleSheet.create({
 
   workoutContainer: {
     flexDirection: "row",
-    paddingHorizontal: 20,
+
+    paddingBottom: 60,
   },
 
   weekItem: {

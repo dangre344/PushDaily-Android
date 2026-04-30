@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { colors } from "../../../constants/colors";
+import { scaling } from "../../../constants/useScaling";
 
 export default function NextWorkoutInfo({
   workouts,
@@ -202,9 +203,9 @@ export default function NextWorkoutInfo({
 
       <View style={styles.imageCard}>
         <Image
-          source={{ uri: workouts.workoutList[index].photo }}
+          source={workouts.workoutList[index].photo}
           style={styles.exerciseImage}
-          resizeMode="cover"
+          resizeMode="contain"
         />
       </View>
 
@@ -470,7 +471,7 @@ export const styles = StyleSheet.create({
 
   // Image Card
   imageCard: {
-    height: 200,
+    height: scaling().scaleHeight(220),
     marginHorizontal: 20,
     marginTop: 20,
     borderRadius: 20,

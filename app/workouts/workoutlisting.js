@@ -88,8 +88,8 @@ export default function WorkoutListingScreen({ route }) {
     <View style={styles.workoutItem} activeOpacity={0.7}>
       <Image
         style={styles.workoutImage}
-        source={{ uri: item.photo }}
-        resizeMode="cover"
+        source={item?.photo}
+        resizeMode="contain"
       />
       <View style={styles.workoutInfo}>
         <Text style={styles.workoutName} numberOfLines={1}>
@@ -156,6 +156,7 @@ export default function WorkoutListingScreen({ route }) {
               >
                 Level: {workouts.level}
               </Text>
+
               <Text style={styles.overlayCalories}>
                 {workouts.calories} Kcal
               </Text>
@@ -212,6 +213,11 @@ export default function WorkoutListingScreen({ route }) {
       <FlatList
         data={workouts.workoutList}
         renderItem={renderWorkoutItem}
+        ListHeaderComponent={
+          <Text style={styles.totalWorkoutTitle}>
+            {`Total Workouts: ${workouts.workoutList.length}`}
+          </Text>
+        }
         keyExtractor={(item, index) => index.toString()}
         contentContainerStyle={styles.listContent}
         onScroll={Animated.event(
@@ -238,7 +244,7 @@ export default function WorkoutListingScreen({ route }) {
               level: bodyPartObj?.level,
             }),
           );
-          router.push({
+          router.replace({
             pathname: "/workouts/workoutdetail",
             params: {
               id: bodyPartObj?.id,
@@ -346,7 +352,7 @@ const styles = StyleSheet.create({
     textShadowRadius: 3,
   },
   listContent: {
-    paddingTop: 250, // Matches HEADER_MAX_HEIGHT
+    paddingTop: scaling().scaleHeight(220), // Matches HEADER_MAX_HEIGHT
   },
   infoContainer: {
     padding: 20,
@@ -404,6 +410,14 @@ const styles = StyleSheet.create({
   workoutName: {
     fontSize: scaling().moderateScale(16),
 
+    fontFamily: "OpenSans_600SemiBold",
+    color: "#000",
+    marginBottom: 4,
+  },
+
+  totalWorkoutTitle: {
+    fontSize: scaling().moderateScale(14),
+    marginStart: 20,
     fontFamily: "OpenSans_600SemiBold",
     color: "#000",
     marginBottom: 4,

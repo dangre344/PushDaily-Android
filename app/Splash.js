@@ -42,7 +42,9 @@ export default function Splash() {
         // router.replace("/signup");
         router.replace("/home");
       } else {
-        router.replace("/signup");
+        // router.replace("/signup");
+
+        router.replace("/home");
       }
 
       await SplashScreen.hideAsync();
@@ -59,7 +61,7 @@ export default function Splash() {
       />
 
       <Image
-        source={require("../assets/images/workout.jpg")}
+        source={require("../assets/images/workout.webp")}
         style={styles.image}
       />
 

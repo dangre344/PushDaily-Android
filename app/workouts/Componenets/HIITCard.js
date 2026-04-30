@@ -1,68 +1,59 @@
-import { AntDesign, Octicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-import { Image, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
-import IconWithText from "../../../components/ui/IconWithText";
 import { colors } from "../../../constants/colors";
 import { scaling } from "../../../constants/useScaling";
 const { scaleHeight, scaleWidth, moderateScale } = scaling();
 
-export default function HIITCard({ item }) {
+export default function HIITCard({ item, onClick }) {
   const { t } = useTranslation();
   return (
-    <View style={styles.hiitContainer}>
-      <Image
-        style={{
-          borderRadius: 10,
-          width: "auto",
-          height: scaleHeight(150),
-          marginTop: 10,
-        }}
-        source={{ uri: item.photo }}
-        resizeMode="cover"
-      />
+    <Pressable onPress={() => onClick?.(item)}>
+      <View style={styles.hiitContainer}>
+        <Image
+          style={{
+            borderTopLeftRadius: 10,
+            borderTopRightRadius: 10,
+            width: "auto",
+            height: scaleHeight(190),
+          }}
+          source={item.img}
+          resizeMode="cover"
+        />
 
-      <View style={styles.weeklyAttContainer}>
-        <View>
+        <View style={styles.weeklyAttContainer}>
           <Text
             style={styles.bodyPartName}
             numberOfLines={1}
             ellipsizeMode="tail"
           >
-            {item.name}
+            {item.bodyPart}
           </Text>
 
           <Text style={styles.expLevel} numberOfLines={1} ellipsizeMode="tail">
-            {item.exerciseLevel}
+            {`Min ${item.workoutList.length} ${t("exercises")}`}
           </Text>
-        </View>
 
-        <View
-          style={{
-            flexDirection: "row",
-            gap: 10,
-          }}
-        >
-          <IconWithText
-            icon={<Octicons name="clock" size={24} color={colors.textLight} />}
-            label={item.time}
-            size={12}
-            textStyle={{ fontSize: moderateScale(10) }}
-            color={colors.textLight}
-            orientation="horizontal"
-          />
-
-          <IconWithText
-            icon={<AntDesign name="fire" size={10} color={colors.textLight} />}
-            label="280 Cal"
-            size={12}
-            textStyle={{ fontSize: moderateScale(10) }}
-            color={colors.textLight}
-            orientation="horizontal"
-          />
+          {/* <View
+            style={{
+              flexDirection: "row",
+              gap: 10,
+            }}
+          >
+            <IconWithText
+              icon={
+                <AntDesign name="fire" size={10} color={colors.textLight} />
+              }
+              label={`${item.calories} cal`}
+              size={12}
+              textStyle={{ fontSize: moderateScale(10) }}
+              color={colors.textLight}
+              orientation="horizontal"
+            />
+          </View> */}
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -75,7 +66,7 @@ const styles = StyleSheet.create({
     height: "auto",
     borderWidth: 0.2,
     borderRadius: 10,
-    paddingHorizontal: 10,
+
     borderColor: colors.textLight,
     marginEnd: 20,
   },
@@ -105,5 +96,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     justifyContent: "space-between",
     alignItems: "center",
+    marginHorizontal: 10,
   },
 });

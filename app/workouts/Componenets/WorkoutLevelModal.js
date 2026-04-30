@@ -1,11 +1,21 @@
+import { Ionicons } from "@expo/vector-icons";
+import { yupResolver } from "@hookform/resolvers/yup";
 import { useRouter } from "expo-router";
 import { useForm } from "react-hook-form";
-import { Modal, StyleSheet, Text, View } from "react-native";
+import {
+  Alert,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import * as Yup from "yup";
 import { Button } from "../../../components/ui/Button.js";
 import { OptionCardController } from "../../../components/ui/OptionCard.js";
 import { colors } from "../../../constants/colors.js";
 import { Logger } from "../../../constants/Logger.js";
+import { scaling } from "../../../constants/useScaling.js";
 
 const WorkoutLevelModal = ({
   visible,
@@ -19,16 +29,31 @@ const WorkoutLevelModal = ({
     "WorkoutLevelModal rendered with selectedBodyPart:",
     selectedBodyPart,
   );
-  const { control, handleSubmit } = useForm({
-    defaultValues: {
-      experience: Yup.string().required("Please select your experience level"),
-    },
+
+  const schema = Yup.object().shape({
+    experience: Yup.string().required("Please select your experience level"),
   });
+
+  const {
+    control,
+    handleSubmit,
+    watch,
+    formState: { errors },
+  } = useForm({
+    defaultValues: {
+      experience: "",
+    },
+    resolver: yupResolver(schema),
+  });
+
+  const selectedExperience = watch("experience");
   const router = useRouter();
 
   function next(data) {
-    Logger.log("Form submitted with data:", data.experience);
+    Logger.log("next------>", data.experience);
+
     setOpenModal(false);
+
     router.push({
       pathname: "/workouts/workoutlisting",
       params: {
@@ -49,6 +74,15 @@ const WorkoutLevelModal = ({
     >
       <View style={styles.overlay}>
         <View style={styles.content}>
+          <TouchableOpacity
+            style={styles.closeIcon}
+            onPress={() => setOpenModal(false)}
+          >
+            <Ionicons name="close" size={24} color="#000" />
+          </TouchableOpacity>
+
+          <Text style={styles.exTitle}>{selectedBodyPart.bodyPart}</Text>
+
           <Text style={styles.title}>{t("yourFitnessLevel")}</Text>
           <Text style={styles.subtitle}>{t("selectExpLevel")}</Text>
 
@@ -81,8 +115,13 @@ const WorkoutLevelModal = ({
           <Button
             title={t("continue")}
             onPress={() => {
-              Logger.log("Continue pressed");
+              Logger.log("Continue pressed" + selectedExperience);
 
+              if (!selectedExperience) {
+                Alert.alert("Select Experience", t("selectExperience"));
+
+                return;
+              }
               handleSubmit(next)();
             }}
           />
@@ -115,10 +154,25 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
   },
 
+  closeIcon: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    zIndex: 10,
+    padding: 5,
+  },
+
   title: {
-    fontSize: 18,
+    fontSize: scaling().moderateScale(15),
     fontFamily: "OpenSans_700Bold",
     color: colors.text,
+    marginBottom: 4,
+  },
+
+  exTitle: {
+    fontSize: scaling().moderateScale(20),
+    fontFamily: "OpenSans_700Bold",
+    color: colors.primary,
     marginBottom: 4,
   },
 
