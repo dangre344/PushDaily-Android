@@ -42,3 +42,7 @@ export const getShortBodyPartName = (bodyPart) => {
   else if (bodyPart === "Back") return "Back";
   else return bodyPart;
 };
+
+export const createUniqueId = () => {
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+};

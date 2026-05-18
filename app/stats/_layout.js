@@ -9,7 +9,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "../../constants/colors"; // adjust path
 import { Logger } from "../../constants/Logger"; // adjust path
 import { scaling } from "../../constants/useScaling";
@@ -576,25 +575,12 @@ export default function StatsScreen() {
     );
   }
 
-  if (!data || !workouts.length) {
-    return (
-      <View style={styles.loader}>
-        <Ionicons name="bar-chart-outline" size={ms(48)} color={colors.dim} />
-        <Text style={styles.emptyText}>No workout data yet</Text>
-        <Text style={styles.emptySubText}>
-          Complete a workout to see your stats
-        </Text>
-      </View>
-    );
-  }
-
   return (
-    <SafeAreaView style={styles.screen}>
+    <View style={styles.screen}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
       >
-        {/* ── Header ── */}
         <Animated.View
           style={[
             styles.header,
@@ -618,150 +604,173 @@ export default function StatsScreen() {
           <Ionicons name="stats-chart" size={ms(22)} color={colors.primary} />
         </Animated.View>
 
-        {/* ── Filter tabs ── */}
-        <Animated.View style={[styles.filterRow, { opacity: titleAnim }]}>
-          {["7D", "30D", "All"].map((f) => (
-            <TouchableOpacity
-              key={f}
-              style={[styles.filterTab, filter === f && styles.filterTabActive]}
-              onPress={() => setFilter(f)}
-              activeOpacity={0.8}
-            >
-              <Text
-                style={[
-                  styles.filterText,
-                  filter === f && styles.filterTextActive,
-                ]}
-              >
-                {f}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </Animated.View>
+        {workouts && workouts.length > 0 ? (
+          <View>
+            {/* ── Filter tabs ── */}
+            <Animated.View style={[styles.filterRow, { opacity: titleAnim }]}>
+              {["7D", "30D", "All"].map((f) => (
+                <TouchableOpacity
+                  key={f}
+                  style={[
+                    styles.filterTab,
+                    filter === f && styles.filterTabActive,
+                  ]}
+                  onPress={() => setFilter(f)}
+                  activeOpacity={0.8}
+                >
+                  <Text
+                    style={[
+                      styles.filterText,
+                      filter === f && styles.filterTextActive,
+                    ]}
+                  >
+                    {f}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </Animated.View>
 
-        {/* ── Summary pills ── */}
-        <SummaryPills
-          totalCalories={data.totalCalories}
-          totalWorkouts={data.totalWorkouts}
-          activeDays={data.activeDays}
-        />
+            {/* ── Summary pills ── */}
+            <SummaryPills
+              totalCalories={data.totalCalories}
+              totalWorkouts={data.totalWorkouts}
+              activeDays={data.activeDays}
+            />
 
-        {/* ── Calories bar chart ── */}
-        <Card delay={100}>
-          <View style={cardStyles.titleRow}>
-            <View
-              style={[
-                cardStyles.titleIcon,
-                { backgroundColor: colors.primary + "20" },
-              ]}
-            >
-              <AntDesign name="fire" size={ms(14)} color={colors.primary} />
-            </View>
-            <Text style={cardStyles.title}>Calories Burned</Text>
-            <Text style={cardStyles.subtitle}>Last 7 days</Text>
-          </View>
-          <BarChart
-            data={data.caloriesLast7}
-            color={colors.primary}
-            unit="kcal"
-          />
-        </Card>
-
-        {/* ── Workouts per day bar chart ── */}
-        <Card delay={200}>
-          <View style={cardStyles.titleRow}>
-            <View
-              style={[
-                cardStyles.titleIcon,
-                { backgroundColor: colors.secondary + "20" },
-              ]}
-            >
-              <Ionicons
-                name="barbell-outline"
-                size={ms(14)}
-                color={colors.secondary}
+            {/* ── Calories bar chart ── */}
+            <Card delay={100}>
+              <View style={cardStyles.titleRow}>
+                <View
+                  style={[
+                    cardStyles.titleIcon,
+                    { backgroundColor: colors.primary + "20" },
+                  ]}
+                >
+                  <AntDesign name="fire" size={ms(14)} color={colors.primary} />
+                </View>
+                <Text style={cardStyles.title}>Calories Burned</Text>
+                <Text style={cardStyles.subtitle}>Last 7 days</Text>
+              </View>
+              <BarChart
+                data={data.caloriesLast7}
+                color={colors.primary}
+                unit="kcal"
               />
-            </View>
-            <Text style={cardStyles.title}>Workouts / Day</Text>
-            <Text style={cardStyles.subtitle}>Last 7 days</Text>
-          </View>
-          <BarChart data={data.workoutsLast7} color={colors.secondary} />
-        </Card>
+            </Card>
 
-        {/* ── Body part breakdown ── */}
-        <Card delay={300}>
-          <View style={cardStyles.titleRow}>
-            <View
-              style={[
-                cardStyles.titleIcon,
-                { backgroundColor: colors.blue + "20" },
-              ]}
-            >
-              <Ionicons name="body-outline" size={ms(14)} color={colors.blue} />
-            </View>
-            <Text style={cardStyles.title}>Body Part Focus</Text>
-            <Text style={cardStyles.subtitle}>
-              {data.totalWorkouts} sessions
+            {/* ── Workouts per day bar chart ── */}
+            <Card delay={200}>
+              <View style={cardStyles.titleRow}>
+                <View
+                  style={[
+                    cardStyles.titleIcon,
+                    { backgroundColor: colors.secondary + "20" },
+                  ]}
+                >
+                  <Ionicons
+                    name="barbell-outline"
+                    size={ms(14)}
+                    color={colors.secondary}
+                  />
+                </View>
+                <Text style={cardStyles.title}>Workouts / Day</Text>
+                <Text style={cardStyles.subtitle}>Last 7 days</Text>
+              </View>
+              <BarChart data={data.workoutsLast7} color={colors.secondary} />
+            </Card>
+
+            {/* ── Body part breakdown ── */}
+            <Card delay={300}>
+              <View style={cardStyles.titleRow}>
+                <View
+                  style={[
+                    cardStyles.titleIcon,
+                    { backgroundColor: colors.blue + "20" },
+                  ]}
+                >
+                  <Ionicons
+                    name="body-outline"
+                    size={ms(14)}
+                    color={colors.blue}
+                  />
+                </View>
+                <Text style={cardStyles.title}>Body Part Focus</Text>
+                <Text style={cardStyles.subtitle}>
+                  {data.totalWorkouts} sessions
+                </Text>
+              </View>
+              <View style={{ marginTop: ms(8) }}>
+                {data.bodyParts.map((item, i) => (
+                  <HorizBar key={item.name} item={item} delay={i * 80} />
+                ))}
+              </View>
+            </Card>
+
+            {/* ── Level distribution ── */}
+            <Card style={cardStyles.card} delay={400}>
+              <View style={cardStyles.titleRow}>
+                <View
+                  style={[
+                    cardStyles.titleIcon,
+                    { backgroundColor: colors.purple + "20" },
+                  ]}
+                >
+                  <Ionicons
+                    name="trophy-outline"
+                    size={ms(14)}
+                    color={colors.purple}
+                  />
+                </View>
+                <Text style={cardStyles.title}>Difficulty Split</Text>
+              </View>
+              <RingChart data={data.levels} />
+            </Card>
+
+            {/* ── Top exercises ── */}
+            {/* ── Top exercises ── */}
+            <Card delay={500}>
+              <View style={cardStyles.titleRow}>
+                <View
+                  style={[
+                    cardStyles.titleIcon,
+                    { backgroundColor: colors.green + "20" },
+                  ]}
+                >
+                  <Ionicons
+                    name="list-outline"
+                    size={ms(14)}
+                    color={colors.green}
+                  />
+                </View>
+                <Text style={cardStyles.title}>Top Exercises</Text>
+              </View>
+              <View style={{ marginTop: ms(12) }}>
+                {data.topExercises.map((ex, i) => (
+                  <TopExerciseRow
+                    key={ex.name}
+                    ex={ex}
+                    index={i}
+                    maxCount={data.topExercises[0]?.count || 1}
+                  />
+                ))}
+              </View>
+            </Card>
+          </View>
+        ) : (
+          <View style={styles.loader}>
+            <Ionicons
+              name="bar-chart-outline"
+              size={ms(48)}
+              color={colors.dim}
+            />
+            <Text style={styles.emptyText}>No workout data yet</Text>
+            <Text style={styles.emptySubText}>
+              Complete a workout to see your stats
             </Text>
           </View>
-          <View style={{ marginTop: ms(8) }}>
-            {data.bodyParts.map((item, i) => (
-              <HorizBar key={item.name} item={item} delay={i * 80} />
-            ))}
-          </View>
-        </Card>
-
-        {/* ── Level distribution ── */}
-        <Card delay={400}>
-          <View style={cardStyles.titleRow}>
-            <View
-              style={[
-                cardStyles.titleIcon,
-                { backgroundColor: colors.purple + "20" },
-              ]}
-            >
-              <Ionicons
-                name="trophy-outline"
-                size={ms(14)}
-                color={colors.purple}
-              />
-            </View>
-            <Text style={cardStyles.title}>Difficulty Split</Text>
-          </View>
-          <RingChart data={data.levels} />
-        </Card>
-
-        {/* ── Top exercises ── */}
-        {/* ── Top exercises ── */}
-        <Card delay={500}>
-          <View style={cardStyles.titleRow}>
-            <View
-              style={[
-                cardStyles.titleIcon,
-                { backgroundColor: colors.green + "20" },
-              ]}
-            >
-              <Ionicons
-                name="list-outline"
-                size={ms(14)}
-                color={colors.green}
-              />
-            </View>
-            <Text style={cardStyles.title}>Top Exercises</Text>
-          </View>
-          <View style={{ marginTop: ms(12) }}>
-            {data.topExercises.map((ex, i) => (
-              <TopExerciseRow
-                key={ex.name}
-                ex={ex}
-                index={i}
-                maxCount={data.topExercises[0]?.count || 1}
-              />
-            ))}
-          </View>
-        </Card>
+        )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -771,11 +780,12 @@ export default function StatsScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.background,
+    // backgroundColor: colors.background,
+    marginHorizontal: ms(5),
   },
   scroll: {
     paddingHorizontal: PADDING,
-    paddingBottom: ms(48),
+    paddingBottom: ms(80),
   },
   loader: {
     flex: 1,
@@ -810,13 +820,14 @@ const styles = StyleSheet.create({
     paddingBottom: ms(16),
   },
   headerTitle: {
-    fontFamily: "OpenSans_700Bold",
-    fontSize: ms(24),
+    fontFamily: "OpenSans_800ExtraBold",
+
+    fontSize: scaling().moderateScale(18),
     color: colors.text,
   },
   headerSub: {
-    fontFamily: "OpenSans_400Regular",
-    fontSize: ms(12),
+    fontFamily: "OpenSans_500Medium",
+    fontSize: scaling().moderateScale(12),
     color: colors.muted,
     marginTop: 2,
   },

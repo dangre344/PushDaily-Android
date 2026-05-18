@@ -19,12 +19,6 @@ import { scaling } from "../../../constants/useScaling";
 
 const { scaleHeight, scaleWidth, moderateScale } = scaling();
 
-// const frames = [
-//   require("../../../assets/images/chestImages/w1.png"),
-//   require("../../../assets/images/chestImages/w2.png"),
-//   require("../../../assets/images/chestImages/w1.png"),
-// ];
-
 export default function CurrentWorkout({
   workout,
   onNext,
@@ -32,23 +26,6 @@ export default function CurrentWorkout({
   setIndex,
   setLoadingPage,
 }) {
-  const [timeLeft, setTimeLeft] = useState(
-    workout.time?.replace("s", "") || 30,
-  );
-  const [isTimerActive, setIsTimerActive] = useState(true);
-  const [showStepsModal, setShowStepsModal] = useState(false);
-  const [isVoiceMuted, setIsVoiceMuted] = useState(false);
-
-  // const [frame, setFrame] = useState(0);
-
-  // useEffect(() => {
-  //   const interval = setInterval(() => {
-  //     setFrame((prev) => (prev + 1) % frames.length);
-  //   }, 500); // speed of animation
-
-  //   return () => clearInterval(interval);
-  // }, []);
-
   const timerRef = useRef(null);
   const soundRef = useRef(null);
   const isActive = useRef(true);
@@ -58,64 +35,154 @@ export default function CurrentWorkout({
   const imageScale = useRef(new Animated.Value(1)).current;
   const timerPulse = useRef(new Animated.Value(1)).current;
 
-  // Helper function for delays
+  const isTimedWorkout = !!workout?.time;
+  const isRepsWorkout = !!workout?.reps;
+
+  const getWorkoutSeconds = useCallback(() => {
+    if (!workout?.time) return 0;
+
+    const value = String(workout.time).toLowerCase().trim();
+
+    if (value.includes("m")) {
+      return parseInt(value, 10) * 60 || 0;
+    }
+
+    return parseInt(value.replace(/[^0-9]/g, ""), 10) || 0;
+  }, [workout?.time]);
+
+  const [timeLeft, setTimeLeft] = useState(() => {
+    if (!workout?.time) return 0;
+
+    const value = String(workout.time).toLowerCase().trim();
+
+    if (value.includes("m")) {
+      return parseInt(value, 10) * 60 || 0;
+    }
+
+    return parseInt(value.replace(/[^0-9]/g, ""), 10) || 0;
+  });
+
+  const [isTimerActive, setIsTimerActive] = useState(false);
+  const [showStepsModal, setShowStepsModal] = useState(false);
+  const [isVoiceMuted, setIsVoiceMuted] = useState(false);
+
   const delay = useCallback(
     (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
     [],
   );
 
-  useEffect(() => {
-    // Component is active
-    isActive.current = true;
-    Logger.log(`CurrentWorkout ${workout.name} mounted`);
-
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        easing: Easing.out(Easing.cubic),
+  const playTimerComplete = useCallback(() => {
+    Animated.sequence([
+      Animated.timing(timerPulse, {
+        toValue: 1.3,
+        duration: 200,
         useNativeDriver: true,
       }),
-      Animated.timing(slideUpAnim, {
-        toValue: 0,
-        duration: 600,
-        easing: Easing.out(Easing.cubic),
+      Animated.timing(timerPulse, {
+        toValue: 0.9,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(timerPulse, {
+        toValue: 1.1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(timerPulse, {
+        toValue: 1,
+        duration: 200,
         useNativeDriver: true,
       }),
     ]).start();
+  }, [timerPulse]);
 
-    // Start voice instructions when screen opens (if not muted)
-    if (!isVoiceMuted) {
-      startVoiceInstructions();
+  const startTimerPulse = useCallback(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(timerPulse, {
+          toValue: 1.05,
+          duration: 1000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(timerPulse, {
+          toValue: 1,
+          duration: 1000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]),
+    ).start();
+  }, [timerPulse]);
+
+  const startTimer = useCallback(() => {
+    if (!workout?.time) {
+      setIsTimerActive(false);
+      return;
     }
 
-    return () => {
-      Logger.log(`CurrentWorkout ${workout.name} unmounting, cleaning up...`);
-      isActive.current = false;
+    setIsTimerActive(true);
 
-      // Stop all speech
-      Speech.stop();
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
 
-      // Clear timer
-      if (timerRef.current) {
+    timerRef.current = setInterval(() => {
+      if (!isActive.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
+        return;
       }
 
-      // Unload sound if exists
-      const unloadSound = async () => {
-        if (soundRef.current) {
-          try {
-            await soundRef.current.unloadAsync();
-          } catch (error) {
-            console.error("Error unloading sound:", error);
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+
+          setIsTimerActive(false);
+          playTimerComplete();
+
+          if (!isVoiceMuted && isActive.current) {
+            Speech.speak("Time's up! Moving to the next exercise.", {
+              language: "en-US",
+              pitch: 1.1,
+              rate: 0.8,
+              onDone: () => {
+                Logger.log("isActive.current--->" + isActive.current);
+                Logger.log("onNext--->" + onNext);
+                if (isActive.current && onNext) {
+                  onNext();
+                }
+              },
+            });
+          } else if (isActive.current && onNext) {
+            Logger.log("isActive.current--onNext->" + isActive.current);
+            Logger.log("onNext--->" + onNext);
+            onNext();
           }
-          soundRef.current = null;
+
+          return 0;
         }
-      };
-      unloadSound();
-    };
-  }, []);
+
+        if (
+          !isVoiceMuted &&
+          isActive.current &&
+          (prev === 10 || prev === 5 || prev === 3 || prev === 2 || prev === 1)
+        ) {
+          const timeText = `${prev} second${prev > 1 ? "s" : ""} remaining`;
+
+          Speech.speak(timeText, {
+            language: "en-US",
+            pitch: prev <= 3 ? 1.2 : 1.0,
+            rate: 0.8,
+          });
+        }
+
+        return prev - 1;
+      });
+    }, 1000);
+  }, [workout?.time, isVoiceMuted, onNext, playTimerComplete]);
 
   const playSoundFromAssets = useCallback(
     async (soundFileName) => {
@@ -126,7 +193,6 @@ export default function CurrentWorkout({
           "workout_start.mp3": require("../../../assets/mp3/refree.mp3"),
         };
 
-        // cleanup previous sound
         if (soundRef.current) {
           try {
             await soundRef.current.unloadAsync();
@@ -134,25 +200,29 @@ export default function CurrentWorkout({
         }
 
         return new Promise(async (resolve, reject) => {
-          const { sound } = await Audio.Sound.createAsync(
-            soundFiles[soundFileName] || soundFiles["workout_start.mp3"],
-            { shouldPlay: true },
-          );
+          try {
+            const { sound } = await Audio.Sound.createAsync(
+              soundFiles[soundFileName] || soundFiles["workout_start.mp3"],
+              { shouldPlay: true },
+            );
 
-          soundRef.current = sound;
+            soundRef.current = sound;
 
-          sound.setOnPlaybackStatusUpdate(async (status) => {
-            if (!status.isLoaded) return;
+            sound.setOnPlaybackStatusUpdate(async (status) => {
+              if (!status.isLoaded) return;
 
-            if (status.didJustFinish) {
-              try {
-                await sound.unloadAsync();
-              } catch (e) {}
+              if (status.didJustFinish) {
+                try {
+                  await sound.unloadAsync();
+                } catch (e) {}
 
-              soundRef.current = null;
-              resolve(); // ✅ IMPORTANT: tells caller "finished"
-            }
-          });
+                soundRef.current = null;
+                resolve();
+              }
+            });
+          } catch (error) {
+            reject(error);
+          }
         });
       } catch (error) {
         console.error(`Error playing sound ${soundFileName}:`, error);
@@ -186,156 +256,78 @@ export default function CurrentWorkout({
   );
 
   const startVoiceInstructions = useCallback(async () => {
-    // Check if component is still active before starting
     if (!isActive.current || isVoiceMuted) return;
 
     try {
-      // Introduction
-      const introText = `Starting ${workout.name}. You need to perform ${workout.reps ? `${workout.reps} repetitions.` : ` ${workout.time} seconds.`}`;
-      await speakText(introText);
+      const introText = `Starting ${workout.name}. You need to perform ${
+        workout.reps
+          ? `${workout.reps} repetitions.`
+          : `${workout.time} seconds.`
+      }`;
 
-      // Wait a moment
+      await speakText(introText);
       await delay(1000);
 
-      // Read steps
       const stepsText = workout.steps
-        .map((step, index) => `Step ${index + 1}: ${step}`)
+        .map((step, stepIndex) => `Step ${stepIndex + 1}: ${step}`)
         .join(". ");
 
       await speakText(stepsText);
+      await delay(500);
 
-      // Timer announcement if applicable
       if (workout.time) {
-        await delay(500);
-        const timerText = `Hold this position for ${workout.time} seconds. The timer starts now.`;
+        const timerText = `Hold this position for ${workout.time}. The timer starts now.`;
         await speakText(timerText);
-      } else {
-        await delay(500);
-        const readyText = `Get ready to start. Begin when you hear the beep.`;
+
+        if (!isVoiceMuted && isActive.current) {
+          await playSoundFromAssets("workout_start.mp3");
+        }
+
+        if (isActive.current) {
+          startTimer();
+          startTimerPulse();
+        }
+      } else if (workout.reps) {
+        const readyText = `Get ready to start. Complete ${workout.reps} repetitions. Begin when you hear the beep.`;
         await speakText(readyText);
 
         if (!isVoiceMuted && isActive.current) {
           await playSoundFromAssets("workout_start.mp3");
-
-          startTimer();
-          startTimerPulse();
         }
+
+        setIsTimerActive(false);
       }
     } catch (error) {
       console.error("Error starting voice instructions:", error);
     }
-  }, [workout, isVoiceMuted, speakText, playSoundFromAssets, delay]);
+  }, [
+    workout,
+    isVoiceMuted,
+    speakText,
+    playSoundFromAssets,
+    delay,
+    startTimer,
+    startTimerPulse,
+  ]);
 
   const toggleVoiceMute = useCallback(() => {
     if (isVoiceMuted) {
-      // Unmute - start voice instructions
       setIsVoiceMuted(false);
       startVoiceInstructions();
     } else {
-      // Mute - stop current speech
       setIsVoiceMuted(true);
       Speech.stop();
     }
   }, [isVoiceMuted, startVoiceInstructions]);
 
-  const startTimer = useCallback(() => {
-    setIsTimerActive(true);
-    if (timerRef.current) clearInterval(timerRef.current);
-
-    timerRef.current = setInterval(() => {
-      // Check if component is still active
-      if (!isActive.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-        return;
-      }
-
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timerRef.current);
-          timerRef.current = null;
-          setIsTimerActive(false);
-          playTimerComplete();
-
-          // Announce timer completion (if not muted and active)
-          if (!isVoiceMuted && isActive.current) {
-            Speech.speak("Time's up! Great job holding the position.", {
-              language: "en-US",
-              pitch: 1.1,
-              rate: 0.8,
-            });
-          }
-
-          return 0;
-        }
-
-        // Announce time at intervals (if not muted and active)
-        if (
-          !isVoiceMuted &&
-          isActive.current &&
-          (prev === 10 || prev === 5 || prev === 3 || prev === 2 || prev === 1)
-        ) {
-          const timeText = `${prev} second${prev > 1 ? "s" : ""} remaining`;
-          Speech.speak(timeText, {
-            language: "en-US",
-            pitch: prev <= 3 ? 1.2 : 1.0,
-            rate: 0.8,
-          });
-        }
-
-        return prev - 1;
-      });
-    }, 1000);
-  }, [isVoiceMuted]);
-
-  const startTimerPulse = useCallback(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(timerPulse, {
-          toValue: 1.05,
-          duration: 1000,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(timerPulse, {
-          toValue: 1,
-          duration: 1000,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ]),
-    ).start();
-  }, []);
-
-  const playTimerComplete = useCallback(() => {
-    Animated.sequence([
-      Animated.timing(timerPulse, {
-        toValue: 1.3,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(timerPulse, {
-        toValue: 0.9,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(timerPulse, {
-        toValue: 1.1,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(timerPulse, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
-
   const formatTime = useCallback((seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    const safeSeconds = Number(seconds) || 0;
+    const mins = Math.floor(safeSeconds / 60);
+    const secs = safeSeconds % 60;
+
+    return `${mins.toString().padStart(2, "0")}:${secs
+      .toString()
+      .padStart(2, "0")}`;
   }, []);
 
   const handleImagePress = useCallback(() => {
@@ -353,26 +345,85 @@ export default function CurrentWorkout({
     ]).start(() => {
       setShowStepsModal(true);
     });
+  }, [imageScale]);
+
+  useEffect(() => {
+    isActive.current = true;
+
+    Logger.log(`CurrentWorkout ${workout.name} mounted`);
+
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideUpAnim, {
+        toValue: 0,
+        duration: 600,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    if (!isVoiceMuted) {
+      startVoiceInstructions();
+    }
+
+    return () => {
+      Logger.log(`CurrentWorkout ${workout.name} unmounting, cleaning up...`);
+
+      isActive.current = false;
+
+      Speech.stop();
+
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+
+      const unloadSound = async () => {
+        if (soundRef.current) {
+          try {
+            await soundRef.current.unloadAsync();
+          } catch (error) {
+            console.error("Error unloading sound:", error);
+          }
+
+          soundRef.current = null;
+        }
+      };
+
+      unloadSound();
+    };
   }, []);
 
-  // Add useEffect to handle component visibility changes
+  useEffect(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
+    if (workout?.time) {
+      setTimeLeft(getWorkoutSeconds());
+      setIsTimerActive(false);
+    } else {
+      setTimeLeft(0);
+      setIsTimerActive(false);
+    }
+  }, [workout, getWorkoutSeconds]);
+
   useEffect(() => {
     const handleAppStateChange = (nextAppState) => {
       if (nextAppState !== "active" && isActive.current) {
-        // App went to background - stop speech
         Speech.stop();
       }
     };
 
-    // You might want to add AppState listener if needed
-    // AppState.addEventListener('change', handleAppStateChange);
-
-    return () => {
-      // AppState.removeEventListener('change', handleAppStateChange);
-    };
+    return () => {};
   }, []);
 
-  // Force speech stop when modal opens
   useEffect(() => {
     if (showStepsModal && !isVoiceMuted) {
       Speech.stop();
@@ -385,14 +436,13 @@ export default function CurrentWorkout({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Exercise Image with Question Mark */}
         <Animated.View
           style={[
             styles.imageContainer,
             {
               opacity: fadeAnim,
               transform: [{ translateY: slideUpAnim }],
-              height: workout.time ? scaleHeight(300) : scaleHeight(400),
+              height: isTimedWorkout ? scaleHeight(300) : scaleHeight(400),
             },
           ]}
         >
@@ -429,7 +479,6 @@ export default function CurrentWorkout({
             </View>
           </TouchableOpacity>
 
-          {/* Help Button - Right Side */}
           <TouchableOpacity
             style={styles.helpButton}
             onPress={handleImagePress}
@@ -441,7 +490,6 @@ export default function CurrentWorkout({
           </TouchableOpacity>
         </Animated.View>
 
-        {/* Exercise Info */}
         <Animated.View
           style={[
             styles.infoContainer,
@@ -451,14 +499,15 @@ export default function CurrentWorkout({
             },
           ]}
         >
-          {/* Exercise Name and Reps */}
           <View style={styles.titleContainer}>
-            <Text
-              style={styles.exerciseName}
-            >{`${workout.name} X ${workout.reps ? workout.reps : workout.time}`}</Text>
+            <Text style={styles.exerciseName}>
+              {isRepsWorkout
+                ? `${workout.name} X ${workout.reps}`
+                : `${workout.name} - ${workout.time}`}
+            </Text>
           </View>
 
-          {workout.time && (
+          {isTimedWorkout && (
             <Animated.View
               style={[
                 styles.timerContainer,
@@ -467,38 +516,72 @@ export default function CurrentWorkout({
                 },
               ]}
             >
-              <View style={styles.timerHeader}>
-                <Ionicons name="timer-outline" size={24} color="#4F46E5" />
-                <Text style={styles.timerTitle}>Hold For</Text>
+              <View style={styles.timerTopRow}>
+                <View style={styles.timerIconBox}>
+                  <Ionicons
+                    name="timer-outline"
+                    size={22}
+                    color={colors.primary}
+                  />
+                </View>
+
+                <View style={styles.timerTextBox}>
+                  <Text style={styles.timerLabel}>Hold Time</Text>
+                  <Text style={styles.timerSubLabel}>
+                    {isTimerActive ? "Keep going" : "Let's get ready!"}
+                  </Text>
+                </View>
               </View>
 
               <Text
                 style={[
                   styles.timerDisplay,
-                  timeLeft <= 10 && styles.timerWarning,
+                  timeLeft <= 10 && timeLeft > 0 && styles.timerWarning,
                   timeLeft === 0 && styles.timerComplete,
                 ]}
               >
                 {formatTime(timeLeft)}
               </Text>
 
-              <View style={styles.timerStatus}>
+              <View style={styles.timerProgressTrack}>
+                <View
+                  style={[
+                    styles.timerProgressFill,
+                    {
+                      width: `${
+                        workout?.time
+                          ? Math.max(
+                              0,
+                              Math.min(
+                                100,
+                                (timeLeft / getWorkoutSeconds()) * 100,
+                              ),
+                            )
+                          : 0
+                      }%`,
+                    },
+                  ]}
+                />
+              </View>
+
+              <View style={styles.timerStatusPill}>
                 <View
                   style={[
                     styles.statusDot,
                     isTimerActive ? styles.activeDot : styles.completeDot,
                   ]}
                 />
+
                 <Text style={styles.statusText}>
-                  {isTimerActive ? "Timer Running" : "Hold Complete"}
+                  {isTimerActive ? "Timer Running" : "Let's get ready!"}
                 </Text>
               </View>
             </Animated.View>
           )}
 
           <View style={styles.tagsContainer}>
-            {workout.focus.map((muscle, index) => (
-              <View key={index} style={styles.tag}>
+            {workout.focus.map((muscle, muscleIndex) => (
+              <View key={muscleIndex} style={styles.tag}>
                 <Text style={styles.tagText}>{muscle}</Text>
               </View>
             ))}
@@ -516,17 +599,19 @@ export default function CurrentWorkout({
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Steps & Tips</Text>
+
               <TouchableOpacity onPress={() => setShowStepsModal(false)}>
                 <Ionicons name="close" size={28} color="#333" />
               </TouchableOpacity>
             </View>
 
             <ScrollView style={styles.modalBody}>
-              {workout.steps.map((step, index) => (
-                <View key={index} style={styles.stepItem}>
+              {workout.steps.map((step, stepIndex) => (
+                <View key={stepIndex} style={styles.stepItem}>
                   <View style={styles.stepNumber}>
-                    <Text style={styles.stepNumberText}>{index + 1}</Text>
+                    <Text style={styles.stepNumberText}>{stepIndex + 1}</Text>
                   </View>
+
                   <Text style={styles.stepText}>{step}</Text>
                 </View>
               ))}
@@ -534,13 +619,15 @@ export default function CurrentWorkout({
               {workout.tips && workout.tips.length > 0 && (
                 <View style={styles.tipsContainer}>
                   <Text style={styles.tipsTitle}>Pro Tips</Text>
-                  {workout.tips.map((tip, index) => (
-                    <View key={index} style={styles.tipItem}>
+
+                  {workout.tips.map((tip, tipIndex) => (
+                    <View key={tipIndex} style={styles.tipItem}>
                       <Ionicons
                         name="bulb-outline"
                         size={20}
                         color={colors.lightColor}
                       />
+
                       <Text style={styles.tipText}>{tip}</Text>
                     </View>
                   ))}
@@ -583,7 +670,6 @@ const styles = StyleSheet.create({
   imageGradient: {
     ...StyleSheet.absoluteFillObject,
   },
-  // Mute Button Styles (Left Side)
   muteButton: {
     position: "absolute",
     left: 20,
@@ -600,7 +686,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "rgba(255,255,255,0.5)",
   },
-  // Help Button Styles (Right Side)
   helpButton: {
     position: "absolute",
     right: 20,
@@ -617,7 +702,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "rgba(255,255,255,0.5)",
   },
-  // Rest of the styles remain unchanged...
   exerciseBadge: {
     position: "absolute",
     bottom: 20,
@@ -642,7 +726,7 @@ const styles = StyleSheet.create({
   },
   exerciseName: {
     fontFamily: "OpenSans_700Bold",
-    fontSize: moderateScale(24),
+    fontSize: moderateScale(20),
     color: "#1E293B",
     marginBottom: 8,
   },
@@ -675,60 +759,113 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   timerContainer: {
-    backgroundColor: "white",
-    borderRadius: 24,
-    padding: 24,
-    marginBottom: 30,
-    alignItems: "center",
-    shadowColor: "#4F46E5",
+    backgroundColor: colors.white,
+    borderRadius: 28,
+    padding: 22,
+    marginBottom: 28,
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: "#EEF2F7",
   },
-  timerHeader: {
+
+  timerTopRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    marginBottom: 10,
+    marginBottom: 18,
   },
-  timerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
+
+  timerIconBox: {
+    width: scaleWidth(46),
+    height: scaleHeight(46),
+    borderRadius: 16,
+    backgroundColor: "#EEF2FF",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+
+  timerTextBox: {
+    flex: 1,
+  },
+
+  timerLabel: {
+    fontSize: scaling().moderateScale(14),
+    fontFamily: "OpenSans_700Bold",
     color: "#1E293B",
   },
-  timerDisplay: {
-    fontSize: 64,
-    fontWeight: "700",
-    color: "#4F46E5",
-    marginBottom: 16,
+
+  timerSubLabel: {
+    marginTop: 2,
+    fontSize: scaling().moderateScale(13),
+    fontFamily: "OpenSans_400Regular",
+    color: "#64748B",
   },
+
+  timerDisplay: {
+    textAlign: "center",
+    fontSize: moderateScale(40),
+    fontFamily: "OpenSans_700Bold",
+    color: colors.primary,
+    letterSpacing: 1,
+    marginBottom: 18,
+  },
+
   timerWarning: {
     color: "#F59E0B",
   },
+
   timerComplete: {
     color: "#10B981",
   },
-  timerStatus: {
+
+  timerProgressTrack: {
+    width: "100%",
+    height: scaleHeight(8),
+    borderRadius: 20,
+    backgroundColor: "#E5E7EB",
+    overflow: "hidden",
+    marginBottom: 16,
+  },
+
+  timerProgressFill: {
+    height: "100%",
+    borderRadius: 20,
+    backgroundColor: colors.primary,
+  },
+
+  timerStatusPill: {
+    alignSelf: "center",
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    backgroundColor: "#F8FAFC",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
   },
+
   statusDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
   },
+
   activeDot: {
     backgroundColor: "#10B981",
   },
+
   completeDot: {
-    backgroundColor: "#F59E0B",
+    backgroundColor: "#94A3B8",
   },
+
   statusText: {
-    fontSize: 14,
-    color: "#64748B",
-    fontWeight: "500",
+    fontSize: 13,
+    color: "#475569",
+    fontFamily: "OpenSans_600SemiBold",
   },
   instructionsContainer: {
     backgroundColor: "white",

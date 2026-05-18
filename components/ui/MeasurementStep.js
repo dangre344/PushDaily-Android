@@ -1,261 +1,448 @@
-import { Logger } from "@/constants/Logger";
-import { useState } from "react";
-import { useTranslation } from "react-i18next";
-import { StyleSheet, Text, View } from "react-native";
-import { HeightMeasure, WeightImg } from "../../assets/AllSvgs";
-import RulerPickerField from "../../components/ui/RulerPickerField";
-import { colors } from "../../constants/colors";
+import { colors } from "@/constants/colors";
+import Slider from "@react-native-community/slider";
+import { useEffect, useMemo, useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { scaling } from "../../constants/useScaling";
 
-const { scaleHeight, scaleWidth, moderateScale } = scaling();
+const { scaleHeight, scaleWidth } = scaling();
 
-const MeasurementsStep = ({ form, selectedWeight, selectedHeight }) => {
-  Logger.log("selectedHeight---->" + selectedHeight);
-  Logger.log("selectedHeight---->" + selectedHeight);
-  const { t } = useTranslation();
-  const [heightCm, setHeightCm] = useState(form.getValues("height") || 140);
-  const [weightKg, setWeightKg] = useState(form.getValues("weight") || 65);
+const roundToOne = (value) => Math.round(Number(value) * 10) / 10;
 
-  Logger.log("heightCm--->" + form.getValues("height"));
+const toNumber = (value, fallback) => {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+};
 
-  Logger.log("heightCm--->" + heightCm);
-  Logger.log("weightKg--->" + weightKg);
+const clamp = (value, min, max) => {
+  return Math.min(Math.max(value, min), max);
+};
 
-  const cmToFeetInches = (cm) => {
-    const inchesTotal = cm / 2.54;
-    const feet = Math.floor(inchesTotal / 12);
-    const inches = Math.round(inchesTotal % 12);
-    return `${feet}ft ${inches}in`;
+const cmToFtIn = (cm) => {
+  const totalInches = Number(cm) / 2.54;
+
+  let feet = Math.floor(totalInches / 12);
+  let inches = Math.round(totalInches % 12);
+
+  if (inches === 12) {
+    feet += 1;
+    inches = 0;
+  }
+
+  return { feet, inches };
+};
+
+const ftInToCm = (feet, inches) => {
+  return roundToOne((Number(feet) * 12 + Number(inches)) * 2.54);
+};
+
+const kgToLbs = (kg) => roundToOne(Number(kg) * 2.20462);
+const lbsToKg = (lbs) => roundToOne(Number(lbs) / 2.20462);
+
+function UnitToggle({ options, selected, onChange }) {
+  return (
+    <View style={styles.toggleContainer}>
+      {options.map((item) => {
+        const active = selected === item.value;
+
+        return (
+          <Pressable
+            key={item.value}
+            onPress={() => onChange(item.value)}
+            style={[styles.toggleButton, active && styles.toggleButtonActive]}
+          >
+            <Text
+              style={[styles.toggleText, active && styles.toggleTextActive]}
+            >
+              {item.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+function StepperButton({ label, onPress }) {
+  return (
+    <Pressable onPress={onPress} style={styles.stepperButton}>
+      <Text style={styles.stepperText}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function MeasurementCard({
+  title,
+  unit,
+  unitOptions,
+  value,
+  min,
+  max,
+  step = 1,
+  displayValue,
+  helperText,
+  onUnitChange,
+  onChange,
+}) {
+  const decrease = () => {
+    const nextValue = clamp(roundToOne(value - step), min, max);
+    onChange(nextValue);
   };
 
-  const kgToLbs = (kg) => (kg * 2.20462).toFixed(1);
+  const increase = () => {
+    const nextValue = clamp(roundToOne(value + step), min, max);
+    onChange(nextValue);
+  };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.stepTitle}>{t("yourMeasurement")}</Text>
-      <Text style={styles.stepSubtitle}>{t("yourMeasurementSub")}</Text>
+    <View style={styles.card}>
+      <View style={styles.cardHeader}>
+        <Text style={styles.cardTitle}>{title}</Text>
 
-      {/* HEIGHT SELECTOR */}
-      <Text style={styles.title}>{t("selectYourHeight")}</Text>
-
-      <View
-        style={{
-          justifyContent: "center",
-          alignItems: "center",
-          flexDirection: "row",
-          gap: 10,
-          backgroundColor: colors.primary + 10,
-          paddingHorizontal: 20,
-          marginVertical: 10,
-          borderRadius: 10,
-          alignSelf: "center",
-          color: colors.primary,
-        }}
-      >
-        <HeightMeasure
-          width={scaleWidth(20)}
-          height={scaleHeight(20)}
-          color={colors.primary}
+        <UnitToggle
+          options={unitOptions}
+          selected={unit}
+          onChange={onUnitChange}
         />
-        <Text style={styles.altText}>{cmToFeetInches(heightCm)}</Text>
       </View>
 
-      <View style={styles.row}>
-        {/* <View style={{ flex: 0.3 }}>
-          <HeightMeasure
-            width={scaleWidth(100)}
-            height={scaleHeight(160)}
-            color={colors.primary}
-          />
-        </View> */}
+      <Text style={styles.mainValue}>{displayValue}</Text>
 
-        <View style={styles.rulerWrapper}>
-          <RulerPickerField
-            form={form}
-            name="height"
-            defaultValue={form.getValues("height")}
-            min={100}
-            max={250}
-            initialValue={140}
-            step={0.1}
-            unit="cm"
-            onSelected={(value) => {
-              setHeightCm(value);
-            }}
-            height={scaleHeight(200)}
-            indicatorColor={colors.primary}
-            rulerLineColor={colors.primary}
-            rulerBackgroundColor="#f9f9f9"
-            valueTextStyle={styles.valueText}
-            unitTextStyle={styles.unitText}
-          />
+      {helperText ? <Text style={styles.helperText}>{helperText}</Text> : null}
 
-          {/* <RulerPicker
-            value={heightCm}
-            min={100}
-            max={250}
-            initialValue={140}
-            step={1}
-            unit="cm"
-            onValueChangeEnd={(value) => setHeightCm(value)}
-            indicatorColor={colors.primary}
-            rulerLineColor={colors.primary}
-            rulerBackgroundColor="#f9f9f9"
-            valueTextStyle={styles.valueText}
-            unitTextStyle={styles.unitText}
-            height={scaleHeight(200)}
-            vertical 
-          /> */}
-        </View>
-      </View>
+      <View style={styles.sliderRow}>
+        <StepperButton label="−" onPress={decrease} />
 
-      {/* WEIGHT SELECTOR */}
-      <View style={styles.weightContainer}>
-        <Text style={styles.title}>{t("selectYourWeight")}</Text>
-
-        <View
-          style={{
-            justifyContent: "center",
-            alignItems: "center",
-            flexDirection: "row",
-            gap: 10,
-            backgroundColor: colors.primary + 10,
-            paddingHorizontal: 20,
-            marginVertical: 10,
-            borderRadius: 10,
-            alignSelf: "center",
-            color: colors.primary,
+        <Slider
+          style={styles.slider}
+          minimumValue={min}
+          maximumValue={max}
+          step={step}
+          value={value}
+          minimumTrackTintColor={colors.primary}
+          maximumTrackTintColor="#E5E7EB"
+          thumbTintColor={colors.primary}
+          onValueChange={(nextValue) => {
+            onChange(roundToOne(nextValue));
           }}
-        >
-          <WeightImg
-            width={scaleWidth(20)}
-            height={scaleHeight(20)}
-            color={colors.primary}
-          />
-          <Text style={styles.altText}>{kgToLbs(weightKg)} lbs</Text>
-        </View>
+        />
 
-        <View style={styles.rulerWrapper}>
-          <RulerPickerField
-            form={form}
-            name="weight"
-            min={30}
-            defaultValue={selectedWeight ?? 65}
-            max={150}
-            step={0.1}
-            unit="kg"
-            onSelected={(value) => {
-              setWeightKg(value);
-            }}
-            indicatorColor={colors.primary}
-            unitTextStyle={styles.unitText}
-            valueTextStyle={styles.valueText}
-            rulerLineColor={colors.primary}
-            rulerBackgroundColor="#f5f5f5"
-            height={scaleHeight(200)}
-            horizontal
-          />
-        </View>
+        <StepperButton label="+" onPress={increase} />
+      </View>
 
-        {/* <RulerPicker
-          value={weightKg}
-          min={30}
-          max={150}
-          step={0.5}
-          unit="kg"
-          onValueChangeEnd={(number) => setWeightKg(number)}
-          indicatorColor={colors.primary}
-          unitTextStyle={styles.unitText}
-          valueTextStyle={styles.valueText}
-          rulerLineColor={colors.primary}
-          rulerBackgroundColor="#f5f5f5"
-          height={220}
-          horizontal
-        /> */}
+      <View style={styles.rangeRow}>
+        <Text style={styles.rangeText}>{min}</Text>
+        <Text style={styles.rangeText}>{max}</Text>
       </View>
     </View>
   );
-};
+}
 
-export default MeasurementsStep;
+export default function MeasurementsStep({
+  form,
+  minHeight = 120,
+  maxHeight = 240,
+  unitHeight = "cm",
+  minWeight = 30,
+  maxWeight = 170,
+  unitWeight = "kg",
+  selectedWeight,
+  selectedHeight,
+}) {
+  const DEFAULT_HEIGHT_CM = 140;
+  const DEFAULT_WEIGHT_KG = 65;
+
+  const initialHeightCm = clamp(
+    toNumber(selectedHeight || form.getValues("height"), DEFAULT_HEIGHT_CM),
+    minHeight,
+    maxHeight,
+  );
+
+  const initialWeightKg = clamp(
+    toNumber(selectedWeight || form.getValues("weight"), DEFAULT_WEIGHT_KG),
+    minWeight,
+    maxWeight,
+  );
+
+  const [heightCm, setHeightCm] = useState(initialHeightCm);
+  const [weightKg, setWeightKg] = useState(initialWeightKg);
+
+  const [heightUnit, setHeightUnit] = useState(
+    String(unitHeight).toLowerCase() === "ftin" ? "ftin" : "cm",
+  );
+
+  const [weightUnit, setWeightUnit] = useState(
+    String(unitWeight).toLowerCase() === "lbs" ? "lbs" : "kg",
+  );
+
+  const saveHeightValues = (nextCm) => {
+    const safeCm = clamp(roundToOne(nextCm), minHeight, maxHeight);
+    const { feet, inches } = cmToFtIn(safeCm);
+
+    setHeightCm(safeCm);
+
+    form.setValue("height", safeCm, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+
+    form.setValue("heightFeet", feet, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+
+    form.setValue("heightInches", inches, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+  };
+
+  const saveWeightValues = (nextKg) => {
+    const safeKg = clamp(roundToOne(nextKg), minWeight, maxWeight);
+    const lbs = kgToLbs(safeKg);
+
+    setWeightKg(safeKg);
+
+    form.setValue("weight", safeKg, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+
+    form.setValue("weightLbs", lbs, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+  };
+
+  useEffect(() => {
+    const currentHeight = toNumber(form.getValues("height"), initialHeightCm);
+    const currentWeight = toNumber(form.getValues("weight"), initialWeightKg);
+
+    const heightFromEdit = clamp(currentHeight, minHeight, maxHeight);
+    const weightFromEdit = clamp(currentWeight, minWeight, maxWeight);
+
+    const heightFtIn = cmToFtIn(heightFromEdit);
+    const weightLbs = kgToLbs(weightFromEdit);
+
+    setHeightCm(heightFromEdit);
+    setWeightKg(weightFromEdit);
+
+    form.setValue("height", heightFromEdit, {
+      shouldValidate: true,
+      shouldDirty: false,
+    });
+
+    form.setValue("heightFeet", heightFtIn.feet, {
+      shouldValidate: true,
+      shouldDirty: false,
+    });
+
+    form.setValue("heightInches", heightFtIn.inches, {
+      shouldValidate: true,
+      shouldDirty: false,
+    });
+
+    form.setValue("weight", weightFromEdit, {
+      shouldValidate: true,
+      shouldDirty: false,
+    });
+
+    form.setValue("weightLbs", weightLbs, {
+      shouldValidate: true,
+      shouldDirty: false,
+    });
+  }, []);
+
+  const heightFtIn = useMemo(() => cmToFtIn(heightCm), [heightCm]);
+  const weightLbs = useMemo(() => kgToLbs(weightKg), [weightKg]);
+
+  const heightDisplay =
+    heightUnit === "cm"
+      ? `${heightCm} cm`
+      : `${heightFtIn.feet} ft ${heightFtIn.inches} in`;
+
+  const heightHelper =
+    heightUnit === "cm"
+      ? `${heightFtIn.feet} ft ${heightFtIn.inches} in`
+      : `${heightCm} cm`;
+
+  const weightDisplay =
+    weightUnit === "kg" ? `${weightKg} kg` : `${weightLbs} lbs`;
+
+  const weightHelper =
+    weightUnit === "kg" ? `${weightLbs} lbs` : `${weightKg} kg`;
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.stepTitle}>Your Measurements</Text>
+      <Text style={styles.stepSubtitle}>
+        Select your height and weight. We save both units automatically.
+      </Text>
+
+      <MeasurementCard
+        title="Height"
+        unit={heightUnit}
+        unitOptions={[
+          { label: "CM", value: "cm" },
+          { label: "FT/IN", value: "ftin" },
+        ]}
+        value={heightCm}
+        min={minHeight}
+        max={maxHeight}
+        step={1}
+        displayValue={heightDisplay}
+        helperText={heightHelper}
+        onUnitChange={setHeightUnit}
+        onChange={saveHeightValues}
+      />
+
+      <MeasurementCard
+        title="Weight"
+        unit={weightUnit}
+        unitOptions={[
+          { label: "KG", value: "kg" },
+          { label: "LBS", value: "lbs" },
+        ]}
+        value={weightKg}
+        min={minWeight}
+        max={maxWeight}
+        step={1}
+        displayValue={weightDisplay}
+        helperText={weightHelper}
+        onUnitChange={setWeightUnit}
+        onChange={saveWeightValues}
+      />
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
   container: {
     marginHorizontal: 5,
+    gap: 18,
+    paddingBottom: 30,
   },
 
-  title: {
-    fontSize: 16,
-    fontFamily: "OpenSans_700Bold",
-    color: colors.text,
-  },
   stepTitle: {
     fontSize: 24,
     fontFamily: "OpenSans_700Bold",
     color: colors.text,
-    marginBottom: 4,
   },
+
   stepSubtitle: {
     fontSize: 14,
     fontFamily: "OpenSans_400Regular",
     color: colors.textLight,
-    marginBottom: 20,
+    marginBottom: 6,
   },
-  heightContainer: {
+
+  card: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 22,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: "#EEF0F4",
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
+    elevation: 3,
+  },
+
+  cardHeader: {
     flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 40,
-  },
-  personImage: {
-    width: 80,
-    height: 300,
-    marginRight: 10,
-  },
-
-  row: {
-    flexDirection: "row",
-  },
-
-  rulerWrapper: {
-    flex: 1,
+    justifyContent: "space-between",
     alignItems: "center",
   },
-  valueText: {
-    fontSize: 22,
-    fontFamily: "OpenSans_400Regular",
-    color: colors.primary,
-  },
-  unitText: {
-    fontSize: 14,
-    color: "#777",
-  },
-  altText: {
-    marginVertical: 10,
-    fontSize: 16,
-    color: colors.dark,
 
-    alignSelf: "center",
+  cardTitle: {
+    fontSize: 18,
     fontFamily: "OpenSans_700Bold",
+    color: colors.text,
   },
-  unitAlt: {
-    fontSize: 14,
-    color: "#666",
-    marginTop: 8,
+
+  toggleContainer: {
+    flexDirection: "row",
+    backgroundColor: "#F3F4F6",
+    borderRadius: 999,
+    padding: 4,
   },
-  weightContainer: {},
-  weightLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 8,
+
+  toggleButton: {
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderRadius: 999,
   },
-  unitText: {
+
+  toggleButtonActive: {
+    backgroundColor: colors.primary,
+  },
+
+  toggleText: {
+    fontSize: 12,
+    fontFamily: "OpenSans_700Bold",
+    color: colors.textLight,
+  },
+
+  toggleTextActive: {
+    color: "#FFFFFF",
+  },
+
+  mainValue: {
+    marginTop: 22,
+    textAlign: "center",
+    fontSize: 42,
+    fontFamily: "OpenSans_800ExtraBold",
     color: colors.primary,
-    fontSize: 14,
   },
-  valueText: {
-    fontSize: 28,
-    fontWeight: "700",
+
+  helperText: {
+    textAlign: "center",
+    fontSize: 14,
+    fontFamily: "OpenSans_600SemiBold",
+    color: colors.textLight,
+    marginTop: 4,
+  },
+
+  sliderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 22,
+    gap: 12,
+  },
+
+  slider: {
+    flex: 1,
+    height: 44,
+  },
+
+  stepperButton: {
+    width: scaleWidth(42),
+    height: scaleHeight(42),
+    borderRadius: 999,
+    backgroundColor: colors.primary + "15",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  stepperText: {
+    fontSize: 26,
+    fontFamily: "OpenSans_700Bold",
     color: colors.primary,
+    lineHeight: 28,
+  },
+
+  rangeRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 4,
+  },
+
+  rangeText: {
+    fontSize: 12,
+    color: colors.textLight,
+    fontFamily: "OpenSans_400Regular",
   },
 });

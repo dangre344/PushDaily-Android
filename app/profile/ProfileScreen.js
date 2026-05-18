@@ -1,9 +1,9 @@
 import { Ionicons, MaterialCommunityIcons, Octicons } from "@expo/vector-icons";
 import { nativeApplicationVersion, nativeBuildVersion } from "expo-application";
 import * as Notifications from "expo-notifications";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Animated,
@@ -59,7 +59,7 @@ const STATS = [
 
 // ── Rate the App
 const handleRateApp = () => {
-  const androidPackage = "com.yourcompany.myworkout"; // replace with your package
+  const androidPackage = "com.pushdaily.homeworkout.fit"; // replace with your package
   const iosAppId = "123456789"; // replace with your App Store ID
 
   const url = Platform.select({
@@ -82,7 +82,7 @@ const handleRateApp = () => {
 
 // ── Share App
 const handleShareApp = async () => {
-  const androidPackage = "com.yourcompany.myworkout";
+  const androidPackage = "com.pushdaily.homeworkout.fit";
   const iosAppId = "123456789";
 
   const url = Platform.select({
@@ -90,7 +90,7 @@ const handleShareApp = async () => {
     android: `https://play.google.com/store/apps/details?id=${androidPackage}`,
   });
 
-  const message = `Check out MyWorkout! ${url}`;
+  const message = `🏋️ Push harder every day with Push Daily! Your all-in-one fitness tracking companion 💯 ${url}`;
 
   try {
     await Share.share({
@@ -112,12 +112,6 @@ const MENU_SECTIONS = [
         icon: "person-outline",
         color: colors.primary,
         key: "edit",
-      },
-      {
-        label: "Body Metrics",
-        icon: "body-outline",
-        color: colors.secondary,
-        key: "graph",
       },
 
       {
@@ -251,7 +245,7 @@ const MenuRow = ({
       // Already granted — show options
       Alert.alert(
         "Notifications",
-        "Notifications are already enabled for MyWorkout.",
+        "Notifications are already enabled for Push Daily App.",
         [
           { text: "Manage in Settings", onPress: () => Linking.openSettings() },
           { text: "OK", style: "cancel" },
@@ -349,20 +343,31 @@ export default function ProfileScreen() {
     activeDays: 0,
   });
 
-  useEffect(() => {
-    const loadStats = async () => {
-      await initDB();
-      const [data, currentStreak] = await Promise.all([
-        getProfileStats(),
-        getCurrentStreak(),
-      ]);
-      Logger.log("Profile stats--->", data);
-      Logger.log("Current streak--->", currentStreak);
-      setStats(data);
-      setStreak(currentStreak);
-    };
-    loadStats();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      const loadStats = async () => {
+        await initDB();
+
+        const [data, currentStreak] = await Promise.all([
+          getProfileStats(),
+          getCurrentStreak(),
+        ]);
+
+        if (isActive) {
+          setStats(data);
+          setStreak(currentStreak);
+        }
+      };
+
+      loadStats();
+
+      return () => {
+        isActive = false;
+      };
+    }, []),
+  );
 
   Logger.log("user--ProfileScreen-->", user);
   const headerAnim = useRef(new Animated.Value(0)).current;
@@ -562,7 +567,7 @@ export default function ProfileScreen() {
         ))}
 
         <Text style={styles.version}>
-          MyWorkout v{appVersion} ({buildVersion})
+          Push Daily v{appVersion} ({buildVersion})
         </Text>
       </Animated.ScrollView>
 

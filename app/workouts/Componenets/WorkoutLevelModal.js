@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import * as Yup from "yup";
 import { Button } from "../../../components/ui/Button.js";
 import { OptionCardController } from "../../../components/ui/OptionCard.js";
@@ -72,61 +73,62 @@ const WorkoutLevelModal = ({
       animationType="fade"
       onRequestClose={() => setOpenModal(false)}
     >
-      <View style={styles.overlay}>
-        <View style={styles.content}>
-          <TouchableOpacity
-            style={styles.closeIcon}
-            onPress={() => setOpenModal(false)}
-          >
-            <Ionicons name="close" size={24} color="#000" />
-          </TouchableOpacity>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.overlay}>
+          <View style={styles.content}>
+            <TouchableOpacity
+              style={styles.closeIcon}
+              onPress={() => setOpenModal(false)}
+            >
+              <Ionicons name="close" size={24} color="#000" />
+            </TouchableOpacity>
 
-          <Text style={styles.exTitle}>{selectedBodyPart.bodyPart}</Text>
+            <Text style={styles.exTitle}>{selectedBodyPart.bodyPart}</Text>
 
-          <Text style={styles.title}>{t("yourFitnessLevel")}</Text>
-          <Text style={styles.subtitle}>{t("selectExpLevel")}</Text>
+            <Text style={styles.title}>{t("yourFitnessLevel")}</Text>
+            <Text style={styles.subtitle}>{t("selectExpLevel")}</Text>
 
-          <View style={styles.optionsContainer}>
-            <OptionCardController
-              control={control}
-              name="experience"
-              rules={{ required: "Please select your experience" }}
-              defaultValue=""
-              options={[
-                {
-                  emoji: "🌱",
-                  title: t("beginner"),
-                  description: t("beginnerSubWorkoutSelection"),
-                },
-                {
-                  emoji: "💪",
-                  title: t("intermediate"),
-                  description: t("intermediateSubWorkoutSelection"),
-                },
-                {
-                  emoji: "🔥",
-                  title: t("advanced"),
-                  description: t("advancedSubWorkoutSelection"),
-                },
-              ]}
+            <View style={styles.optionsContainer}>
+              <OptionCardController
+                control={control}
+                name="experience"
+                rules={{ required: "Please select your experience" }}
+                defaultValue=""
+                options={[
+                  {
+                    emoji: "🌱",
+                    title: t("beginner"),
+                    description: t("beginnerSubWorkoutSelection"),
+                  },
+                  {
+                    emoji: "💪",
+                    title: t("intermediate"),
+                    description: t("intermediateSubWorkoutSelection"),
+                  },
+                  {
+                    emoji: "🔥",
+                    title: t("advanced"),
+                    description: t("advancedSubWorkoutSelection"),
+                  },
+                ]}
+              />
+            </View>
+
+            <Button
+              title={t("continue")}
+              onPress={() => {
+                Logger.log("Continue pressed" + selectedExperience);
+
+                if (!selectedExperience) {
+                  Alert.alert("Select Experience", t("selectExperience"));
+
+                  return;
+                }
+                handleSubmit(next)();
+              }}
             />
-          </View>
 
-          <Button
-            title={t("continue")}
-            onPress={() => {
-              Logger.log("Continue pressed" + selectedExperience);
-
-              if (!selectedExperience) {
-                Alert.alert("Select Experience", t("selectExperience"));
-
-                return;
-              }
-              handleSubmit(next)();
-            }}
-          />
-
-          {/* <TouchableOpacity
+            {/* <TouchableOpacity
             style={styles.closeBtn}
             onPress={() => {
               // router.push("../../workouts/workoutlisting");
@@ -134,13 +136,18 @@ const WorkoutLevelModal = ({
           >
             <Text style={styles.closeText}>{t("continue")}</Text>
           </TouchableOpacity> */}
+          </View>
         </View>
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.6)",

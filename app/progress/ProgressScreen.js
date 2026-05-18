@@ -1,16 +1,23 @@
 import { AntDesign, Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FlatList, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  SectionList,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { Calendar } from "react-native-calendars";
+
 import { colors } from "../../constants/colors";
-import { useWeeklyWorkouts } from "../../constants/Constants";
 import { Logger } from "../../constants/Logger";
-import { scaling } from "../../constants/useScaling"; // adjust path as needed
+import { scaling } from "../../constants/useScaling";
 import {
   getAllWorkoutDates,
-  getAllWorkoutsBydate,
+  getAllWorkouts,
   getTotalCalories,
   initDB,
 } from "../../offlinedb/workoutdb";
@@ -18,8 +25,17 @@ import {
 const scaleWidth = (n) => scaling().moderateScale(n);
 const scaleHeight = (n) => scaling().moderateScale(n);
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 const toDateKey = (iso) => iso.slice(0, 10);
+
+const getWorkoutDateKey = (dateTime) => {
+  if (!dateTime) return null;
+
+  try {
+    return toDateKey(new Date(dateTime).toISOString());
+  } catch (error) {
+    return null;
+  }
+};
 
 const parseCalories = (cal) => {
   const n = parseInt(String(cal).replace(/^0+/, "") || "0", 10);
@@ -44,143 +60,202 @@ const MONTHS = [
 const levelColor = (level) => {
   switch (level?.toLowerCase()) {
     case "beginner":
-      return "#4CAF82";
+      return "#22C55E";
     case "intermediate":
-      return colors.secondary;
+      return "#F59E0B";
     case "advanced":
-      return "#E74C3C";
+      return "#EF4444";
     default:
-      return colors.textMuted;
+      return colors.primary;
   }
 };
 
-const bodyPartIcon = (bp) => {
-  switch (bp?.toLowerCase()) {
+const bodyPartIcon = (bodyPart) => {
+  switch (bodyPart?.toLowerCase()) {
     case "chest":
       return "body-outline";
     case "shoulder":
+    case "shoulders":
       return "fitness-outline";
     case "legs":
+    case "lower body":
       return "walk-outline";
     case "back":
       return "man-outline";
+    case "abs":
+      return "ellipse-outline";
+    case "hiit":
+      return "flash-outline";
     default:
       return "barbell-outline";
   }
 };
 
-// ═════════════════════════════════════════════════════════════════════════════
-// WORKOUT CARD
-// ═════════════════════════════════════════════════════════════════════════════
-const WorkoutCard = ({ item }) => (
-  <View style={cardStyles.card}>
-    {/* Left accent bar */}
-    <View
-      style={[cardStyles.accent, { backgroundColor: levelColor(item.level) }]}
-    />
+const formatDisplayDate = (dateKey) => {
+  if (!dateKey) return "";
 
-    {/* <View style={cardStyles.iconWrap}>
-      <Ionicons
-        name={bodyPartIcon(item.bodyPart)}
-        size={scaling().moderateScale(20)}
-        color={colors.primary}
-      />
-    </View> */}
+  const [y, m, d] = dateKey.split("-");
+  return `${MONTHS[parseInt(m, 10) - 1]} ${parseInt(d, 10)}, ${y}`;
+};
 
-    <View style={cardStyles.info}>
-      <Text style={cardStyles.name} numberOfLines={1}>
-        {item.name}
-      </Text>
-      <View style={cardStyles.tags}>
-        {/* Level badge */}
-        <View
-          style={[
-            cardStyles.badge,
-            { borderColor: levelColor(item.level) + "55" },
-          ]}
-        >
+const isToday = (dateKey) => {
+  return dateKey === toDateKey(new Date().toISOString());
+};
+
+const WorkoutCard = ({ item, index }) => {
+  const currentLevelColor = levelColor(item.level);
+
+  return (
+    <View style={cardStyles.card}>
+      <View
+        style={[
+          cardStyles.indexCircle,
+          { backgroundColor: currentLevelColor + "18" },
+        ]}
+      >
+        <Text style={[cardStyles.indexText, { color: currentLevelColor }]}>
+          {index + 1}
+        </Text>
+      </View>
+
+      <View style={cardStyles.iconWrap}>
+        <Ionicons
+          name={bodyPartIcon(item.bodyPart)}
+          size={scaleWidth(20)}
+          color={colors.primary}
+        />
+      </View>
+
+      <View style={cardStyles.info}>
+        <Text style={cardStyles.name} numberOfLines={1}>
+          {item.name}
+        </Text>
+
+        <View style={cardStyles.tags}>
           <View
             style={[
-              cardStyles.dotSmall,
-              { backgroundColor: levelColor(item.level) },
+              cardStyles.badge,
+              {
+                backgroundColor: currentLevelColor + "12",
+                borderColor: currentLevelColor + "30",
+              },
             ]}
-          />
-          <Text
-            style={[cardStyles.badgeText, { color: levelColor(item.level) }]}
           >
-            {item.level}
-          </Text>
-        </View>
-        {/* Body part badge */}
-        <View style={cardStyles.badge}>
-          <Text style={cardStyles.badgeText}>{item.bodyPart}</Text>
+            <View
+              style={[
+                cardStyles.dotSmall,
+                { backgroundColor: currentLevelColor },
+              ]}
+            />
+            <Text style={[cardStyles.badgeText, { color: currentLevelColor }]}>
+              {item.level}
+            </Text>
+          </View>
+
+          <View style={cardStyles.badge}>
+            <Text style={cardStyles.badgeText} numberOfLines={1}>
+              {item.bodyPart}
+            </Text>
+          </View>
         </View>
       </View>
-    </View>
 
-    {/* Calories */}
-    {/* <View style={cardStyles.calBox}>
-      <AntDesign name="fire" size={13} color={colors.primary} />
-      <Text style={cardStyles.calNum}>{parseCalories(item.calories)}</Text>
-      <Text style={cardStyles.calUnit}>kcal</Text>
-    </View> */}
-  </View>
-);
+      <View style={cardStyles.calBox}>
+        <AntDesign name="fire" size={13} color={colors.primary} />
+        <Text style={cardStyles.calNum}>{parseCalories(item.calories)}</Text>
+        <Text style={cardStyles.calUnit}>kcal</Text>
+      </View>
+    </View>
+  );
+};
 
 export default function ProgressScreen() {
   const { t } = useTranslation();
 
+  const todayKey = toDateKey(new Date().toISOString());
+
+  const [selectedDate, setSelectedDate] = useState(todayKey);
+  const [allWorkoutHistory, setAllWorkoutHistory] = useState([]);
   const [allWorkouts, setAllHistoryWorkouts] = useState([]);
   const [workoutDates, setWorkoutDates] = useState([]);
-
   const [totalCalories, setTotalCalories] = useState(0);
+  const [loading, setLoading] = useState(false);
 
-  const { weeklyWorkouts, attendedDays } = useWeeklyWorkouts(allWorkouts);
+  const selectedDateWorkouts = useMemo(() => {
+    return allWorkoutHistory.filter((workout) => {
+      const workoutDateKey = getWorkoutDateKey(workout?.dateTime);
+      return workoutDateKey === selectedDate;
+    });
+  }, [allWorkoutHistory, selectedDate]);
 
-  Logger.log("ProgressScreen rendered---->", weeklyWorkouts);
+  useEffect(() => {
+    setAllHistoryWorkouts(selectedDateWorkouts);
+  }, [selectedDateWorkouts]);
 
-  const todayKey = toDateKey(new Date().toISOString());
-  const [selectedDate, setSelectedDate] = useState(todayKey);
+  const dayCalories = useMemo(() => {
+    return allWorkouts.reduce((s, w) => s + parseCalories(w.calories), 0);
+  }, [allWorkouts]);
 
-  Logger.log("filtered--workouts-->", allWorkouts);
+  const displayDate = useMemo(() => {
+    return formatDisplayDate(selectedDate);
+  }, [selectedDate]);
 
-  const dayCalories = allWorkouts.reduce(
-    (s, w) => s + parseCalories(w.calories),
-    0,
-  );
+  const hasWorkoutOnSelectedDate = allWorkouts.length > 0;
 
-  const buildMarkedDates = (selectedDate, dates) => {
+  const workoutSections = useMemo(() => {
+    return Object.values(
+      allWorkouts.reduce((acc, item) => {
+        const title = item.bodyPart || "Other";
+
+        if (!acc[title]) {
+          acc[title] = {
+            title,
+            data: [],
+          };
+        }
+
+        acc[title].data.push(item);
+        return acc;
+      }, {}),
+    );
+  }, [allWorkouts]);
+
+  const buildMarkedDates = (selectedDateValue, dates) => {
     const marked = {};
 
     dates.forEach((dateKey) => {
-      const isSelected = dateKey === selectedDate;
+      const selected = dateKey === selectedDateValue;
+
       marked[dateKey] = {
         marked: true,
-        dotColor: isSelected ? "#fff" : colors.green,
+        dotColor: selected ? "#FFFFFF" : colors.green,
+        selected,
+        selectedColor: selected ? colors.primary : undefined,
         customStyles: {
           container: {
-            backgroundColor: isSelected ? colors.green : colors.green + "28",
-            borderRadius: scaling().moderateScale(20),
+            backgroundColor: selected ? colors.primary : colors.green + "16",
+            borderRadius: scaleWidth(18),
+            borderWidth: selected ? 0 : 1,
+            borderColor: colors.green + "30",
           },
           text: {
-            color: isSelected ? "#fff" : colors.green,
+            color: selected ? "#FFFFFF" : colors.green,
             fontFamily: "OpenSans_700Bold",
           },
         },
       };
     });
 
-    // Selected date with no workout
-    if (selectedDate && !dates.includes(selectedDate)) {
-      marked[selectedDate] = {
+    if (selectedDateValue && !dates.includes(selectedDateValue)) {
+      marked[selectedDateValue] = {
         selected: true,
         customStyles: {
           container: {
             backgroundColor: colors.primary,
-            borderRadius: scaling().moderateScale(20),
+            borderRadius: scaleWidth(18),
           },
           text: {
-            color: "#fff",
+            color: "#FFFFFF",
             fontFamily: "OpenSans_700Bold",
           },
         },
@@ -195,472 +270,727 @@ export default function ProgressScreen() {
     [selectedDate, workoutDates],
   );
 
-  const displayDate = (() => {
-    const [y, m, d] = selectedDate.split("-");
-    return `${MONTHS[parseInt(m, 10) - 1]} ${parseInt(d, 10)}, ${y}`;
-  })();
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      await initDB();
+
+      const [history, cal, dates] = await Promise.all([
+        getAllWorkouts(),
+        getTotalCalories(),
+        getAllWorkoutDates(),
+      ]);
+
+      Logger.log("All workout history--->", history);
+      Logger.log("Total calories--->", cal);
+      Logger.log("Workout dates for calendar--->", dates);
+
+      setAllWorkoutHistory(history || []);
+      setTotalCalories(cal || 0);
+      setWorkoutDates(dates || []);
+    } catch (error) {
+      Logger.log("Error loading progress screen:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
-      Logger.log("ProgressScreen selectedDate---->", selectedDate);
+      loadData();
+    }, []),
+  );
 
-      let isActive = true;
+  const handleDayPress = useCallback(
+    (day) => {
+      if (!day?.dateString || day.dateString === selectedDate) return;
+      setSelectedDate(day.dateString);
+    },
+    [selectedDate],
+  );
 
-      const setup = async () => {
-        await initDB();
+  const HeaderContent = useCallback(
+    () => (
+      <>
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.screenTitle}>Attendance</Text>
+            <Text style={styles.screenSubtitle}>
+              Tap a date to view completed workouts
+            </Text>
+          </View>
 
-        const dateWorkouts = await getAllWorkoutsBydate(selectedDate);
-        Logger.log("Workouts for date--->", dateWorkouts);
+          <View style={styles.totalCaloriePill}>
+            <AntDesign name="fire" size={16} color={colors.primary} />
+            <View>
+              <Text style={styles.totalCalorieValue}>{totalCalories || 0}</Text>
+              <Text style={styles.totalCalorieLabel}>total kcal</Text>
+            </View>
+          </View>
+        </View>
 
-        const cal = await getTotalCalories();
-        Logger.log("Total calories--->", cal);
+        <LinearGradient
+          colors={[colors.primary, "#7C3AED"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.summaryCard}
+        >
+          <View style={styles.summaryTop}>
+            <View>
+              <Text style={styles.summaryLabel}>Selected date</Text>
+              <Text style={styles.summaryDate}>{displayDate}</Text>
+            </View>
 
-        const dates = await getAllWorkoutDates();
-        Logger.log("Workout dates for calendar--->", dates);
+            <View style={styles.summaryIcon}>
+              <Ionicons
+                name={
+                  hasWorkoutOnSelectedDate
+                    ? "checkmark-done"
+                    : "calendar-outline"
+                }
+                size={24}
+                color="#FFFFFF"
+              />
+            </View>
+          </View>
 
-        if (isActive) {
-          setAllHistoryWorkouts(dateWorkouts);
-          setTotalCalories(cal);
-          setWorkoutDates(dates);
-        }
-      };
+          <View style={styles.summaryStatsRow}>
+            <View style={styles.summaryStat}>
+              <Text style={styles.summaryValue}>{allWorkouts.length}</Text>
+              <Text style={styles.summaryText}>
+                workout{allWorkouts.length !== 1 ? "s" : ""}
+              </Text>
+            </View>
 
-      setup();
+            <View style={styles.summaryDivider} />
 
-      return () => {
-        isActive = false;
-      };
-    }, [selectedDate]),
+            <View style={styles.summaryStat}>
+              <Text style={styles.summaryValue}>{dayCalories}</Text>
+              <Text style={styles.summaryText}>kcal burned</Text>
+            </View>
+
+            <View style={styles.summaryDivider} />
+
+            <View style={styles.summaryStat}>
+              <Text style={styles.summaryValue}>
+                {isToday(selectedDate)
+                  ? "Today"
+                  : workoutDates.includes(selectedDate)
+                    ? "Done"
+                    : "Rest"}
+              </Text>
+              <Text style={styles.summaryText}>status</Text>
+            </View>
+          </View>
+        </LinearGradient>
+
+        <View style={styles.calendarCard}>
+          <View style={styles.calendarHeaderRow}>
+            <View>
+              <Text style={styles.cardTitle}>Workout calendar</Text>
+              <Text style={styles.cardSubtitle}>
+                Green dates have completed workouts
+              </Text>
+            </View>
+
+            <View style={styles.legendPill}>
+              <View style={styles.legendDot} />
+              <Text style={styles.legendText}>Completed</Text>
+            </View>
+          </View>
+
+          <Calendar
+            current={todayKey}
+            onDayPress={handleDayPress}
+            markedDates={markedDates}
+            markingType="custom"
+            enableSwipeMonths
+            hideExtraDays={false}
+            firstDay={1}
+            renderArrow={(direction) => (
+              <View style={styles.arrowButton}>
+                <Ionicons
+                  name={
+                    direction === "left" ? "chevron-back" : "chevron-forward"
+                  }
+                  size={18}
+                  color={colors.primary}
+                />
+              </View>
+            )}
+            renderHeader={(date) => {
+              const d = new Date(date);
+              const month = MONTHS[d.getMonth()];
+              const year = d.getFullYear();
+
+              return (
+                <Text style={styles.calendarMonthTitle}>
+                  {month} {year}
+                </Text>
+              );
+            }}
+            theme={{
+              calendarBackground: "#FFFFFF",
+              monthTextColor: colors.text,
+              textMonthFontFamily: "OpenSans_700Bold",
+              textMonthFontSize: scaleWidth(15),
+              dayTextColor: colors.text,
+              textDayFontFamily: "OpenSans_600SemiBold",
+              textDayFontSize: scaleWidth(13),
+              todayTextColor: colors.primary,
+              selectedDayBackgroundColor: colors.primary,
+              selectedDayTextColor: "#FFFFFF",
+              arrowColor: colors.primary,
+              textSectionTitleColor: colors.textLight,
+              textDayHeaderFontFamily: "OpenSans_700Bold",
+              textDayHeaderFontSize: scaleWidth(11),
+              textDisabledColor: "#CBD5E1",
+              dotColor: colors.green,
+              selectedDotColor: "#FFFFFF",
+              backgroundColor: "#FFFFFF",
+            }}
+            style={styles.calendar}
+          />
+        </View>
+
+        <View style={styles.daySummary}>
+          <View>
+            <Text style={styles.dateLabel}>
+              {hasWorkoutOnSelectedDate
+                ? "Completed workouts"
+                : "No workout found"}
+            </Text>
+
+            <Text style={styles.workoutCount}>
+              {hasWorkoutOnSelectedDate
+                ? `${allWorkouts.length} exercise${
+                    allWorkouts.length !== 1 ? "s" : ""
+                  } on ${displayDate}`
+                : `No completed workout on ${displayDate}`}
+            </Text>
+          </View>
+
+          {dayCalories > 0 ? (
+            <View style={styles.dayCalBadge}>
+              <AntDesign name="fire" size={12} color={colors.primary} />
+              <Text style={styles.dayCalText}>{dayCalories} kcal</Text>
+            </View>
+          ) : null}
+        </View>
+
+        {loading ? (
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={styles.loadingText}>Loading workouts...</Text>
+          </View>
+        ) : null}
+      </>
+    ),
+    [
+      totalCalories,
+      displayDate,
+      hasWorkoutOnSelectedDate,
+      allWorkouts.length,
+      dayCalories,
+      selectedDate,
+      workoutDates,
+      todayKey,
+      handleDayPress,
+      markedDates,
+      loading,
+    ],
   );
 
   return (
     <View style={styles.screen}>
-      <FlatList
-        data={allWorkouts}
-        keyExtractor={(item) => String(item.id)}
+      <SectionList
+        sections={workoutSections}
+        keyExtractor={(item, index) => `${item.id || item.name}-${index}`}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
-        ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-        ListHeaderComponent={
-          <>
-            <View style={styles.header}>
-              <View style={styles.nameContainer}>
-                <View style={{ marginLeft: scaleWidth(10) }}>
-                  <Text style={styles.sectionTitle}>Progress</Text>
-                  <Text style={styles.subTitle}>Stronger than yesterday</Text>
-                </View>
-              </View>
-
-              <View style={styles.calorieContainer}>
-                <AntDesign name="fire" size={16} color={colors.primary} />
-                <View style={{ marginLeft: 6 }}>
-                  <Text style={styles.streakTitle}>{totalCalories}</Text>
-                  <Text style={styles.streakLabel}>total kcal</Text>
-                </View>
-              </View>
-            </View>
-
-            <Calendar
-              current={todayKey}
-              onDayPress={(day) => setSelectedDate(day.dateString)}
-              markedDates={markedDates}
-              markingType="custom"
-              enableSwipeMonths
-              renderHeader={(date) => {
-                const d = new Date(date);
-                const day = d.getDate();
-                const month = MONTHS[d.getMonth()];
-                const year = d.getFullYear();
-                return (
-                  <Text
-                    style={{
-                      fontFamily: "OpenSans_700Bold",
-                      fontSize: scaling().moderateScale(15),
-                      color: colors.text,
-                    }}
-                  >
-                    {day} {month} {year}
-                  </Text>
-                );
-              }}
-              theme={{
-                calendarBackground: colors.surface,
-                monthTextColor: colors.text,
-                textMonthFontFamily: "OpenSans_700Bold",
-                textMonthFontSize: scaling().moderateScale(15),
-                dayTextColor: colors.textMuted,
-                textDayFontFamily: "OpenSans_500Medium",
-                textDayFontSize: scaling().moderateScale(13),
-                todayTextColor: colors.primary,
-                todayBackgroundColor: "transparent",
-                selectedDayBackgroundColor: colors.primary,
-                selectedDayTextColor: "#FFFFFF",
-                arrowColor: colors.primary,
-                textSectionTitleColor: colors.textDim,
-                textDayHeaderFontFamily: "OpenSans_600SemiBold",
-                textDayHeaderFontSize: scaling().moderateScale(11),
-                textDisabledColor: colors.textDim,
-                dotColor: colors.primary,
-                selectedDotColor: "#FFFFFF",
-                backgroundColor: colors.surface,
-              }}
-              style={styles.calendar}
-            />
-
-            <View style={styles.daySummary}>
-              <View>
-                {allWorkouts.length !== 0 ? (
-                  <Text style={styles.workoutLabel}>
-                    {allWorkouts[0].bodyPart}{" "}
-                  </Text>
-                ) : null}
-                <Text style={styles.dateLabel}>{displayDate}</Text>
-                <Text style={styles.workoutCount}>
-                  {allWorkouts.length > 0
-                    ? `${allWorkouts.length} workout${allWorkouts.length !== 1 ? "s" : ""} logged`
-                    : "No workouts logged"}
-                </Text>
-              </View>
-              {dayCalories > 0 && (
-                <View style={styles.dayCalBadge}>
-                  <AntDesign name="fire" size={12} color={colors.primary} />
-                  <Text style={styles.dayCalText}>{dayCalories} kcal</Text>
-                </View>
-              )}
-            </View>
-          </>
-        }
-        renderItem={({ item }) => <WorkoutCard item={item} />}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <View style={styles.emptyIcon}>
+        ItemSeparatorComponent={() => (
+          <View style={{ height: scaleHeight(10) }} />
+        )}
+        stickySectionHeadersEnabled={false}
+        ListHeaderComponent={HeaderContent}
+        renderSectionHeader={({ section }) => (
+          <View style={styles.workoutSectionHeader}>
+            <View style={styles.sectionTitleRow}>
               <Ionicons
-                name="barbell-outline"
-                size={38}
-                color={colors.textDim}
+                name={bodyPartIcon(section.title)}
+                size={18}
+                color={colors.primary}
               />
+              <Text style={styles.workoutSectionTitle}>{section.title}</Text>
             </View>
-            <Text style={styles.emptyText}>No workouts on this day</Text>
-            <Text style={styles.emptySubText}>Keep showing up 💪</Text>
+
+            <Text style={styles.workoutSectionCount}>
+              {section.data.length} exercise
+              {section.data.length !== 1 ? "s" : ""}
+            </Text>
           </View>
+        )}
+        renderItem={({ item, index }) => (
+          <WorkoutCard item={item} index={index} />
+        )}
+        ListEmptyComponent={
+          !loading ? (
+            <View style={styles.empty}>
+              <View style={styles.emptyIcon}>
+                <Ionicons
+                  name="calendar-outline"
+                  size={38}
+                  color={colors.textLight}
+                />
+              </View>
+
+              <Text style={styles.emptyText}>No workouts on this day</Text>
+
+              <Text style={styles.emptySubText}>
+                Select a green date to view your completed workouts.
+              </Text>
+            </View>
+          ) : null
         }
+        removeClippedSubviews
+        initialNumToRender={8}
+        maxToRenderPerBatch={8}
+        windowSize={7}
       />
     </View>
   );
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// STYLES
-// ═════════════════════════════════════════════════════════════════════════════
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "white",
-  },
-  listContent: {
-    paddingHorizontal: scaleWidth(16),
-    paddingBottom: scaleHeight(100),
+    backgroundColor: "#F7F8FA",
   },
 
-  // Header
+  listContent: {
+    paddingHorizontal: scaleWidth(16),
+    paddingBottom: scaleHeight(110),
+  },
+
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: 10,
-    paddingBottom: scaleHeight(20),
+    paddingTop: scaleHeight(12),
+    paddingBottom: scaleHeight(14),
   },
-  nameContainer: {
-    flexDirection: "row",
-    alignItems: "center",
+
+  screenTitle: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: scaling().moderateScale(18),
+    color: colors.text,
   },
-  avatarRing: {
-    width: scaleWidth(50),
-    height: scaleWidth(50),
-    borderRadius: scaleWidth(25),
-    borderWidth: 2,
-    borderColor: colors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.surface,
-  },
-  headerTitle: {
-    fontFamily: "OpenSans_700Bold",
+
+  screenSubtitle: {
+    fontFamily: "OpenSans_500Medium",
     fontSize: scaling().moderateScale(12),
-
-    color: colors.text,
+    color: colors.textLight,
+    marginTop: scaleHeight(3),
   },
 
-  weeklyAttContainer: {
-    alignContent: "center",
-    justifyContent: "space-between",
-    marginBottom: scaleHeight(20),
-    marginHorizontal: 10,
-  },
-
-  weeklyAttTitles: {
-    marginTop: 5,
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  subTitle: {
-    fontFamily: "OpenSans_400Regular",
-    fontSize: scaling().moderateScale(11),
-    color: colors.textMuted,
-  },
-  calorieContainer: {
+  totalCaloriePill: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    paddingHorizontal: scaleWidth(15),
-    paddingVertical: scaleHeight(3),
+    gap: scaleWidth(7),
+    backgroundColor: "#FFFFFF",
+    borderRadius: scaleWidth(999),
+    paddingHorizontal: scaleWidth(12),
+    paddingVertical: scaleHeight(8),
     borderWidth: 1,
-    borderColor: colors.border,
-  },
-  streakTitle: {
-    fontFamily: "OpenSans_700Bold",
-    fontSize: scaling().moderateScale(15),
-    color: colors.text,
-  },
-  streakLabel: {
-    fontFamily: "OpenSans_400Regular",
-    fontSize: scaling().moderateScale(9),
-    color: colors.textMuted,
+    borderColor: "#EEF0F4",
   },
 
-  // Section
-  sectionTitle: {
-    fontFamily: "OpenSans_700Bold",
-    fontSize: scaling().moderateScale(20),
+  totalCalorieValue: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: scaleWidth(13),
     color: colors.text,
-    marginBottom: scaleHeight(5),
   },
 
-  // Legend
-  legend: {
-    flexDirection: "row",
-    marginBottom: scaleHeight(10),
-    marginHorizontal: 10,
+  totalCalorieLabel: {
+    fontFamily: "OpenSans_500Medium",
+    fontSize: scaleWidth(9),
+    color: colors.textLight,
   },
-  legendItem: {
+
+  summaryCard: {
+    borderRadius: scaleWidth(24),
+    padding: scaleWidth(18),
+    marginBottom: scaleHeight(14),
+    shadowColor: colors.primary,
+    shadowOpacity: 0.22,
+    shadowRadius: 16,
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    elevation: 5,
+  },
+
+  summaryTop: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    gap: 8,
   },
-  legendSwatch: {
-    width: scaleWidth(26),
-    height: scaleHeight(26),
-    borderRadius: scaleHeight(13),
-    borderWidth: scaleHeight(1),
+
+  summaryLabel: {
+    fontFamily: "OpenSans_600SemiBold",
+    fontSize: scaleWidth(12),
+    color: "rgba(255,255,255,0.76)",
+  },
+
+  summaryDate: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: scaleWidth(20),
+    color: "#FFFFFF",
+    marginTop: scaleHeight(3),
+  },
+
+  summaryIcon: {
+    width: scaleWidth(48),
+    height: scaleWidth(48),
+    borderRadius: scaleWidth(24),
+    backgroundColor: "rgba(255,255,255,0.18)",
     alignItems: "center",
     justifyContent: "center",
   },
-  legendDot: {
-    width: scaleWidth(7),
-    height: scaleHeight(7),
-    borderRadius: scaleHeight(4),
-  },
-  legendText: {
-    fontFamily: "OpenSans_400Regular",
-    fontSize: scaling().moderateScale(11),
-    color: colors.textMuted,
-  },
 
-  // Calendar
-  calendar: {
-    borderRadius: 10,
-    overflow: "hidden",
-    borderWidth: 1,
-    marginHorizontal: 10,
-    borderColor: colors.border,
-  },
-
-  weekContainer: {
+  summaryStatsRow: {
+    marginTop: scaleHeight(18),
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    width: "100%",
-    borderWidth: 0.2,
-    borderRadius: 10,
-    paddingVertical: 10,
-
-    marginTop: 10,
+    backgroundColor: "rgba(255,255,255,0.14)",
+    borderRadius: scaleWidth(18),
+    paddingVertical: scaleHeight(12),
   },
 
-  workoutContainer: {
-    flexDirection: "row",
-    paddingHorizontal: 20,
-  },
-
-  weekItem: {
+  summaryStat: {
     flex: 1,
     alignItems: "center",
   },
 
-  weekTitle: {
-    fontSize: scaling().moderateScale(12),
-    fontFamily: "OpenSans_600SemiBold",
-    color: "#222",
-    marginBottom: 4,
+  summaryValue: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: scaleWidth(17),
+    color: "#FFFFFF",
   },
 
-  workoutNameSub: {
-    fontSize: scaling().moderateScale(11),
+  summaryText: {
     fontFamily: "OpenSans_600SemiBold",
-    marginTop: 5,
-    color: "#222",
+    fontSize: scaleWidth(10),
+    color: "rgba(255,255,255,0.75)",
+    marginTop: scaleHeight(2),
   },
 
-  // Day summary
+  summaryDivider: {
+    width: 1,
+    height: scaleHeight(32),
+    backgroundColor: "rgba(255,255,255,0.2)",
+  },
+
+  calendarCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: scaleWidth(22),
+    padding: scaleWidth(12),
+    borderWidth: 1,
+    borderColor: "#EEF0F4",
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
+    elevation: 3,
+  },
+
+  calendarHeaderRow: {
+    paddingHorizontal: scaleWidth(4),
+    paddingBottom: scaleHeight(8),
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+
+  cardTitle: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: scaleWidth(16),
+    color: colors.text,
+  },
+
+  cardSubtitle: {
+    fontFamily: "OpenSans_500Medium",
+    fontSize: scaleWidth(11),
+    color: colors.textLight,
+    marginTop: scaleHeight(2),
+  },
+
+  legendPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scaleWidth(5),
+    backgroundColor: colors.green + "12",
+    borderRadius: scaleWidth(999),
+    paddingHorizontal: scaleWidth(9),
+    paddingVertical: scaleHeight(6),
+  },
+
+  legendDot: {
+    width: scaleWidth(7),
+    height: scaleWidth(7),
+    borderRadius: scaleWidth(4),
+    backgroundColor: colors.green,
+  },
+
+  legendText: {
+    fontFamily: "OpenSans_700Bold",
+    fontSize: scaleWidth(10),
+    color: colors.green,
+  },
+
+  calendar: {
+    borderRadius: scaleWidth(18),
+    overflow: "hidden",
+  },
+
+  calendarMonthTitle: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: scaleWidth(15),
+    color: colors.text,
+  },
+
+  arrowButton: {
+    width: scaleWidth(30),
+    height: scaleWidth(30),
+    borderRadius: scaleWidth(15),
+    backgroundColor: colors.primary + "10",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
   daySummary: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: scaleHeight(18),
-    marginHorizontal: 10,
-    marginBottom: scaleHeight(14),
+    marginTop: scaleHeight(16),
+    marginBottom: scaleHeight(12),
+    backgroundColor: "#FFFFFF",
+    borderRadius: scaleWidth(18),
+    padding: scaleWidth(14),
+    borderWidth: 1,
+    borderColor: "#EEF0F4",
   },
 
-  workoutLabel: {
-    fontFamily: "OpenSans_600SemiBold",
-    fontSize: scaling().moderateScale(16),
-    color: colors.primary,
-    marginBottom: 2,
-  },
   dateLabel: {
-    fontFamily: "OpenSans_600SemiBold",
-    fontSize: scaling().moderateScale(14),
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: scaleWidth(15),
     color: colors.text,
   },
+
   workoutCount: {
-    fontFamily: "OpenSans_400Regular",
-    fontSize: scaling().moderateScale(12),
-    color: colors.textMuted,
-    marginTop: 2,
+    fontFamily: "OpenSans_500Medium",
+    fontSize: scaleWidth(12),
+    color: colors.textLight,
+    marginTop: scaleHeight(3),
+    maxWidth: scaleWidth(220),
   },
+
   dayCalBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
-    backgroundColor: colors.primary + "18",
-    borderRadius: 20,
+    gap: scaleWidth(5),
+    backgroundColor: colors.primary + "12",
+    borderRadius: scaleWidth(999),
     paddingHorizontal: scaleWidth(10),
-    paddingVertical: scaleHeight(5),
+    paddingVertical: scaleHeight(7),
   },
+
   dayCalText: {
-    fontFamily: "OpenSans_600SemiBold",
-    fontSize: scaling().moderateScale(12),
+    fontFamily: "OpenSans_700Bold",
+    fontSize: scaleWidth(12),
     color: colors.primary,
   },
 
-  // Empty
+  loadingBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: scaleWidth(8),
+    paddingVertical: scaleHeight(10),
+  },
+
+  loadingText: {
+    fontFamily: "OpenSans_500Medium",
+    fontSize: scaleWidth(12),
+    color: colors.textLight,
+  },
+
+  workoutSectionHeader: {
+    marginTop: scaleHeight(4),
+    marginBottom: scaleHeight(10),
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  sectionTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scaleWidth(7),
+  },
+
+  workoutSectionTitle: {
+    fontSize: scaleWidth(17),
+    fontFamily: "OpenSans_800ExtraBold",
+    color: colors.text,
+  },
+
+  workoutSectionCount: {
+    fontSize: scaleWidth(12),
+    fontFamily: "OpenSans_600SemiBold",
+    color: colors.textLight,
+  },
+
   empty: {
     alignItems: "center",
-    paddingVertical: scaleHeight(48),
+    paddingVertical: scaleHeight(42),
+    backgroundColor: "#FFFFFF",
+    borderRadius: scaleWidth(22),
+    borderWidth: 1,
+    borderColor: "#EEF0F4",
   },
+
   emptyIcon: {
     width: scaleWidth(72),
     height: scaleWidth(72),
     borderRadius: scaleWidth(36),
-    backgroundColor: colors.surface,
+    backgroundColor: "#F7F8FA",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: scaleHeight(14),
-    borderWidth: 1,
-    borderColor: colors.border,
   },
+
   emptyText: {
-    fontFamily: "OpenSans_600SemiBold",
-    fontSize: scaling().moderateScale(15),
-    color: colors.textMuted,
-    marginBottom: 4,
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: scaleWidth(15),
+    color: colors.text,
+    marginBottom: scaleHeight(4),
   },
+
   emptySubText: {
-    fontFamily: "OpenSans_400Regular",
-    fontSize: scaling().moderateScale(12),
-    color: colors.textDim,
+    fontFamily: "OpenSans_500Medium",
+    fontSize: scaleWidth(12),
+    color: colors.textLight,
+    textAlign: "center",
+    maxWidth: scaleWidth(240),
+    lineHeight: scaleHeight(18),
   },
 });
 
-// ─── Card styles ──────────────────────────────────────────────────────────────
 const cardStyles = StyleSheet.create({
   card: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    // paddingVertical: scaleHeight(12),
-    paddingRight: scaleWidth(14),
+    backgroundColor: "#FFFFFF",
+    borderRadius: scaleWidth(18),
+    padding: scaleWidth(12),
     borderWidth: 1,
-    borderColor: colors.border,
-    overflow: "hidden",
+    borderColor: "#EEF0F4",
+    shadowColor: "#000",
+    shadowOpacity: 0.045,
+    shadowRadius: 10,
+    shadowOffset: {
+      width: 0,
+      height: 5,
+    },
+    elevation: 2,
   },
-  accent: {
-    width: scaleWidth(3),
-    alignSelf: "stretch",
-    borderRadius: 2,
 
-    marginRight: scaleWidth(12),
-  },
-  iconWrap: {
-    width: scaleWidth(42),
-    height: scaleWidth(42),
-    borderRadius: 12,
-    backgroundColor: colors.primary + "18",
+  indexCircle: {
+    width: scaleWidth(28),
+    height: scaleWidth(28),
+    borderRadius: scaleWidth(14),
     alignItems: "center",
     justifyContent: "center",
     marginRight: scaleWidth(10),
   },
+
+  indexText: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: scaleWidth(12),
+  },
+
+  iconWrap: {
+    width: scaleWidth(44),
+    height: scaleWidth(44),
+    borderRadius: scaleWidth(14),
+    backgroundColor: colors.primary + "12",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: scaleWidth(10),
+  },
+
   info: {
     flex: 1,
-    paddingVertical: scaleHeight(12),
   },
+
   name: {
-    fontFamily: "OpenSans_600SemiBold",
-    fontSize: scaling().moderateScale(14),
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: scaleWidth(14),
     color: colors.text,
-    marginBottom: 5,
+    marginBottom: scaleHeight(6),
   },
+
   tags: {
     flexDirection: "row",
-    gap: 6,
+    gap: scaleWidth(6),
   },
+
   badge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    backgroundColor: colors.surfaceElevated,
-    borderRadius: 6,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
+    gap: scaleWidth(4),
+    backgroundColor: "#F7F8FA",
+    borderRadius: scaleWidth(999),
+    paddingHorizontal: scaleWidth(8),
+    paddingVertical: scaleHeight(4),
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: "#EEF0F4",
+    maxWidth: scaleWidth(105),
   },
+
   dotSmall: {
-    width: 5,
-    height: 5,
-    borderRadius: 3,
+    width: scaleWidth(5),
+    height: scaleWidth(5),
+    borderRadius: scaleWidth(3),
   },
+
   badgeText: {
-    fontFamily: "OpenSans_400Regular",
-    fontSize: scaling().moderateScale(12),
-    color: colors.textMuted,
+    fontFamily: "OpenSans_700Bold",
+    fontSize: scaleWidth(11),
+    color: colors.textLight,
   },
+
   calBox: {
     alignItems: "center",
     marginLeft: scaleWidth(8),
     minWidth: scaleWidth(42),
   },
+
   calNum: {
-    fontFamily: "OpenSans_700Bold",
-    fontSize: scaling().moderateScale(15),
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: scaleWidth(14),
     color: colors.text,
-    marginTop: 1,
+    marginTop: scaleHeight(1),
   },
+
   calUnit: {
-    fontFamily: "OpenSans_400Regular",
-    fontSize: scaling().moderateScale(9),
-    color: colors.textMuted,
+    fontFamily: "OpenSans_600SemiBold",
+    fontSize: scaleWidth(9),
+    color: colors.textLight,
   },
 });

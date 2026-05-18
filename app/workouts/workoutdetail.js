@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "../../constants/colors";
 import { workoutListGlobal } from "../../constants/Constants";
 import { Logger } from "../../constants/Logger";
+import { useUser } from "../../constants/UserContext";
 import { scaling } from "../../constants/useScaling";
 import CongratsScreen from "./Componenets/CongratsScreen";
 import CurrentWorkout from "./Componenets/CurrentWorkout";
@@ -20,6 +21,8 @@ import NextWorkoutInfo from "./Componenets/NextWorkoutInfo";
 
 export default function WorkoutDetail() {
   const { id, name, level } = useLocalSearchParams();
+
+  const { user, updateUser } = useUser();
 
   const bodyPartObj = {
     id: Number(id),
@@ -52,18 +55,20 @@ export default function WorkoutDetail() {
   console.log("index------->", index);
 
   const handlePrev = () => {
+    Logger.log("handlePrev called. Current index:", index);
     if (index > 0) {
-      // setLoadingPage("play_workout");
       setWorkoutCompletedWorkouts((prev) => {
         const id = workouts.workoutList[index].id;
         if (prev.includes(id)) {
           return prev.filter((item) => item !== id);
         } else {
-          // Add the ID if it doesn't exist
           return [...prev, id];
         }
       });
+
       setIndex(index - 1);
+    } else {
+      setWorkoutCompletedWorkouts([]);
     }
   };
 
@@ -103,6 +108,7 @@ export default function WorkoutDetail() {
           <CongratsScreen
             workouts={workouts}
             workoutCompletedWorkouts={workoutCompletedWorkouts}
+            userId={user?._id}
           />
         ) : loadingPage === "next_workout" ? (
           <NextWorkoutInfo
@@ -117,6 +123,7 @@ export default function WorkoutDetail() {
             index={index}
             setIndex={setIndex}
             setLoadingPage={setLoadingPage}
+            onNext={onNextWorkout}
           />
         ) : null}
       </ScrollView>
@@ -124,8 +131,9 @@ export default function WorkoutDetail() {
         <View
           style={{
             flexDirection: "row",
-            flex: "wrap",
-            justifyContent: "flex-end", // Aligns children to the right
+
+            flexWrap: "wrap",
+            alignSelf: "flex-end", // ✅ KEY FIX
             marginEnd: 15,
             marginBottom: 10,
           }}

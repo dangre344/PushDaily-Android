@@ -14,7 +14,7 @@ import { scaling } from "../../../constants/useScaling";
 const PRIVACY_SECTIONS = [
   {
     title: "1. Information We Collect",
-    body: "MyWorkout collects only the data you enter directly into the app — including workout sessions, exercise names, calories, body part targets, and difficulty levels. All data is stored locally on your device using SQLite and is never transmitted to external servers.",
+    body: "Push Daily collects only the data you enter directly into the app — including workout sessions, exercise names, calories, body part targets, and difficulty levels. All data is stored locally on your device using SQLite and is never transmitted to external servers.",
   },
   {
     title: "2. How We Use Your Data",
@@ -26,15 +26,15 @@ const PRIVACY_SECTIONS = [
   },
   {
     title: "4. Notifications",
-    body: "If you grant notification permissions, MyWorkout may send local workout reminders. These are scheduled on-device and do not involve any external service or data transmission.",
+    body: "If you grant notification permissions, Push Daily may send local workout reminders. These are scheduled on-device and do not involve any external service or data transmission.",
   },
   {
     title: "5. Third-Party Services",
-    body: "MyWorkout does not integrate with any third-party analytics, advertising SDKs, or tracking services. The app operates entirely offline.",
+    body: "Push Daily does not integrate with any third-party analytics, advertising SDKs, or tracking services. The app operates entirely offline.",
   },
   {
     title: "6. Children's Privacy",
-    body: "MyWorkout is not directed at children under the age of 13. We do not knowingly collect data from minors.",
+    body: "Push Daily is not directed at children under the age of 13. We do not knowingly collect data from minors.",
   },
   {
     title: "7. Changes to This Policy",
@@ -42,7 +42,7 @@ const PRIVACY_SECTIONS = [
   },
   {
     title: "8. Contact",
-    body: "If you have any questions about this Privacy Policy, please contact us at support@myworkoutapp.com.",
+    body: "If you have any questions about this Privacy Policy, please contact us at dangre344@gmail.com.",
   },
 ];
 

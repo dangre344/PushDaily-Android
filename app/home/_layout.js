@@ -16,6 +16,7 @@ import { colors } from "../../constants/colors.js";
 import { scaling } from "../../constants/useScaling";
 import ProfileScreen from "../profile/ProfileScreen.js";
 import ProgressScreen from "../progress/ProgressScreen.js";
+import StatsScreen from "../stats/_layout.js";
 import WorkoutScreen from "../workouts/workoutscreen.js";
 
 const { scaleHeight, scaleWidth, moderateScale } = scaling();
@@ -26,7 +27,12 @@ const { width } = Dimensions.get("window");
 
 const TABS = [
   { name: "Workout", icon: "barbell-outline", activeIcon: "barbell" },
-  { name: "Progress", icon: "stats-chart-outline", activeIcon: "stats-chart" },
+  {
+    name: "Attendance",
+    icon: "stats-chart-outline",
+    activeIcon: "stats-chart",
+  },
+  { name: "Stats", icon: "accessibility", activeIcon: "accessibility" },
   { name: "Profile", icon: "person-outline", activeIcon: "person" },
 ];
 
@@ -209,7 +215,8 @@ export default function AppLayout() {
         screenOptions={{ headerShown: false }}
       >
         <Tab.Screen name="Workout" component={WorkoutScreen} />
-        <Tab.Screen name="Progress" component={ProgressScreen} />
+        <Tab.Screen name="Attendance" component={ProgressScreen} />
+        <Tab.Screen name="Stats" component={StatsScreen} />
         <Tab.Screen name="Profile" component={ProfileScreen} />
       </Tab.Navigator>
     </SafeAreaView>

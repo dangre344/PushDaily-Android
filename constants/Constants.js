@@ -204,13 +204,13 @@ const getCurrentWeekDates = () => {
 
 export const useWeeklyWorkouts = (workouts) => {
   const weekDates = getCurrentWeekDates();
-
   const todayKey = toLocalDateKey(new Date());
 
   const workoutMap = {};
 
   workouts.forEach((w) => {
     const localKey = toLocalDateKey(new Date(w.dateTime));
+
     if (!workoutMap[localKey]) {
       workoutMap[localKey] = w.bodyPart;
     }
@@ -218,11 +218,18 @@ export const useWeeklyWorkouts = (workouts) => {
 
   const weeklyWorkouts = weekDates.map((dateKey, index) => {
     const isFuture = dateKey > todayKey;
+    const isToday = dateKey === todayKey;
+    const hasWorkout = !!workoutMap[dateKey];
 
     return {
       day: index,
       dateKey,
-      isWorkout: isFuture ? null : !!workoutMap[dateKey], // 👈 key change
+
+      // true  = workout completed
+      // false = missed day
+      // null  = pending day
+      isWorkout: hasWorkout ? true : isFuture || isToday ? null : false,
+
       bodyPart: workoutMap[dateKey] || null,
     };
   });
@@ -1537,11 +1544,12 @@ export const workoutListGlobal = [
     level: "Beginner",
     workoutId: 2,
     calories: 60,
-    image: require("../assets/images/back.webp"),
+    img: require("../assets/images/back.webp"),
+
     workoutList: [
       {
         name: "Superman",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/other/superman_hold.webp"),
         calories: 6,
         reps: 6,
         level: "Beginner",
@@ -1556,7 +1564,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Cat-Cow Stretch",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/other/cat_cow.webp"),
         calories: 5,
         reps: 6,
         level: "Beginner",
@@ -1571,7 +1579,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Bird-Dog",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/other/bird_dog.webp"),
         calories: 6,
         reps: 6,
         level: "Beginner",
@@ -1587,7 +1595,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Bridge",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/back/bridge.webp"),
         calories: 6,
         reps: 6,
         level: "Beginner",
@@ -1602,7 +1610,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Reverse Snow Angels",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/other/reverse_snow_angles.webp"),
         calories: 6,
         reps: 6,
         level: "Beginner",
@@ -1617,7 +1625,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Standing Back Extension",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/back/standing_backext.webp"),
         calories: 5,
         reps: 6,
         level: "Beginner",
@@ -1632,7 +1640,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Prone Arm Lifts",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/back/prone_lift.webp"),
         calories: 6,
         reps: 6,
         level: "Beginner",
@@ -1647,7 +1655,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Cobra Stretch Hold",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/back/cobra_strech.webp"),
         calories: 5,
         time: "20s",
         level: "Beginner",
@@ -1662,7 +1670,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Pelvic Tilts",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/other/pelvic_tilt.webp"),
         calories: 5,
         reps: 6,
         level: "Beginner",
@@ -1677,7 +1685,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Wall Angels",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/shoulder/wall_angles.webp"),
         calories: 6,
         reps: 6,
         level: "Beginner",
@@ -1699,11 +1707,11 @@ export const workoutListGlobal = [
     level: "Intermediate",
     workoutId: 2,
     calories: 160,
-    image: require("../assets/images/back.webp"),
+    img: require("../assets/images/back.webp"),
     workoutList: [
       {
         name: "Superman",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/other/superman_hold.webp"),
         calories: 10,
         reps: 12,
         level: "Intermediate",
@@ -1718,7 +1726,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Cat-Cow Stretch",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/other/cat_cow.webp"),
         calories: 9,
         reps: 12,
         level: "Intermediate",
@@ -1733,7 +1741,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Bird-Dog",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/other/bird_dog.webp"),
         calories: 10,
         reps: 12,
         level: "Intermediate",
@@ -1748,7 +1756,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Bridge",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/back/bridge.webp"),
         calories: 10,
         reps: 12,
         level: "Intermediate",
@@ -1763,7 +1771,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Reverse Snow Angels",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/other/reverse_snow_angles.webp"),
         calories: 10,
         reps: 12,
         level: "Intermediate",
@@ -1778,7 +1786,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Standing Back Extension",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/back/standing_backext.webp"),
         calories: 9,
         reps: 12,
         level: "Intermediate",
@@ -1793,7 +1801,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Prone Arm Lifts",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/back/prone_lift.webp"),
         calories: 10,
         reps: 12,
         level: "Intermediate",
@@ -1808,7 +1816,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Cobra Stretch Hold",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/back/cobra_strech.webp"),
         calories: 8,
         time: "30s",
         level: "Intermediate",
@@ -1823,7 +1831,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Pelvic Tilts",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/other/pelvic_tilt.webp"),
         calories: 9,
         reps: 12,
         level: "Intermediate",
@@ -1838,7 +1846,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Wall Angels",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/shoulder/wall_angles.webp"),
         calories: 10,
         reps: 12,
         level: "Intermediate",
@@ -1853,7 +1861,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Prone T-Lifts",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/back/prone_t_lift.webp"),
         calories: 11,
         reps: 12,
         level: "Intermediate",
@@ -1868,7 +1876,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Reverse Plank Hold",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/abs/reverse_plank.webp"),
         calories: 8,
         time: "30s",
         level: "Intermediate",
@@ -1883,7 +1891,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Dynamic Back Extensions",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/back/dynamic_back_ext.webp"),
         calories: 12,
         reps: 12,
         level: "Intermediate",
@@ -1898,7 +1906,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Alternating Superman",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/back/alternate_superman.webp"),
         calories: 12,
         reps: 12,
         level: "Intermediate",
@@ -1913,7 +1921,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Swimmer Kicks",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/back/swimmer_kicks.webp"),
         calories: 10,
         reps: 12,
         level: "Intermediate",
@@ -1928,7 +1936,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Plank Row Taps",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/shoulder/plank_shoulder_tap.webp"),
         calories: 10,
         reps: 12,
         level: "Intermediate",
@@ -1943,7 +1951,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Standing Arm Swings",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/shoulder/arms_swings.webp"),
         calories: 9,
         reps: 12,
         level: "Intermediate",
@@ -1958,7 +1966,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Back Extension Pulses",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/other/back_extension.webp"),
         calories: 11,
         reps: 12,
         level: "Intermediate",
@@ -1980,11 +1988,11 @@ export const workoutListGlobal = [
     level: "Advanced",
     workoutId: 2,
     calories: 220,
-    image: require("../assets/images/back.webp"),
+    img: require("../assets/images/back.webp"),
     workoutList: [
       {
         name: "Superman",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/other/superman_hold.webp"),
         calories: 14,
         reps: 16,
         level: "Advanced",
@@ -2000,7 +2008,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Cat-Cow Stretch",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/other/cat_cow.webp"),
         calories: 12,
         reps: 16,
         level: "Advanced",
@@ -2015,7 +2023,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Bird-Dog",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/other/bird_dog.webp"),
         calories: 14,
         reps: 16,
         level: "Advanced",
@@ -2031,7 +2039,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Bridge",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/back/bridge.webp"),
         calories: 14,
         reps: 16,
         level: "Advanced",
@@ -2047,7 +2055,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Reverse Snow Angels",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/other/reverse_snow_angles.webp"),
         calories: 14,
         reps: 16,
         level: "Advanced",
@@ -2063,7 +2071,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Standing Back Extension",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/back/standing_backext.webp"),
         calories: 12,
         reps: 16,
         level: "Advanced",
@@ -2079,7 +2087,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Prone Arm Lifts",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/back/prone_lift.webp"),
         calories: 14,
         reps: 16,
         level: "Advanced",
@@ -2095,7 +2103,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Cobra Stretch Hold",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/back/cobra_strech.webp"),
         calories: 10,
         time: "40s",
         level: "Advanced",
@@ -2111,7 +2119,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Pelvic Tilts",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/other/pelvic_tilt.webp"),
         calories: 12,
         reps: 16,
         level: "Advanced",
@@ -2127,7 +2135,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Wall Angels",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/shoulder/wall_angles.webp"),
         calories: 14,
         reps: 16,
         level: "Advanced",
@@ -2143,7 +2151,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Prone T-Lifts",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/back/prone_t_lift.webp"),
         calories: 15,
         reps: 16,
         level: "Advanced",
@@ -2159,7 +2167,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Reverse Plank Hold",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/abs/reverse_plank.webp"),
         calories: 10,
         time: "40s",
         level: "Advanced",
@@ -2175,7 +2183,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Dynamic Back Extensions",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/back/dynamic_back_ext.webp"),
         calories: 16,
         reps: 16,
         level: "Advanced",
@@ -2190,7 +2198,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Alternating Superman",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/back/alternate_superman.webp"),
         calories: 16,
         reps: 16,
         level: "Advanced",
@@ -2206,7 +2214,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Swimmer Kicks",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/back/swimmer_kicks.webp"),
         calories: 14,
         reps: 16,
         level: "Advanced",
@@ -2221,7 +2229,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Plank Row Taps",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/shoulder/plank_shoulder_tap.webp"),
         calories: 14,
         reps: 16,
         level: "Advanced",
@@ -2236,7 +2244,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Standing Arm Swings",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/shoulder/arms_swings.webp"),
         calories: 13,
         reps: 16,
         level: "Advanced",
@@ -2251,7 +2259,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Back Extension Pulses",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/other/back_extension.webp"),
         calories: 15,
         reps: 16,
         level: "Advanced",
@@ -2267,7 +2275,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Reverse Plank Leg Lifts",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/back/reverse_plank_leg_lifts.webp"),
         calories: 15,
         reps: 16,
         level: "Advanced",
@@ -2283,7 +2291,7 @@ export const workoutListGlobal = [
       },
       {
         name: "Superman Hold",
-        photo: "https://yavuzceliker.github.io/sample-images/image-1021.jpg",
+        photo: require("../assets/images/other/superman_hold.webp"),
         calories: 10,
         time: "40s",
         level: "Advanced",
@@ -2304,7 +2312,7 @@ export const workoutListGlobal = [
     level: "Beginner",
     workoutId: 3,
     calories: 62,
-    image: require("../assets/images/arms.webp"),
+    img: require("../assets/images/arms.webp"),
     workoutList: [
       {
         name: "Wall Tricep Push Ups",
@@ -2463,7 +2471,7 @@ export const workoutListGlobal = [
     level: "Intermediate",
     workoutId: 3,
     calories: 170,
-    image: require("../assets/images/arms.webp"),
+    img: require("../assets/images/arms.webp"),
     workoutList: [
       {
         name: "Bench Dips",
@@ -2603,7 +2611,7 @@ export const workoutListGlobal = [
     level: "Advanced",
     workoutId: 3,
     calories: 220,
-    image: require("../assets/images/arms.webp"),
+    img: require("../assets/images/arms.webp"),
     workoutList: [
       {
         name: "Bench Dips (Feet Elevated)",
@@ -2741,7 +2749,7 @@ export const workoutListGlobal = [
     level: "Beginner",
     workoutId: 5,
     calories: 60,
-    image: require("../assets/images/abs.webp"),
+    img: require("../assets/images/abs.webp"),
     workoutList: [
       {
         name: "Crunches",
@@ -2901,7 +2909,7 @@ export const workoutListGlobal = [
     level: "Intermediate",
     workoutId: 5,
     calories: 140,
-    image: require("../assets/images/abs.webp"),
+    img: require("../assets/images/abs.webp"),
     workoutList: [
       {
         name: "Crunches",
@@ -3175,7 +3183,7 @@ export const workoutListGlobal = [
     level: "Advanced",
     workoutId: 5,
     calories: 200,
-    image: require("../assets/images/abs.webp"),
+    img: require("../assets/images/abs.webp"),
     workoutList: [
       {
         name: "Crunches",

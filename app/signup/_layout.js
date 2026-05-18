@@ -1,7 +1,7 @@
 import { Alert, Platform, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { daysArr } from "@/constants/utils.js";
+import { createUniqueId, daysArr } from "@/constants/utils.js";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
@@ -15,6 +15,7 @@ import InputText from "../../components/ui/InputText.js";
 import MeasurementsStep from "../../components/ui/MeasurementStep.js";
 import MultipleSelector from "../../components/ui/MultipleSelector.js";
 import StepContainer from "../../components/ui/StepContainer.js";
+import { trackEvent } from "../../constants/mixpanel.js";
 
 import { useUser } from "@/constants/UserContext.js";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -25,7 +26,6 @@ import * as yup from "yup";
 import { OptionCardController } from "../../components/ui/OptionCard.js";
 import SliderSelector from "../../components/ui/SliderSelector.js";
 import { colors } from "../../constants/colors.js";
-import { saveSession } from "../../constants/SessionManager";
 
 export default function Signup() {
   const { t } = useTranslation();
@@ -34,7 +34,7 @@ export default function Signup() {
   const [step, setStep] = useState(1);
   const progress = (step / totalSteps) * 100;
 
-  const { user } = useUser();
+  const { user, updateUser } = useUser();
 
   Logger.log("user--Signup-->", user);
 
@@ -55,16 +55,39 @@ export default function Signup() {
       .max(100, "Invalid age"),
 
     height: yup
-      .string()
-      .trim()
+      .number()
+      .typeError("Height is required")
       .required("Height is required")
-      .min(1, "Height cannot be empty"),
+      .min(120, "Height is too low")
+      .max(240, "Height is too high"),
+
+    heightFeet: yup
+      .number()
+      .typeError("Height feet is required")
+      .required("Height feet is required")
+      .min(3, "Invalid height")
+      .max(8, "Invalid height"),
+
+    heightInches: yup
+      .number()
+      .typeError("Height inches is required")
+      .required("Height inches is required")
+      .min(0, "Invalid inches")
+      .max(11, "Invalid inches"),
 
     weight: yup
-      .string()
-      .trim()
+      .number()
+      .typeError("Weight is required")
       .required("Weight is required")
-      .min(1, "Weight cannot be empty"),
+      .min(30, "Weight is too low")
+      .max(170, "Weight is too high"),
+
+    weightLbs: yup
+      .number()
+      .typeError("Weight lbs is required")
+      .required("Weight lbs is required")
+      .min(66, "Weight is too low")
+      .max(375, "Weight is too high"),
 
     experience: yup.string().trim().required("Experience is required"),
 
@@ -99,8 +122,15 @@ export default function Signup() {
       name: user?.name || "",
       gender: user?.gender || "",
       age: user?.age || 20,
-      height: user?.height || "",
-      weight: user?.weight || "",
+
+      // saved values
+      height: user?.height || 140, // cm
+      heightFeet: user?.heightFeet || "",
+      heightInches: user?.heightInches || "",
+
+      weight: user?.weight || 65, // kg
+      weightLbs: user?.weightLbs || "",
+
       experience: user?.experience || "",
       goal: user?.goal || "",
       days: user?.days || [],
@@ -110,7 +140,22 @@ export default function Signup() {
 
   const onSubmit = async (data) => {
     Logger.log("Form Data:", data);
-    await saveSession(data);
+
+    const userId = createUniqueId();
+
+    const userData = {
+      ...data,
+      _id: userId,
+    };
+
+    Logger.log("Generated user ID:", userData);
+
+    await trackEvent("Signup Completed", {
+      ...userData,
+      _id: userId,
+    });
+
+    await updateUser(userData);
 
     router.replace("/home");
   };
@@ -479,10 +524,10 @@ export default function Signup() {
             form={form}
             minHeight={120}
             maxHeight={240}
-            unitHeight={"cm"}
+            unitHeight="cm"
             minWeight={30}
             maxWeight={170}
-            unitWeight={"KG"}
+            unitWeight="kg"
             selectedWeight={form.getValues("weight")}
             selectedHeight={form.getValues("height")}
           />

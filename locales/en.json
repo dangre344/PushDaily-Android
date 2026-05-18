@@ -1,9 +1,9 @@
 {
-  "appName": "Workout App",
+  "appName": "Push Daily",
   "tagLine": "Train - Transform - Triumph",
 
   "signup": {
-    "title": "🏋️ Desi Fitness",
+    "title": "🏋️ Push Daily",
     "step": "Step {{current}} of {{total}}",
     "gender_title": "What's your gender?",
     "gender_subtitle": "This helps us personalize your workout",

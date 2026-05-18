@@ -42,7 +42,7 @@ export const AboutModal = ({
               color={colors.primary}
             />
           </View>
-          <Text style={aboutStyles.modalTitle}>About MyWorkout</Text>
+          <Text style={aboutStyles.modalTitle}>About Push Daily</Text>
           <TouchableOpacity
             onPress={() => setAboutVisible(false)}
             style={aboutStyles.closeBtn}
@@ -64,7 +64,7 @@ export const AboutModal = ({
               color={colors.primary}
             />
           </View>
-          <Text style={aboutStyles.appName}>MyWorkout</Text>
+          <Text style={aboutStyles.appName}>Push Daily</Text>
           <Text style={aboutStyles.appVersion}>
             Version {nativeApplicationVersion ?? "1.0.0"}
             {"  •  "}
@@ -74,12 +74,12 @@ export const AboutModal = ({
 
         {/* Info rows */}
         {[
-          { label: "Developer", value: "Gagan" },
+          { label: "Developer", value: "FlexiCoach Team" },
           {
             label: "Platform",
             value: Platform.OS === "ios" ? "iOS" : "Android",
           },
-          { label: "Released", value: "March 2026" },
+          { label: "Released", value: "May 2026" },
           { label: "Contact", value: "dangre344@gmail.com" },
           //   { label: "Website", value: "www.myworkoutapp.com" },
         ].map((row) => (
@@ -141,10 +141,6 @@ export const AboutModal = ({
             </Text>
           </TouchableOpacity>
         </View>
-
-        {/* <Text style={aboutStyles.copyright}>
-          © 2026 MyWorkout. All rights reserved.
-        </Text> */}
       </View>
     </View>
   </Modal>
@@ -268,6 +264,7 @@ const aboutStyles = StyleSheet.create({
     paddingVertical: scaling().moderateScale(12),
     borderRadius: scaling().moderateScale(12),
     borderWidth: 1,
+    marginBottom: scaling().moderateScale(20),
   },
   btnText: {
     fontFamily: "OpenSans_600SemiBold",

@@ -16,41 +16,32 @@ const { scaleHeight, moderateScale } = scaling();
 
 export default function Splash() {
   const router = useRouter();
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
 
-  const { user, updateUser } = useUser();
+  const { user, isUserLoaded } = useUser();
 
   Logger.log("user--Splash-->", user);
+  Logger.log("isUserLoaded--Splash-->", isUserLoaded);
 
   useEffect(() => {
-    if (user === undefined) return; // optional guard
+    if (!isUserLoaded) return;
+
     async function prepare() {
       await SplashScreen.preventAutoHideAsync();
 
-      // Check if user has completed signup
-
-      Logger.log("user--prepare-->", user?.name);
-      const userName = user?.name || null;
-
-      // Optional: Keep splash visible for 2 seconds
       await new Promise((res) => setTimeout(res, 2000));
 
-      Logger.log("User name from storage--->", userName);
-
-      // Navigate
-      if (userName) {
-        // router.replace("/signup");
+      if (user?.name) {
         router.replace("/home");
       } else {
-        // router.replace("/signup");
-
-        router.replace("/home");
+        router.replace("/signup");
       }
 
       await SplashScreen.hideAsync();
     }
+
     prepare();
-  }, [user]);
+  }, [isUserLoaded]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -65,7 +56,6 @@ export default function Splash() {
         style={styles.image}
       />
 
-      {/* Centered text container on top of image */}
       <View style={styles.overlay}>
         <Text style={styles.text}>{t("tagLine")}</Text>
         <Text style={styles.appName}>{t("appName")}</Text>

@@ -54,7 +54,7 @@ export default function NextWorkoutInfo({
           clearInterval(timerRef.current);
           setIsTimerActive(false);
           playTimerCompleteAnimation();
-          setIndex((prev) => prev + 1);
+
           setLoadingPage("play_workout");
           return 0;
         }
@@ -175,18 +175,6 @@ export default function NextWorkoutInfo({
           <Text style={styles.progressText}>
             Exercise {index + 1} of {workouts.workoutList.length}
           </Text>
-          <View style={styles.progressDots}>
-            {workouts.workoutList.map((_, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.progressDot,
-                  i === index && styles.progressDotActive,
-                  i < index && styles.progressDotCompleted,
-                ]}
-              />
-            ))}
-          </View>
         </View>
 
         <View style={styles.progressBar}>
@@ -219,7 +207,7 @@ export default function NextWorkoutInfo({
         >
           <Text
             style={styles.sectionTitle}
-          >{`${workouts.workoutList[index].name} X ${workouts.workoutList[index].reps}`}</Text>
+          >{`${workouts.workoutList[index].name} X ${workouts.workoutList[index].reps ? workouts.workoutList[index].reps : workouts.workoutList[index].time}`}</Text>
           {/* <View style={styles.statsRow}>
               <View style={styles.statItem}>
                 <Ionicons name="time-outline" size={20} color={colors.primary} />
@@ -476,11 +464,6 @@ export const styles = StyleSheet.create({
     marginTop: 20,
     borderRadius: 20,
     overflow: "hidden",
-    elevation: 5,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
   },
 
   exerciseImage: {

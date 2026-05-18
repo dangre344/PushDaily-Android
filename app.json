@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "MyWorkout",
-    "slug": "MyWorkout",
+    "name": "Push Daily",
+    "slug": "PushDaily",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myworkout",
+    "scheme": "pushdaily",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "packagerOpts": {
@@ -14,7 +14,6 @@
     "ios": {
       "supportsTablet": true
     },
-    
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -24,7 +23,8 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.gagandangre.MyWorkout"
+      "package": "com.pushdaily.homeworkout.fit",
+      "versionCode": 1
     },
     "web": {
       "bundler": "metro",
@@ -44,11 +44,25 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-3788587565382003~4642453946",
+          "iosAppId": "ca-app-pub-3788587565382003~4642453946"
+        }
+      ],
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "d6d10ba1-4dc8-47c2-9635-67ba9e3132a9"
+      }
     }
   }
 }
