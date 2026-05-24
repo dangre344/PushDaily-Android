@@ -1,15 +1,22 @@
-import { Alert, Platform, Text } from "react-native";
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Text,
+  TouchableOpacity,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { createUniqueId, daysArr } from "@/constants/utils.js";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { ScrollView, StatusBar, StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { Button } from "../../components/ui/Button.js";
 
 import { Logger } from "@/constants/Logger.js";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Toast } from "toastify-react-native";
 import InputText from "../../components/ui/InputText.js";
 import MeasurementsStep from "../../components/ui/MeasurementStep.js";
@@ -22,12 +29,20 @@ import { yupResolver } from "@hookform/resolvers/yup";
 
 import * as Notifications from "expo-notifications";
 
+import { scaling } from "@/constants/useScaling.js";
+import { Ionicons } from "@expo/vector-icons";
 import * as yup from "yup";
 import { OptionCardController } from "../../components/ui/OptionCard.js";
 import SliderSelector from "../../components/ui/SliderSelector.js";
 import { colors } from "../../constants/colors.js";
 
 export default function Signup() {
+  const { from } = useLocalSearchParams();
+
+  const isEditMode = from === "edit";
+
+  Logger.log("Signup screen - isEditMode:", isEditMode);
+  const [updateSuccessVisible, setUpdateSuccessVisible] = useState(false);
   const { t } = useTranslation();
   const router = useRouter();
   const totalSteps = 7;
@@ -44,6 +59,8 @@ export default function Signup() {
       .trim()
       .required("Name is required")
       .min(1, "Name cannot be empty"),
+
+    // email: yup.string().trim().email("Enter a valid email").notRequired(),
 
     gender: yup.string().trim().required("Gender is required"),
 
@@ -122,6 +139,7 @@ export default function Signup() {
       name: user?.name || "",
       gender: user?.gender || "",
       age: user?.age || 20,
+      // email: user?.email || "",
 
       // saved values
       height: user?.height || 140, // cm
@@ -138,6 +156,8 @@ export default function Signup() {
     },
   });
 
+  // Logger.log("form email--->", user?.email);
+
   const onSubmit = async (data) => {
     Logger.log("Form Data:", data);
 
@@ -150,29 +170,43 @@ export default function Signup() {
 
     Logger.log("Generated user ID:", userData);
 
-    await trackEvent("Signup Completed", {
-      ...userData,
-      _id: userId,
-    });
+    if (isEditMode) {
+      // update existing profile
+      await trackEvent("Update", {
+        ...userData,
+        _id: userId,
+      });
 
-    await updateUser(userData);
+      await updateUser(userData);
 
-    router.replace("/home");
+      setUpdateSuccessVisible(true);
+      return;
+    } else {
+      await trackEvent("Signup Completed", {
+        ...userData,
+        _id: userId,
+      });
+
+      await updateUser(userData);
+
+      router.replace("/home");
+    }
   };
 
   const getNotificationTime = (time) => {
-    // return { hour: 10, minute: 43 };
+    // return { hour: 16, minute: 26 };
+    Logger.log("Selected time for notification:", time);
     switch (time) {
-      case "Morning 6-10 AM":
+      case "Morning":
         return { hour: 6, minute: 0 };
 
-      case "Afternoon 12-4":
+      case "Afternoon":
         return { hour: 12, minute: 0 };
 
-      case "Evening 5-7":
+      case "Evening":
         return { hour: 17, minute: 0 };
 
-      case "Night 8-10":
+      case "Night":
         return { hour: 20, minute: 0 };
 
       default:
@@ -196,30 +230,131 @@ export default function Signup() {
 
   const scheduleNotification = async (timeValue) => {
     const notificationTime = getNotificationTime(timeValue);
-
-    Logger.log("Scheduling notification for:", notificationTime);
-
     if (!notificationTime) return;
 
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: "Time to Move 💪",
-        body: "Small steps every day lead to big results. Stay consistent!",
-        sound: true,
+    await Notifications.cancelAllScheduledNotificationsAsync();
 
-        // Android only
-        vibrate: [0, 250, 250, 250],
-        autoDismiss: true,
-        data: {
-          screen: "Home", // change to your screen name
+    const reminderMinute = notificationTime.minute - 15;
+    const reminderHour =
+      reminderMinute < 0 ? notificationTime.hour - 1 : notificationTime.hour;
+    const adjustedMinute =
+      reminderMinute < 0 ? reminderMinute + 60 : reminderMinute;
+
+    const allContent = [
+      {
+        reminder: {
+          title: "Sunday Prep 🌅",
+          body: "Get ready! Workout in 15 minutes. Start the week strong!",
+        },
+        start: {
+          title: "Start the Week Strong 💪",
+          body: "Sunday sets the tone. Let's crush it!",
         },
       },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-        seconds: 10,
-        channelId: "default",
+      {
+        reminder: {
+          title: "Monday Motivation 🔥",
+          body: "15 minutes to go! Time to make Monday count.",
+        },
+        start: {
+          title: "New Week, New Goals 🚀",
+          body: "Monday energy is unmatched. Let's go!",
+        },
       },
-    });
+      {
+        reminder: {
+          title: "Keep It Going 💥",
+          body: "Workout in 15 minutes. You showed up yesterday — do it again!",
+        },
+        start: {
+          title: "Tuesday Grind 🏋️",
+          body: "Two days in. Consistency is building. Keep pushing!",
+        },
+      },
+      {
+        reminder: {
+          title: "Midweek Check-In ⚡",
+          body: "Halfway through the week! Workout starts in 15 minutes.",
+        },
+        start: {
+          title: "Hump Day Hustle 💦",
+          body: "Wednesday warrior. You're halfway there — finish strong!",
+        },
+      },
+      {
+        reminder: {
+          title: "Almost Friday 🎯",
+          body: "One more push! Your workout begins in 15 minutes.",
+        },
+        start: {
+          title: "Thursday Power 🏃",
+          body: "Don't stop now — the weekend is almost here. Give it everything!",
+        },
+      },
+      {
+        reminder: {
+          title: "Friday Finisher 🙌",
+          body: "End the week right! Workout starts in 15 minutes.",
+        },
+        start: {
+          title: "Finish the Week Strong 🔥",
+          body: "Friday energy hits different. Make this one count!",
+        },
+      },
+      {
+        reminder: {
+          title: "Weekend Warrior 🏆",
+          body: "No rest for the committed! Workout in 15 minutes.",
+        },
+        start: {
+          title: "Saturday Sweat Session 💪",
+          body: "Champions train on weekends too. Let's get it!",
+        },
+      },
+    ];
+
+    // Schedule one WEEKLY notification per day — 7 reminders + 7 starts = 14 total
+    for (let weekday = 0; weekday <= 6; weekday++) {
+      const content = allContent[weekday];
+
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: content.reminder.title,
+          body: content.reminder.body,
+          sound: true,
+          vibrate: [0, 250, 250, 250],
+          autoDismiss: true,
+          data: { screen: "Home" },
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+          weekday: weekday + 1, // expo-notifications: 1 = Sunday, 7 = Saturday
+          hour: reminderHour,
+          minute: adjustedMinute,
+        },
+      });
+
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: content.start.title,
+          body: content.start.body,
+          sound: true,
+          vibrate: [0, 250, 250, 250],
+          autoDismiss: true,
+          data: { screen: "Home" },
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+          weekday: weekday + 1,
+          hour: notificationTime.hour,
+          minute: notificationTime.minute,
+        },
+      });
+    }
+
+    Logger.log(
+      "[Notifications] Scheduled 14 weekly notifications (7 days × 2)",
+    );
   };
 
   const submitForm = () => {
@@ -251,6 +386,7 @@ export default function Signup() {
           onPress: async () => {
             const granted = await requestNotificationPermission();
 
+            Logger.log("Notification permission granted:", granted);
             if (granted) {
               await scheduleNotification(form.getValues("time"));
             }
@@ -345,7 +481,7 @@ export default function Signup() {
           control={form.control}
           name="age"
           label={t("selectAge")}
-          min={10}
+          min={13}
           defaultValue={form.getValues("age")}
           max={80}
           rules={{ required: "Please select your age" }}
@@ -360,6 +496,18 @@ export default function Signup() {
           inputType="text"
           placeholder={t("enterName")}
         />
+
+        {/* <InputText
+          form={form}
+          isOptional={true}
+          titleTextLabel={t("enterEmail")}
+          fieldName="email"
+          inputType="text"
+          placeholder={t("enterEmail")}
+          rootContainer={styles.inputMargin}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        /> */}
       </View>
     );
   };
@@ -547,8 +695,6 @@ export default function Signup() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
-
       <View style={styles.header}>
         <Text style={styles.headerTitle}>{t("signup.title")}</Text>
         <Text style={styles.headerSubtitle}>
@@ -559,42 +705,85 @@ export default function Signup() {
       <View style={styles.progressBarContainer}>
         <View style={[styles.progressBar, { width: `${progress}%` }]} />
       </View>
-
-      <ScrollView
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <StepContainer step={step}>
-          {step === 1 && <GenderStep form={form} />}
-          {step === 2 && <AgeStep form={form} />}
-          {step === 3 && <MeasurementsStep form={form} />}
-          {step === 4 && <ExperienceStep form={form} />}
-          {step === 5 && <GoalStep form={form} />}
-          {step === 6 && <DaysStep form={form} />}
-          {step === 7 && <TimeStep form={form} />}
-        </StepContainer>
-      </ScrollView>
+        <ScrollView
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <StepContainer step={step}>
+            {step === 1 && <GenderStep form={form} />}
+            {step === 2 && <AgeStep form={form} />}
+            {step === 3 && <MeasurementsStep form={form} />}
+            {step === 4 && <ExperienceStep form={form} />}
+            {step === 5 && <GoalStep form={form} />}
+            {step === 6 && <DaysStep form={form} />}
+            {step === 7 && <TimeStep form={form} />}
+          </StepContainer>
+        </ScrollView>
 
-      <View style={styles.footer}>
-        <View style={styles.buttonRow}>
-          {step > 1 && (
+        <View style={styles.footer}>
+          <View style={styles.buttonRow}>
+            {step > 1 && (
+              <Button
+                title={t("signup.back")}
+                style={{ flex: 1, marginEnd: 15 }}
+                onPress={prevStep}
+                variant="outline"
+              />
+            )}
+
             <Button
-              title={t("signup.back")}
-              style={{ flex: 1, marginEnd: 15 }}
-              onPress={prevStep}
-              variant="outline"
+              title={
+                step === totalSteps ? t("signup.finish") : t("signup.continue")
+              }
+              style={{ flex: 1 }}
+              onPress={nextStep}
             />
-          )}
-          <Button
-            title={
-              step === totalSteps ? t("signup.finish") : t("signup.continue")
-            }
-            style={{ flex: 1 }}
-            onPress={nextStep}
-          />
+          </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
+
+      <Modal
+        visible={updateSuccessVisible}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setUpdateSuccessVisible(false)}
+      >
+        <View style={styles.successOverlay}>
+          <View style={styles.successCard}>
+            <View style={styles.successIconWrap}>
+              <Ionicons
+                name="checkmark-circle"
+                size={scaling().moderateScale(36)}
+                color={colors.primary}
+              />
+            </View>
+
+            <Text style={styles.successTitle}>Updated Successfully</Text>
+
+            <Text style={styles.successMessage}>
+              Your data has been updated.
+            </Text>
+
+            <TouchableOpacity
+              activeOpacity={0.85}
+              style={styles.successButton}
+              onPress={() => {
+                setUpdateSuccessVisible(false);
+                router.back();
+              }}
+            >
+              <Text style={styles.successButtonText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -650,7 +839,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "OpenSans_400Regular",
     color: colors.textLight,
-    marginBottom: 32,
+    marginBottom: 10,
   },
   optionsContainer: {
     marginTop: 8,
@@ -754,5 +943,72 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "OpenSans_400Regular",
     color: colors.textLight,
+  },
+
+  successOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+
+  successCard: {
+    width: "100%",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    paddingHorizontal: 22,
+    paddingVertical: 28,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    elevation: 8,
+  },
+
+  successIconWrap: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: colors.primary + "14",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+
+  successTitle: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: 20,
+    color: colors.text,
+    textAlign: "center",
+  },
+
+  successMessage: {
+    fontFamily: "OpenSans_500Medium",
+    fontSize: 14,
+    color: colors.textLight || "#64748B",
+    textAlign: "center",
+    marginTop: 8,
+    lineHeight: 20,
+  },
+
+  successButton: {
+    width: "100%",
+    height: 50,
+    borderRadius: 16,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 24,
+  },
+
+  successButtonText: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: 15,
+    color: "#FFFFFF",
   },
 });

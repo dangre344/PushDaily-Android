@@ -43,22 +43,61 @@ export const insertWorkout = async (workout) => {
   );
 };
 
-export const insertMultipleWorkouts = async (workouts) => {
+export const insertMultipleWorkouts = async (workouts = []) => {
   const database = getDB();
 
-  Logger.log("Inserting multiple workouts into database:", database);
+  if (!database) {
+    Logger.log("insertMultipleWorkouts failed: database not initialized");
+    return false;
+  }
 
-  await database.withTransactionAsync(async () => {
-    for (const workout of workouts) {
-      const { workoutId, name, calories, level, bodyPart } = workout;
-      const dateTime = new Date().toISOString();
-      await database.runAsync(
-        `INSERT INTO workouts (workoutId, name, calories, level, bodyPart, dateTime)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [workoutId, name, calories, level, bodyPart, dateTime],
-      );
-    }
-  });
+  if (!Array.isArray(workouts) || workouts.length === 0) {
+    Logger.log("insertMultipleWorkouts skipped: empty workouts array");
+    return false;
+  }
+
+  Logger.log("Inserting multiple workouts count:", workouts.length);
+
+  try {
+    const dateTime = new Date().toISOString();
+
+    await database.withTransactionAsync(async () => {
+      for (const workout of workouts) {
+        const {
+          workoutId = "",
+          name = "",
+          calories = "0",
+          level = "",
+          bodyPart = "",
+        } = workout || {};
+
+        if (!name) {
+          Logger.log("Skipping workout insert: name missing", workout);
+          continue;
+        }
+
+        await database.runAsync(
+          `INSERT INTO workouts 
+            (workoutId, name, calories, level, bodyPart, dateTime)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [
+            String(workoutId),
+            String(name),
+            String(calories || "0"),
+            String(level || ""),
+            String(bodyPart || ""),
+            dateTime,
+          ],
+        );
+      }
+    });
+
+    Logger.log("insertMultipleWorkouts success");
+    return true;
+  } catch (error) {
+    Logger.log("insertMultipleWorkouts error:", error);
+    return false;
+  }
 };
 
 export const getAllWorkouts = async () => {
@@ -99,10 +138,12 @@ export const getAllWorkoutDates = async () => {
   const database = getDB();
 
   const result = await database.getAllAsync(
-    `SELECT DISTINCT strftime('%Y-%m-%d', dateTime, 'localtime') as dateKey
+    `SELECT DISTINCT strftime('%Y-%m-%d', dateTime) as dateKey
      FROM workouts
      ORDER BY dateKey DESC`,
   );
+
+  Logger.log("Fetched workout dates:", result);
 
   return result.map((r) => r.dateKey); // ["2026-03-13", "2026-03-12", ...]
 };

@@ -5,7 +5,6 @@ import { router, useFocusEffect } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Alert,
   Animated,
   Dimensions,
   Linking,
@@ -16,17 +15,22 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { BannerAd } from "react-native-google-mobile-ads";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { AD_UNIT_IDS, BannerAdSize } from "../../ads/Admobmanager";
 import { FemaleIcon, ManIconSVG } from "../../assets/AllSvgs";
+import NotificationDialog from "../../components/ui/NotificationDialog";
 import { colors } from "../../constants/colors";
 import { Logger } from "../../constants/Logger";
 import { useUser } from "../../constants/UserContext";
 import { scaling } from "../../constants/useScaling";
+import { getStoredUserBadge } from "../../constants/utils";
 import {
   getCurrentStreak,
   getProfileStats,
   initDB,
 } from "../../offlinedb/workoutdb";
+import WorkoutBadgeInfo from "../home/WorkoutBadgeInfo";
 import { AboutModal } from "./privacy/AboutModal";
 import { PrivacyPolicyModal } from "./privacy/PrivacyPolicyModal";
 
@@ -112,6 +116,13 @@ const MENU_SECTIONS = [
         icon: "person-outline",
         color: colors.primary,
         key: "edit",
+      },
+
+      {
+        label: "Levels & Badges",
+        icon: "notifications-outline",
+        color: colors.lightRed,
+        key: "badge",
       },
 
       {
@@ -216,6 +227,8 @@ const MenuRow = ({
   isLast,
   setPrivacyVisible,
   setAboutVisible,
+  setOpenBadgeModal,
+  setNotificationDialog,
 }) => {
   const anim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -238,39 +251,65 @@ const MenuRow = ({
   const onPressOut = () =>
     Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true }).start();
 
-  const handleNotifications = async () => {
+  const showNotificationDialog = ({
+    type,
+    title,
+    message,
+    primaryText,
+    secondaryText,
+    onPrimaryPress,
+    setNotificationDialog,
+  }) => {
+    setNotificationDialog({
+      visible: true,
+      type,
+      title,
+      message,
+      primaryText,
+      secondaryText,
+      onPrimaryPress,
+    });
+  };
+
+  const handleNotifications = async (setNotificationDialog) => {
     const { status: existing } = await Notifications.getPermissionsAsync();
 
     if (existing === "granted") {
-      // Already granted — show options
-      Alert.alert(
-        "Notifications",
-        "Notifications are already enabled for Push Daily App.",
-        [
-          { text: "Manage in Settings", onPress: () => Linking.openSettings() },
-          { text: "OK", style: "cancel" },
-        ],
-      );
+      showNotificationDialog({
+        type: "warning",
+        title: "Notifications Enabled",
+        message:
+          "Notifications are already enabled for Push Daily. You can manage notification preferences from your device settings.",
+        primaryText: "Manage Settings",
+        secondaryText: "OK",
+        onPrimaryPress: () => Linking.openSettings(),
+        setNotificationDialog,
+      });
       return;
     }
 
     const { status } = await Notifications.requestPermissionsAsync();
 
     if (status === "granted") {
-      Alert.alert(
-        "Notifications Enabled 🎉",
-        "You'll receive workout reminders and progress updates.",
-        [{ text: "Great!", style: "default" }],
-      );
+      showNotificationDialog({
+        type: "success",
+        title: "Notifications Enabled 🎉",
+        message:
+          "You will now receive workout reminders and progress updates to help you stay consistent.",
+        primaryText: "Great!",
+        setNotificationDialog,
+      });
     } else {
-      Alert.alert(
-        "Permission Denied",
-        "Enable notifications in your device Settings to get workout reminders.",
-        [
-          { text: "Open Settings", onPress: () => Linking.openSettings() },
-          { text: "Cancel", style: "cancel" },
-        ],
-      );
+      showNotificationDialog({
+        type: "denied",
+        title: "Permission Denied",
+        message:
+          "Enable notifications in your device settings to receive workout reminders and progress updates.",
+        primaryText: "Open Settings",
+        secondaryText: "Cancel",
+        onPrimaryPress: () => Linking.openSettings(),
+        setNotificationDialog,
+      });
     }
   };
 
@@ -298,11 +337,16 @@ const MenuRow = ({
           Logger.log("Pressed menu item--->", item);
 
           if (item.key === "edit") {
-            router.push("../signup");
-          } else if (item.key === "graph") {
-            router.push("../stats");
+            router.push({
+              pathname: "../signup",
+              params: {
+                from: "edit",
+              },
+            });
+          } else if (item.key === "badge") {
+            setOpenBadgeModal(true);
           } else if (item.key === "notifs") {
-            handleNotifications();
+            handleNotifications(setNotificationDialog);
           } else if (item.key === "privacy") {
             setPrivacyVisible(true);
           } else if (item.key === "share") {
@@ -377,6 +421,24 @@ export default function ProfileScreen() {
 
   const [privacyVisible, setPrivacyVisible] = useState(false);
   const [aboutVisible, setAboutVisible] = useState(false);
+  const [openBadgeModal, setOpenBadgeModal] = useState(false);
+
+  const [storedBadge, setStoredBadge] = useState(null);
+
+  const [notificationDialog, setNotificationDialog] = useState({
+    visible: false,
+    type: "info",
+    title: "",
+    message: "",
+    primaryText: "",
+    secondaryText: "",
+    onPrimaryPress: null,
+  });
+
+  const loadStoredBadge = async () => {
+    const badge = await getStoredUserBadge();
+    setStoredBadge(badge);
+  };
 
   useEffect(() => {
     Animated.parallel([
@@ -399,7 +461,34 @@ export default function ProfileScreen() {
         useNativeDriver: true,
       }),
     ]).start();
+
+    loadStoredBadge();
   }, []);
+
+  const getBMI = (weightKg, heightCm) => {
+    if (!weightKg || !heightCm) return null;
+    const heightM = heightCm / 100;
+    const bmi = weightKg / (heightM * heightM);
+    return bmi.toFixed(1);
+  };
+
+  const getBMILabel = (bmi) => {
+    if (!bmi) return "";
+    const value = parseFloat(bmi);
+    if (value < 18.5) return "Underweight";
+    if (value < 25) return "Healthy";
+    if (value < 30) return "Overweight";
+    return "Obese";
+  };
+
+  const getBMIColor = (bmi) => {
+    if (!bmi) return colors.muted;
+    const value = parseFloat(bmi);
+    if (value < 18.5) return "#3B8BD4"; // blue  — underweight
+    if (value < 25) return "#1D9E75"; // green — healthy
+    if (value < 30) return "#EF9F27"; // amber — overweight
+    return "#E24B4A"; // red   — obese
+  };
 
   // Avatar parallax on scroll
   const avatarTranslate = scrollY.interpolate({
@@ -413,6 +502,10 @@ export default function ProfileScreen() {
     outputRange: [1, 0.3],
     extrapolate: "clamp",
   });
+
+  const bmi = getBMI(user?.weight, user?.height);
+  const bmiLabel = getBMILabel(bmi);
+  const bmiColor = getBMIColor(bmi);
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -484,10 +577,24 @@ export default function ProfileScreen() {
                 />
                 <Text style={styles.pillText}>{user?.experience}</Text>
               </View>
+
               <View style={styles.pill}>
                 <Octicons name="goal" size={ms(11)} color={colors.muted} />
                 <Text style={styles.pillText}>{user?.goal}</Text>
               </View>
+
+              {bmi && (
+                <View style={[styles.pill, { borderColor: bmiColor }]}>
+                  <MaterialCommunityIcons
+                    name="scale-bathroom"
+                    size={ms(11)}
+                    color={bmiColor}
+                  />
+                  <Text style={[styles.pillText, { color: bmiColor }]}>
+                    BMI {bmi} · {bmiLabel}
+                  </Text>
+                </View>
+              )}
             </View>
           </Animated.View>
         </Animated.View>
@@ -560,6 +667,8 @@ export default function ProfileScreen() {
                   isLast={iIdx === section.items.length - 1}
                   setPrivacyVisible={setPrivacyVisible}
                   setAboutVisible={setAboutVisible}
+                  setOpenBadgeModal={setOpenBadgeModal}
+                  setNotificationDialog={setNotificationDialog}
                 />
               ))}
             </View>
@@ -570,6 +679,22 @@ export default function ProfileScreen() {
           Push Daily v{appVersion} ({buildVersion})
         </Text>
       </Animated.ScrollView>
+
+      <View style={styles.bannerContainer}>
+        <BannerAd
+          unitId={AD_UNIT_IDS.banner}
+          size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
+          requestOptions={{
+            requestNonPersonalizedAdsOnly: false,
+          }}
+          onAdLoaded={() => {
+            console.log("[AdMob] Banner loaded");
+          }}
+          onAdFailedToLoad={(error) => {
+            console.warn("[AdMob] Banner failed:", error);
+          }}
+        />
+      </View>
 
       {privacyVisible ? (
         <PrivacyPolicyModal
@@ -592,6 +717,43 @@ export default function ProfileScreen() {
           }}
         />
       ) : null}
+
+      {openBadgeModal ? (
+        <WorkoutBadgeInfo
+          userBadge={storedBadge}
+          visible={openBadgeModal}
+          setVisible={setOpenBadgeModal}
+        />
+      ) : null}
+
+      <NotificationDialog
+        visible={notificationDialog.visible}
+        type={notificationDialog.type}
+        title={notificationDialog.title}
+        message={notificationDialog.message}
+        primaryText={notificationDialog.primaryText}
+        secondaryText={notificationDialog.secondaryText}
+        onClose={() =>
+          setNotificationDialog((prev) => ({
+            ...prev,
+            visible: false,
+          }))
+        }
+        onPrimaryPress={() => {
+          setNotificationDialog((prev) => ({
+            ...prev,
+            visible: false,
+          }));
+
+          notificationDialog.onPrimaryPress?.();
+        }}
+        onSecondaryPress={() =>
+          setNotificationDialog((prev) => ({
+            ...prev,
+            visible: false,
+          }))
+        }
+      />
     </SafeAreaView>
   );
 }
@@ -603,6 +765,12 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: "white",
+  },
+
+  bannerContainer: {
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   glowRight: {

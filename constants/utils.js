@@ -1,3 +1,5 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Notifications from "expo-notifications";
 import { Logger } from "./Logger";
 
 export const daysArr = (t) => [
@@ -9,6 +11,59 @@ export const daysArr = (t) => [
   t("Sat"),
   t("Sun"),
 ];
+
+const BADGE_STORAGE_KEY = "userBadge";
+
+export const saveUserBadge = async (badge) => {
+  Logger.log("Saving user badge:", badge);
+  try {
+    await AsyncStorage.setItem(BADGE_STORAGE_KEY, JSON.stringify(badge));
+  } catch (error) {
+    Logger.log("Error saving badge:", error);
+  }
+};
+
+export const checkScheduledNotifications = async () => {
+  try {
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+
+    console.log("Scheduled notifications:", JSON.stringify(scheduled, null, 2));
+
+    scheduled.forEach((item, index) => {
+      console.log(`Notification ${index + 1}`);
+      console.log("ID:", item.identifier);
+      console.log("Title:", item.content?.title);
+      console.log("Body:", item.content?.body);
+      console.log("Trigger:", item.trigger);
+    });
+
+    return scheduled;
+  } catch (error) {
+    console.log("Error checking scheduled notifications:", error);
+    return [];
+  }
+};
+
+export const getStoredUserBadge = async () => {
+  try {
+    const badgeString = await AsyncStorage.getItem(BADGE_STORAGE_KEY);
+
+    if (!badgeString) return null;
+
+    return JSON.parse(badgeString);
+  } catch (error) {
+    console.log("Error getting badge:", error);
+    return null;
+  }
+};
+
+export const removeStoredUserBadge = async () => {
+  try {
+    await AsyncStorage.removeItem(BADGE_STORAGE_KEY);
+  } catch (error) {
+    console.log("Error removing badge:", error);
+  }
+};
 
 export const getDay = (day) => {
   if (day === 0) return "Mon";

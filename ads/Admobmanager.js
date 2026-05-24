@@ -6,7 +6,6 @@ import {
   RewardedAd,
   RewardedAdEventType,
   RewardedInterstitialAd,
-  TestIds,
 } from "react-native-google-mobile-ads";
 
 // ─────────────────────────────────────────────
@@ -17,29 +16,19 @@ import {
 // App ID uses "~" and belongs in app.json/app.config.js.
 // Ad Unit IDs use "/" and belong here.
 // Example Ad Unit ID:
-// ca-app-pub-xxxxxxxxxxxxxxxx/yyyyyyyyyy
+
 // ─────────────────────────────────────────────
 
 export const AD_UNIT_IDS = {
-  banner: __DEV__
-    ? TestIds.ADAPTIVE_BANNER
-    : "ca-app-pub-xxxxxxxxxxxxxxxx/yyyyyyyyyy",
+  banner: "ca-app-pub-3788587565382003/2126854515",
 
-  interstitial: __DEV__
-    ? TestIds.INTERSTITIAL
-    : "ca-app-pub-xxxxxxxxxxxxxxxx/yyyyyyyyyy",
+  interstitial: "ca-app-pub-3788587565382003/5080777760",
 
-  rewarded: __DEV__
-    ? TestIds.REWARDED
-    : "ca-app-pub-xxxxxxxxxxxxxxxx/yyyyyyyyyy",
+  rewarded: "ca-app-pub-3788587565382003/9813772844",
 
-  rewardedInterstitial: __DEV__
-    ? TestIds.REWARDED_INTERSTITIAL
-    : "ca-app-pub-xxxxxxxxxxxxxxxx/yyyyyyyyyy",
+  rewardedInterstitial: "ca-app-pub-3788587565382003/6633532586",
 
-  appOpen: __DEV__
-    ? TestIds.APP_OPEN
-    : "ca-app-pub-xxxxxxxxxxxxxxxx/yyyyyyyyyy",
+  appOpen: "ca-app-pub-3788587565382003/4390512628",
 };
 
 const DEFAULT_REQUEST_OPTIONS = {

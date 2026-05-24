@@ -13,6 +13,7 @@ export default function InputText({
   isOptional = false,
   inputStyle,
   error,
+  rootContainer,
   secureTextEntry = false,
   ...props
 }) {
@@ -25,7 +26,7 @@ export default function InputText({
     setIsSecure(!isSecure);
   };
   return (
-    <View>
+    <View style={rootContainer}>
       <Controller
         control={form.control}
         name={fieldName}

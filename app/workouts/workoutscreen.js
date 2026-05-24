@@ -1,9 +1,9 @@
 import { Logger } from "@/constants/Logger";
-import { AntDesign, Entypo, Ionicons, Octicons } from "@expo/vector-icons";
+import { Entypo, Ionicons, Octicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Animated,
@@ -13,9 +13,12 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Image } from "expo-image";
 import { FemaleIcon, ManIconSVG } from "../../assets/AllSvgs";
 import CircularImage from "../../components/ui/CircularImage";
 import { colors } from "../../constants/colors";
@@ -34,6 +37,12 @@ import {
   getWorkoutsForCurrentWeek,
   initDB,
 } from "../../offlinedb/workoutdb";
+import BadgeLevelUpModal from "../home/BadgeLevelUpModal";
+import WorkoutBadgeInfo, {
+  BADGE_DETAILS,
+  BADGE_ORDER,
+  getUserBadge,
+} from "../home/WorkoutBadgeInfo";
 import HIITCard from "./Componenets/HIITCard";
 import WorkoutLevelModal from "./Componenets/WorkoutLevelModal";
 
@@ -50,6 +59,13 @@ export default function WorkoutScreen() {
   const scaleAnim = useRef(new Animated.Value(0.96)).current;
 
   const [openModal, setOpenModal] = useState(false);
+  const [openBadgeModal, setOpenBadgeModal] = useState(false);
+  const [badgeLevelUpVisible, setBadgeLevelUpVisible] = useState(false);
+
+  const [badgeUpgradeData, setBadgeUpgradeData] = useState({
+    oldBadge: null,
+    newBadge: null,
+  });
   const [selectedBodyPart, setSelectedBodyPart] = useState(null);
   const [allWorkouts, setAllHistoryWorkouts] = useState([]);
   const [weekWorkouts, setWeekWorkouts] = useState([]);
@@ -216,6 +232,56 @@ export default function WorkoutScreen() {
     );
   };
 
+  const performedWorkouts = allWorkouts || [];
+  const userBadge = getUserBadge(performedWorkouts);
+
+  const checkBadgeUpgrade = async () => {
+    if (!userBadge?.title) return;
+
+    const savedBadgeTitle = await AsyncStorage.getItem("lastUserBadgeTitle");
+
+    // const savedBadgeTitle = {
+    //   title: "Rabbit",
+    //   subtitle: "Getting Started",
+    //   emoji: "🐰",
+    // };
+
+    Logger.log(
+      "Checking badge upgrade. Current:",
+      userBadge.title,
+      "Saved:",
+      savedBadgeTitle,
+    );
+
+    if (!savedBadgeTitle) {
+      await AsyncStorage.setItem("lastUserBadgeTitle", userBadge.title);
+      return;
+    }
+
+    const oldLevel = BADGE_ORDER[savedBadgeTitle] || 0;
+    const newLevel = BADGE_ORDER[userBadge.title] || 0;
+
+    Logger.log("Badge levels - Old:", oldLevel, "New:", newLevel);
+
+    if (newLevel > oldLevel) {
+      setBadgeUpgradeData({
+        oldBadge: BADGE_DETAILS[savedBadgeTitle],
+        newBadge: {
+          title: userBadge.title,
+          subtitle: userBadge.subtitle,
+          emoji: userBadge.emoji,
+        },
+      });
+
+      setBadgeLevelUpVisible(true);
+      await AsyncStorage.setItem("lastUserBadgeTitle", userBadge.title);
+    }
+  };
+
+  useEffect(() => {
+    checkBadgeUpgrade();
+  }, [userBadge?.title]);
+
   return (
     <View style={styles.container}>
       <StatusBar style="dark" backgroundColor={colors.white} />
@@ -249,11 +315,26 @@ export default function WorkoutScreen() {
               </View>
             </View>
 
-            <View style={styles.calorieContainer}>
-              <AntDesign name="fire" size={16} color={colors.primary} />
-              <Text style={styles.streakTitle}>
-                {stats.totalCalories || 0} kcal
-              </Text>
+            <View style={styles.statsRow}>
+              <TouchableOpacity onPress={() => setOpenBadgeModal(true)}>
+                <View style={styles.badgeContainer}>
+                  {userBadge?.image ? (
+                    <Image source={userBadge.image} style={styles.badgeImage} />
+                  ) : (
+                    <View style={styles.badgeEmojiWrap}>
+                      <Text style={styles.badgeEmoji}>
+                        {userBadge?.emoji || "🏅"}
+                      </Text>
+                    </View>
+                  )}
+                  <View style={{ marginStart: 10 }}>
+                    <Text style={styles.badgeTitle}>{userBadge.title}</Text>
+                    <Text style={styles.badgeSubtitle}>
+                      {userBadge.subtitle}
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -402,7 +483,7 @@ export default function WorkoutScreen() {
                       ? getShortBodyPartName(item.bodyPart)
                       : item.isWorkout === null
                         ? "Soon"
-                        : "Missed"}
+                        : "-"}
                   </Text>
                 </View>
               ))}
@@ -458,6 +539,23 @@ export default function WorkoutScreen() {
           selectedBodyPart={selectedBodyPart}
           setOpenModal={setOpenModal}
           t={t}
+        />
+      ) : null}
+
+      {openBadgeModal ? (
+        <WorkoutBadgeInfo
+          userBadge={userBadge}
+          visible={openBadgeModal}
+          setVisible={setOpenBadgeModal}
+        />
+      ) : null}
+
+      {badgeLevelUpVisible ? (
+        <BadgeLevelUpModal
+          visible={badgeLevelUpVisible}
+          setVisible={setBadgeLevelUpVisible}
+          oldBadge={badgeUpgradeData.oldBadge}
+          newBadge={badgeUpgradeData.newBadge}
         />
       ) : null}
     </View>
@@ -531,6 +629,53 @@ const styles = StyleSheet.create({
     paddingHorizontal: moderateScale(12),
     flexDirection: "row",
     alignItems: "center",
+  },
+
+  statsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 10,
+    gap: 12,
+  },
+
+  calorieContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF5F0",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 14,
+  },
+
+  badgeContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F7FAFC",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 14,
+    // flex: 1,
+    marginStart: 10,
+  },
+
+  badgeImage: {
+    width: scaleWidth(38),
+    height: scaleHeight(42),
+    resizeMode: "contain",
+  },
+
+  badgeTitle: {
+    fontFamily: "OpenSans_700Bold",
+    fontSize: 14,
+    color: colors.text,
+  },
+
+  badgeSubtitle: {
+    fontFamily: "OpenSans_400Regular",
+    fontSize: 11,
+    color: "#64748B",
+    marginTop: 2,
   },
 
   streakTitle: {
@@ -626,7 +771,7 @@ const styles = StyleSheet.create({
 
   sectionCard: {
     marginHorizontal: moderateScale(20),
-    marginTop: moderateScale(15),
+    marginTop: moderateScale(10),
     backgroundColor: colors.white,
     borderRadius: moderateScale(22),
     padding: moderateScale(16),

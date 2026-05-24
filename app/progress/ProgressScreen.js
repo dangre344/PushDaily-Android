@@ -1,7 +1,7 @@
 import { AntDesign, Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
@@ -11,6 +11,11 @@ import {
   View,
 } from "react-native";
 import { Calendar } from "react-native-calendars";
+import Animated, {
+  FadeIn,
+  LinearTransition,
+  ZoomIn,
+} from "react-native-reanimated";
 
 import { colors } from "../../constants/colors";
 import { Logger } from "../../constants/Logger";
@@ -26,6 +31,16 @@ const scaleWidth = (n) => scaling().moderateScale(n);
 const scaleHeight = (n) => scaling().moderateScale(n);
 
 const toDateKey = (iso) => iso.slice(0, 10);
+
+const valueEnterAnimation = FadeIn.duration(180)
+  .springify()
+  .damping(18)
+  .stiffness(160);
+
+const iconEnterAnimation = ZoomIn.duration(180)
+  .springify()
+  .damping(16)
+  .stiffness(180);
 
 const getWorkoutDateKey = (dateTime) => {
   if (!dateTime) return null;
@@ -147,6 +162,7 @@ const WorkoutCard = ({ item, index }) => {
                 { backgroundColor: currentLevelColor },
               ]}
             />
+
             <Text style={[cardStyles.badgeText, { color: currentLevelColor }]}>
               {item.level}
             </Text>
@@ -176,21 +192,16 @@ export default function ProgressScreen() {
 
   const [selectedDate, setSelectedDate] = useState(todayKey);
   const [allWorkoutHistory, setAllWorkoutHistory] = useState([]);
-  const [allWorkouts, setAllHistoryWorkouts] = useState([]);
   const [workoutDates, setWorkoutDates] = useState([]);
   const [totalCalories, setTotalCalories] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  const selectedDateWorkouts = useMemo(() => {
+  const allWorkouts = useMemo(() => {
     return allWorkoutHistory.filter((workout) => {
       const workoutDateKey = getWorkoutDateKey(workout?.dateTime);
       return workoutDateKey === selectedDate;
     });
   }, [allWorkoutHistory, selectedDate]);
-
-  useEffect(() => {
-    setAllHistoryWorkouts(selectedDateWorkouts);
-  }, [selectedDateWorkouts]);
 
   const dayCalories = useMemo(() => {
     return allWorkouts.reduce((s, w) => s + parseCalories(w.calories), 0);
@@ -201,6 +212,18 @@ export default function ProgressScreen() {
   }, [selectedDate]);
 
   const hasWorkoutOnSelectedDate = allWorkouts.length > 0;
+
+  const selectedStatus = useMemo(() => {
+    if (isToday(selectedDate)) return "Today";
+    if (workoutDates.includes(selectedDate)) return "Done";
+    return "Rest";
+  }, [selectedDate, workoutDates]);
+
+  const selectedIconName = hasWorkoutOnSelectedDate
+    ? "checkmark-done"
+    : "calendar-outline";
+
+  const summaryChangeKey = selectedDate;
 
   const workoutSections = useMemo(() => {
     return Object.values(
@@ -301,13 +324,10 @@ export default function ProgressScreen() {
     }, []),
   );
 
-  const handleDayPress = useCallback(
-    (day) => {
-      if (!day?.dateString || day.dateString === selectedDate) return;
-      setSelectedDate(day.dateString);
-    },
-    [selectedDate],
-  );
+  const handleDayPress = useCallback((day) => {
+    if (!day?.dateString) return;
+    setSelectedDate(day.dateString);
+  }, []);
 
   const HeaderContent = useCallback(
     () => (
@@ -338,25 +358,38 @@ export default function ProgressScreen() {
           <View style={styles.summaryTop}>
             <View>
               <Text style={styles.summaryLabel}>Selected date</Text>
-              <Text style={styles.summaryDate}>{displayDate}</Text>
+
+              <Animated.Text
+                key={`date-${summaryChangeKey}`}
+                entering={valueEnterAnimation}
+                layout={LinearTransition.duration(160)}
+                style={styles.summaryDate}
+              >
+                {displayDate}
+              </Animated.Text>
             </View>
 
-            <View style={styles.summaryIcon}>
-              <Ionicons
-                name={
-                  hasWorkoutOnSelectedDate
-                    ? "checkmark-done"
-                    : "calendar-outline"
-                }
-                size={24}
-                color="#FFFFFF"
-              />
-            </View>
+            <Animated.View
+              key={`icon-${summaryChangeKey}`}
+              entering={iconEnterAnimation}
+              layout={LinearTransition.duration(160)}
+              style={styles.summaryIcon}
+            >
+              <Ionicons name={selectedIconName} size={24} color="#FFFFFF" />
+            </Animated.View>
           </View>
 
           <View style={styles.summaryStatsRow}>
             <View style={styles.summaryStat}>
-              <Text style={styles.summaryValue}>{allWorkouts.length}</Text>
+              <Animated.Text
+                key={`workouts-${summaryChangeKey}`}
+                entering={valueEnterAnimation}
+                layout={LinearTransition.duration(160)}
+                style={styles.summaryValue}
+              >
+                {allWorkouts.length}
+              </Animated.Text>
+
               <Text style={styles.summaryText}>
                 workout{allWorkouts.length !== 1 ? "s" : ""}
               </Text>
@@ -365,20 +398,30 @@ export default function ProgressScreen() {
             <View style={styles.summaryDivider} />
 
             <View style={styles.summaryStat}>
-              <Text style={styles.summaryValue}>{dayCalories}</Text>
+              <Animated.Text
+                key={`calories-${summaryChangeKey}`}
+                entering={valueEnterAnimation}
+                layout={LinearTransition.duration(160)}
+                style={styles.summaryValue}
+              >
+                {dayCalories}
+              </Animated.Text>
+
               <Text style={styles.summaryText}>kcal burned</Text>
             </View>
 
             <View style={styles.summaryDivider} />
 
             <View style={styles.summaryStat}>
-              <Text style={styles.summaryValue}>
-                {isToday(selectedDate)
-                  ? "Today"
-                  : workoutDates.includes(selectedDate)
-                    ? "Done"
-                    : "Rest"}
-              </Text>
+              <Animated.Text
+                key={`status-${summaryChangeKey}`}
+                entering={valueEnterAnimation}
+                layout={LinearTransition.duration(160)}
+                style={styles.summaryValue}
+              >
+                {selectedStatus}
+              </Animated.Text>
+
               <Text style={styles.summaryText}>status</Text>
             </View>
           </View>
@@ -400,7 +443,7 @@ export default function ProgressScreen() {
           </View>
 
           <Calendar
-            current={todayKey}
+            current={selectedDate}
             onDayPress={handleDayPress}
             markedDates={markedDates}
             markingType="custom"
@@ -489,12 +532,13 @@ export default function ProgressScreen() {
     [
       totalCalories,
       displayDate,
+      selectedDate,
+      summaryChangeKey,
+      selectedIconName,
+      selectedStatus,
       hasWorkoutOnSelectedDate,
       allWorkouts.length,
       dayCalories,
-      selectedDate,
-      workoutDates,
-      todayKey,
       handleDayPress,
       markedDates,
       loading,
@@ -521,6 +565,7 @@ export default function ProgressScreen() {
                 size={18}
                 color={colors.primary}
               />
+
               <Text style={styles.workoutSectionTitle}>{section.title}</Text>
             </View>
 

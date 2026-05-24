@@ -4,7 +4,7 @@
     "slug": "PushDaily",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/icon.png",
     "scheme": "pushdaily",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -17,30 +17,33 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "foregroundImage": "./assets/icon.png",
+        "backgroundImage": "./assets/icon.png",
+        "monochromeImage": "./assets/icon.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.pushdaily.homeworkout.fit",
-      "versionCode": 1
+      "versionCode": 1,
+      "permissions": ["com.google.android.gms.permission.AD_ID"]
     },
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/icon.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
+          "image": "./assets/images/splash.png",
+          "imageWidth": 400,
+          "resizeMode": "cover",
           "backgroundColor": "#ffffff",
           "dark": {
+            "image": "./assets/images/splash.png",
+            "resizeMode": "cover",
             "backgroundColor": "#000000"
           }
         }
@@ -48,8 +51,8 @@
       [
         "react-native-google-mobile-ads",
         {
-          "androidAppId": "ca-app-pub-3788587565382003~4642453946",
-          "iosAppId": "ca-app-pub-3788587565382003~4642453946"
+          "androidAppId": "ca-app-pub-3788587565382003~2833054229",
+          "iosAppId": "ca-app-pub-3788587565382003~2833054229"
         }
       ],
       "expo-sqlite"

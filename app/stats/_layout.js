@@ -9,32 +9,15 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { colors } from "../../constants/colors"; // adjust path
-import { Logger } from "../../constants/Logger"; // adjust path
+import { colors } from "../../constants/colors";
+import { Logger } from "../../constants/Logger";
 import { scaling } from "../../constants/useScaling";
-import { getAllWorkouts, initDB } from "../../offlinedb/workoutdb"; // adjust path
+import { getAllWorkouts, initDB } from "../../offlinedb/workoutdb";
 
-const { width } = Dimensions.get("window");
+const { width, height } = Dimensions.get("window");
 const ms = (n) => scaling().moderateScale(n);
 const PADDING = ms(16);
 const CHART_WIDTH = width - PADDING * 2;
-
-// ─── Colors ───────────────────────────────────────────────────────────────────
-// const colors = {
-//   primary: "#FF6B35",
-//   secondary: "#F7931E",
-//   green: "#4CAF82",
-//   purple: "#A78BFA",
-//   blue: "#60A5FA",
-//   pink: "#F472B6",
-//   background: "#0F0F0F",
-//   surface: "#FFFFFF",
-//   elevated: "#242424",
-//   border: "#2A2A2A",
-//   text: "#FFFFFF",
-//   muted: "#777777",
-//   dim: "#3A3A3A",
-// };
 
 const BODY_PART_COLORS = {
   Chest: colors.primary,
@@ -51,7 +34,6 @@ const LEVEL_COLORS = {
   Advanced: "#EF4444",
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 const toLocalDateKey = (d) => {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -77,11 +59,9 @@ const formatCalories = (cal) => {
 
 const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-// ─── Compute all chart data from raw workouts ─────────────────────────────────
 const computeChartData = (workouts) => {
   if (!workouts.length) return null;
 
-  // ① Calories per day — last 7 days
   const today = new Date();
   const last7 = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(today);
@@ -91,6 +71,7 @@ const computeChartData = (workouts) => {
 
   const calByDate = {};
   const countByDate = {};
+
   workouts.forEach((w) => {
     const key = toLocalDateKey(new Date(w.dateTime));
     calByDate[key] = (calByDate[key] || 0) + parseCalories(w.calories);
@@ -103,20 +84,20 @@ const computeChartData = (workouts) => {
     dateKey,
   }));
 
-  // ② Workouts per day — last 7 days
   const workoutsLast7 = last7.map((dateKey) => ({
     label: DAY_SHORT[new Date(dateKey + "T00:00:00").getDay()],
     value: countByDate[dateKey] || 0,
     dateKey,
   }));
 
-  // ③ Body part distribution
   const bodyPartMap = {};
   workouts.forEach((w) => {
     const bp = w.bodyPart || "Other";
     bodyPartMap[bp] = (bodyPartMap[bp] || 0) + 1;
   });
+
   const totalWorkouts = workouts.length;
+
   const bodyParts = Object.entries(bodyPartMap)
     .map(([name, count]) => ({
       name,
@@ -126,12 +107,12 @@ const computeChartData = (workouts) => {
     }))
     .sort((a, b) => b.count - a.count);
 
-  // ④ Level distribution
   const levelMap = {};
   workouts.forEach((w) => {
     const lv = w.level || "Unknown";
     levelMap[lv] = (levelMap[lv] || 0) + 1;
   });
+
   const levels = Object.entries(levelMap).map(([name, count]) => ({
     name,
     count,
@@ -139,22 +120,22 @@ const computeChartData = (workouts) => {
     color: LEVEL_COLORS[name] || colors.muted,
   }));
 
-  // ⑤ Top exercises
   const exerciseMap = {};
   workouts.forEach((w) => {
     if (!w.name) return;
     exerciseMap[w.name] = (exerciseMap[w.name] || 0) + 1;
   });
+
   const topExercises = Object.entries(exerciseMap)
     .map(([name, count]) => ({ name, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
 
-  // ⑥ Summary totals
   const totalCalories = workouts.reduce(
-    (s, w) => s + parseCalories(w.calories),
+    (sum, workout) => sum + parseCalories(workout.calories),
     0,
   );
+
   const activeDays = new Set(
     workouts.map((w) => toLocalDateKey(new Date(w.dateTime))),
   ).size;
@@ -171,7 +152,6 @@ const computeChartData = (workouts) => {
   };
 };
 
-// ── Extract this OUTSIDE StatsScreen as its own component ──
 const TopExerciseRow = ({ ex, index, maxCount }) => {
   const anim = useRef(new Animated.Value(0)).current;
 
@@ -211,10 +191,12 @@ const TopExerciseRow = ({ ex, index, maxCount }) => {
       ]}
     >
       <Text style={topStyles.rank}>#{index + 1}</Text>
+
       <View style={{ flex: 1 }}>
         <Text style={topStyles.name} numberOfLines={1}>
           {ex.name}
         </Text>
+
         <View style={topStyles.barTrack}>
           <Animated.View
             style={[
@@ -233,14 +215,12 @@ const TopExerciseRow = ({ ex, index, maxCount }) => {
           />
         </View>
       </View>
+
       <Text style={topStyles.count}>{ex.count}x</Text>
     </Animated.View>
   );
 };
 
-// ═════════════════════════════════════════════════════════════════════════════
-// ANIMATED BAR CHART
-// ═════════════════════════════════════════════════════════════════════════════
 const BarChart = ({ data, color, unit = "", maxOverride }) => {
   const anims = useRef(data.map(() => new Animated.Value(0))).current;
   const maxVal = maxOverride || Math.max(...data.map((d) => d.value), 1);
@@ -266,7 +246,6 @@ const BarChart = ({ data, color, unit = "", maxOverride }) => {
     <View style={barStyles.container}>
       {data.map((item, i) => (
         <View key={item.label + i} style={barStyles.col}>
-          {/* Value label on top */}
           <Text style={barStyles.topLabel}>
             {item.value > 0
               ? unit === "kcal"
@@ -275,7 +254,6 @@ const BarChart = ({ data, color, unit = "", maxOverride }) => {
               : ""}
           </Text>
 
-          {/* Bar track */}
           <View style={[barStyles.track, { height: BAR_H }]}>
             <Animated.View
               style={[
@@ -293,7 +271,6 @@ const BarChart = ({ data, color, unit = "", maxOverride }) => {
             />
           </View>
 
-          {/* Day label */}
           <Text style={barStyles.label}>{item.label}</Text>
         </View>
       ))}
@@ -301,10 +278,7 @@ const BarChart = ({ data, color, unit = "", maxOverride }) => {
   );
 };
 
-// ═════════════════════════════════════════════════════════════════════════════
-// HORIZONTAL BAR (body parts / levels)
-// ═════════════════════════════════════════════════════════════════════════════
-const HorizBar = ({ item, delay, maxPct }) => {
+const HorizBar = ({ item, delay }) => {
   const anim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -348,9 +322,6 @@ const HorizBar = ({ item, delay, maxPct }) => {
   );
 };
 
-// ═════════════════════════════════════════════════════════════════════════════
-// CARD WRAPPER with slide-in animation
-// ═════════════════════════════════════════════════════════════════════════════
 const Card = ({ children, delay = 0, style }) => {
   const anim = useRef(new Animated.Value(0)).current;
 
@@ -386,9 +357,6 @@ const Card = ({ children, delay = 0, style }) => {
   );
 };
 
-// ═════════════════════════════════════════════════════════════════════════════
-// DONUT-STYLE RING (pure RN, no SVG)
-// ═════════════════════════════════════════════════════════════════════════════
 const RingChart = ({ data }) => {
   const SIZE = ms(120);
   const THICK = ms(14);
@@ -410,10 +378,10 @@ const RingChart = ({ data }) => {
 
   return (
     <View style={ringStyles.wrapper}>
-      {/* Stacked arcs approximated as concentric rings */}
       <View style={ringStyles.rings}>
         {data.map((item, i) => {
           const ringSize = SIZE - i * (THICK + ms(4));
+
           return (
             <Animated.View
               key={item.name}
@@ -435,7 +403,6 @@ const RingChart = ({ data }) => {
         })}
       </View>
 
-      {/* Legend */}
       <View style={ringStyles.legend}>
         {data.map((item) => (
           <View key={item.name} style={ringStyles.legendRow}>
@@ -453,9 +420,6 @@ const RingChart = ({ data }) => {
   );
 };
 
-// ═════════════════════════════════════════════════════════════════════════════
-// SUMMARY PILL ROW
-// ═════════════════════════════════════════════════════════════════════════════
 const SummaryPills = ({ totalCalories, totalWorkouts, activeDays }) => {
   const items = [
     {
@@ -482,6 +446,7 @@ const SummaryPills = ({ totalCalories, totalWorkouts, activeDays }) => {
     <View style={pillStyles.row}>
       {items.map((it, i) => {
         const anim = useRef(new Animated.Value(0)).current;
+
         useEffect(() => {
           Animated.spring(anim, {
             toValue: 1,
@@ -521,13 +486,10 @@ const SummaryPills = ({ totalCalories, totalWorkouts, activeDays }) => {
   );
 };
 
-// ═════════════════════════════════════════════════════════════════════════════
-// MAIN SCREEN
-// ═════════════════════════════════════════════════════════════════════════════
 export default function StatsScreen() {
   const [workouts, setWorkouts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("7D"); // "7D" | "30D" | "All"
+  const [filter, setFilter] = useState("7D");
 
   const titleAnim = useRef(new Animated.Value(0)).current;
 
@@ -538,8 +500,8 @@ export default function StatsScreen() {
         const data = await getAllWorkouts();
         Logger.log("StatsScreen workouts--->", data.length);
         setWorkouts(data);
-      } catch (e) {
-        Logger.log("StatsScreen error", e);
+      } catch (error) {
+        Logger.log("StatsScreen error", error);
       } finally {
         setLoading(false);
         Animated.timing(titleAnim, {
@@ -549,15 +511,18 @@ export default function StatsScreen() {
         }).start();
       }
     };
+
     load();
   }, []);
 
   const filteredWorkouts = useMemo(() => {
     if (filter === "All") return workouts;
+
     const days = filter === "7D" ? 7 : 30;
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - days);
     cutoff.setHours(0, 0, 0, 0);
+
     return workouts.filter((w) => new Date(w.dateTime) >= cutoff);
   }, [workouts, filter]);
 
@@ -583,7 +548,7 @@ export default function StatsScreen() {
       >
         <Animated.View
           style={[
-            styles.header,
+            styles.headerCard,
             {
               opacity: titleAnim,
               transform: [
@@ -597,16 +562,20 @@ export default function StatsScreen() {
             },
           ]}
         >
-          <View>
-            <Text style={styles.headerTitle}>Stats</Text>
-            <Text style={styles.headerSub}>Your fitness overview</Text>
+          <View style={styles.headerIconWrap}>
+            <Ionicons name="stats-chart" size={ms(22)} color={colors.primary} />
           </View>
-          <Ionicons name="stats-chart" size={ms(22)} color={colors.primary} />
+
+          <View style={styles.headerTextBox}>
+            <Text style={styles.headerTitle}>Stats</Text>
+            <Text style={styles.headerSub}>
+              Track your workouts, calories, and progress
+            </Text>
+          </View>
         </Animated.View>
 
-        {workouts && workouts.length > 0 ? (
+        {workouts && workouts.length > 0 && data ? (
           <View>
-            {/* ── Filter tabs ── */}
             <Animated.View style={[styles.filterRow, { opacity: titleAnim }]}>
               {["7D", "30D", "All"].map((f) => (
                 <TouchableOpacity
@@ -630,14 +599,12 @@ export default function StatsScreen() {
               ))}
             </Animated.View>
 
-            {/* ── Summary pills ── */}
             <SummaryPills
               totalCalories={data.totalCalories}
               totalWorkouts={data.totalWorkouts}
               activeDays={data.activeDays}
             />
 
-            {/* ── Calories bar chart ── */}
             <Card delay={100}>
               <View style={cardStyles.titleRow}>
                 <View
@@ -658,7 +625,6 @@ export default function StatsScreen() {
               />
             </Card>
 
-            {/* ── Workouts per day bar chart ── */}
             <Card delay={200}>
               <View style={cardStyles.titleRow}>
                 <View
@@ -679,7 +645,6 @@ export default function StatsScreen() {
               <BarChart data={data.workoutsLast7} color={colors.secondary} />
             </Card>
 
-            {/* ── Body part breakdown ── */}
             <Card delay={300}>
               <View style={cardStyles.titleRow}>
                 <View
@@ -706,8 +671,7 @@ export default function StatsScreen() {
               </View>
             </Card>
 
-            {/* ── Level distribution ── */}
-            <Card style={cardStyles.card} delay={400}>
+            <Card delay={400}>
               <View style={cardStyles.titleRow}>
                 <View
                   style={[
@@ -726,8 +690,6 @@ export default function StatsScreen() {
               <RingChart data={data.levels} />
             </Card>
 
-            {/* ── Top exercises ── */}
-            {/* ── Top exercises ── */}
             <Card delay={500}>
               <View style={cardStyles.titleRow}>
                 <View
@@ -757,15 +719,20 @@ export default function StatsScreen() {
             </Card>
           </View>
         ) : (
-          <View style={styles.loader}>
-            <Ionicons
-              name="bar-chart-outline"
-              size={ms(48)}
-              color={colors.dim}
-            />
-            <Text style={styles.emptyText}>No workout data yet</Text>
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIconWrap}>
+              <Ionicons
+                name="bar-chart-outline"
+                size={ms(38)}
+                color={colors.primary}
+              />
+            </View>
+
+            <Text style={styles.emptyText}>No stats yet</Text>
+
             <Text style={styles.emptySubText}>
-              Complete a workout to see your stats
+              Complete your first workout to see calories, progress, and
+              activity insights.
             </Text>
           </View>
         )}
@@ -774,22 +741,20 @@ export default function StatsScreen() {
   );
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// STYLES
-// ═════════════════════════════════════════════════════════════════════════════
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    // backgroundColor: colors.background,
-    marginHorizontal: ms(5),
+    backgroundColor: "#F8FAFC",
   },
   scroll: {
+    flexGrow: 1,
     paddingHorizontal: PADDING,
+    paddingTop: ms(12),
     paddingBottom: ms(80),
   },
   loader: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: "#F8FAFC",
     alignItems: "center",
     justifyContent: "center",
     gap: ms(12),
@@ -799,40 +764,69 @@ const styles = StyleSheet.create({
     fontSize: ms(14),
     color: colors.muted,
   },
-  emptyText: {
-    fontFamily: "OpenSans_600SemiBold",
-    fontSize: ms(16),
-    color: colors.muted,
-    marginTop: ms(8),
-  },
-  emptySubText: {
-    fontFamily: "OpenSans_400Regular",
-    fontSize: ms(12),
-    color: colors.dim,
-  },
-
-  // Header
-  header: {
+  headerCard: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingTop: ms(12),
-    paddingBottom: ms(16),
+    backgroundColor: "#FFFFFF",
+    borderRadius: ms(20),
+    paddingHorizontal: ms(10),
+    paddingVertical: ms(10),
+    marginBottom: ms(18),
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  headerIconWrap: {
+    borderRadius: ms(15),
+
+    alignItems: "center",
+    justifyContent: "center",
+    marginEnd: ms(12),
+  },
+  headerTextBox: {
+    flex: 1,
   },
   headerTitle: {
     fontFamily: "OpenSans_800ExtraBold",
-
-    fontSize: scaling().moderateScale(18),
-    color: colors.text,
+    fontSize: ms(18),
+    color: "#0F172A",
   },
   headerSub: {
     fontFamily: "OpenSans_500Medium",
-    fontSize: scaling().moderateScale(12),
-    color: colors.muted,
-    marginTop: 2,
+    fontSize: ms(12),
+    color: "#64748B",
+    marginTop: ms(3),
+    lineHeight: ms(17),
   },
-
-  // Filter
+  emptyContainer: {
+    flex: 1,
+    minHeight: height * 0.65,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: ms(28),
+  },
+  emptyIconWrap: {
+    width: ms(76),
+    height: ms(76),
+    borderRadius: ms(38),
+    backgroundColor: colors.primary + "12",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: ms(16),
+  },
+  emptyText: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: ms(20),
+    color: "#0F172A",
+    textAlign: "center",
+  },
+  emptySubText: {
+    fontFamily: "OpenSans_400Regular",
+    fontSize: ms(13),
+    color: "#64748B",
+    textAlign: "center",
+    lineHeight: ms(20),
+    marginTop: ms(8),
+  },
   filterRow: {
     flexDirection: "row",
     backgroundColor: colors.surface,
@@ -857,11 +851,10 @@ const styles = StyleSheet.create({
     color: colors.muted,
   },
   filterTextActive: {
-    color: "#fff",
+    color: "#FFFFFF",
   },
 });
 
-// Summary pills
 const pillStyles = StyleSheet.create({
   row: {
     flexDirection: "row",
@@ -898,7 +891,6 @@ const pillStyles = StyleSheet.create({
   },
 });
 
-// Card
 const cardStyles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
@@ -934,7 +926,6 @@ const cardStyles = StyleSheet.create({
   },
 });
 
-// Bar chart
 const barStyles = StyleSheet.create({
   container: {
     flexDirection: "row",
@@ -967,7 +958,6 @@ const barStyles = StyleSheet.create({
   },
 });
 
-// Horizontal bar
 const horizStyles = StyleSheet.create({
   row: {
     flexDirection: "row",
@@ -1012,7 +1002,6 @@ const horizStyles = StyleSheet.create({
   },
 });
 
-// Ring chart
 const ringStyles = StyleSheet.create({
   wrapper: {
     flexDirection: "row",
@@ -1055,7 +1044,6 @@ const ringStyles = StyleSheet.create({
   },
 });
 
-// Top exercises
 const topStyles = StyleSheet.create({
   row: {
     flexDirection: "row",

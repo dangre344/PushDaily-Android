@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import {
   Animated,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,7 +13,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "../../constants/colors";
 import { workoutListGlobal } from "../../constants/Constants";
-import { Logger } from "../../constants/Logger";
 import { useUser } from "../../constants/UserContext";
 import { scaling } from "../../constants/useScaling";
 import CongratsScreen from "./Componenets/CongratsScreen";
@@ -21,70 +21,112 @@ import NextWorkoutInfo from "./Componenets/NextWorkoutInfo";
 
 export default function WorkoutDetail() {
   const { id, name, level } = useLocalSearchParams();
+  const router = useRouter();
+  const [quitModalVisible, setQuitModalVisible] = useState(false);
+  const { user } = useUser();
 
-  const { user, updateUser } = useUser();
-
-  const bodyPartObj = {
-    id: Number(id),
-    name,
-    level,
-  };
-
-  Logger.log("Received WorkoutDetail bodyPart:", bodyPartObj);
-
-  const [index, setIndex] = useState(0);
-  const [workoutCompletedWorkouts, setWorkoutCompletedWorkouts] = useState([]);
+  const bodyPartObj = { id: Number(id), name, level };
 
   const workoutsListForBodyPart = workoutListGlobal.find(
     (item) =>
       Number(item.workoutId) === Number(bodyPartObj.id) &&
-      item.bodyPart == bodyPartObj.name &&
-      item.level == bodyPartObj.level,
+      item.bodyPart === bodyPartObj.name &&
+      item.level === bodyPartObj.level,
   );
 
-  Logger.log("Received workoutsListForBodyPart:", workoutsListForBodyPart);
-
   const workouts = workoutsListForBodyPart;
+  const totalCount = workouts?.workoutList?.length || 0;
 
-  Logger.log("FilteredWorkouts:---->", workouts);
+  const [index, setIndex] = useState(0);
 
+  // FIX: Track completed exercises by their LIST INDEX (a Set of numbers).
+  // Object-identity comparison (item.id) breaks because workout objects
+  // often have no id field — undefined === undefined always passes the filter,
+  // so nothing ever gets removed. Index-based tracking is always reliable.
+  const [completedIndices, setCompletedIndices] = useState(new Set());
+
+  // Start on CurrentWorkout as requested.
   const [loadingPage, setLoadingPage] = useState("play_workout");
 
-  console.log("Loading Page:", loadingPage);
-  console.log("workoutCompletedWorkouts----->", workoutCompletedWorkouts);
-  console.log("index------->", index);
+  const completedCount = completedIndices.size;
 
-  const handlePrev = () => {
-    Logger.log("handlePrev called. Current index:", index);
-    if (index > 0) {
-      setWorkoutCompletedWorkouts((prev) => {
-        const id = workouts.workoutList[index].id;
-        if (prev.includes(id)) {
-          return prev.filter((item) => item !== id);
-        } else {
-          return [...prev, id];
-        }
-      });
+  // Build the array CongratsScreen expects (list of workout objects that were done)
+  const workoutCompletedWorkouts =
+    workouts?.workoutList?.filter((_, i) => completedIndices.has(i)) ?? [];
 
-      setIndex(index - 1);
+  // ─── Mark an index as completed ──────────────────────────────────────────
+  const markCompleted = (idx) => {
+    setCompletedIndices((prev) => {
+      const next = new Set(prev);
+      next.add(idx);
+      return next;
+    });
+  };
+
+  // ─── Remove an index from completed ──────────────────────────────────────
+  const markIncomplete = (idx) => {
+    setCompletedIndices((prev) => {
+      const next = new Set(prev);
+      next.delete(idx);
+      return next;
+    });
+  };
+
+  // ─── Called by CurrentWorkout "Next Exercise" button ─────────────────────
+  // FIX: capture nextIndex as a local variable — never rely on `index` from
+  // closure after setState, which is async and may return the old value.
+  const onNextWorkout = () => {
+    const nextIndex = index + 1; // capture before any setState
+
+    markCompleted(index); // record current exercise as done
+
+    setIndex(nextIndex);
+
+    if (nextIndex >= totalCount) {
+      // All exercises done — congrats condition triggers in render
+      // loadingPage value doesn't matter here; the index guard wins
+      setLoadingPage("play_workout");
     } else {
-      setWorkoutCompletedWorkouts([]);
+      setLoadingPage("next_workout");
     }
   };
 
-  const onNextWorkout = () => {
-    setWorkoutCompletedWorkouts((prev) => [
-      ...prev,
-      workouts.workoutList[index],
-    ]);
-    setLoadingPage("next_workout");
-    setIndex(index + 1);
+  // ─── Previous button (shown on NextWorkoutInfo rest screen) ──────────────
+  // FIX: go back to index-1, remove THAT index from completed (the user is
+  // replaying it), and stay on next_workout so NextWorkoutInfo renders for
+  // the previous exercise.
+  const handlePrev = () => {
+    if (index <= 0) return;
+
+    const prevIndex = index - 1;
+
+    markIncomplete(prevIndex); // un-complete the exercise we're going back to
+    setIndex(prevIndex);
+    setLoadingPage("next_workout"); // show rest/info screen for that exercise
+  };
+
+  // ─── Skip button ─────────────────────────────────────────────────────────
+  // FIX: skipping an exercise should still count it as completed so the
+  // congrats screen shows the correct total.
+  const handleSkip = () => {
+    const nextIndex = index + 1;
+    // Don't markCompleted — skipped exercises are NOT counted
+    setIndex(nextIndex);
+    if (nextIndex >= totalCount) {
+      setLoadingPage("play_workout");
+    } else {
+      setLoadingPage("next_workout");
+    }
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <Animated.View style={styles.header}>
-        <TouchableOpacity style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => setQuitModalVisible(true)}
+          activeOpacity={0.8}
+          style={styles.backButton}
+        >
           <Ionicons
             name="arrow-back"
             size={scaling().moderateScale(24)}
@@ -99,12 +141,14 @@ export default function WorkoutDetail() {
           </Text>
         </View>
       </Animated.View>
+
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
       >
-        {index === workouts.workoutList.length - 1 ? (
+        {/* Congrats: index has moved past the last item */}
+        {index >= totalCount ? (
           <CongratsScreen
             workouts={workouts}
             workoutCompletedWorkouts={workoutCompletedWorkouts}
@@ -117,7 +161,7 @@ export default function WorkoutDetail() {
             setIndex={setIndex}
             setLoadingPage={setLoadingPage}
           />
-        ) : loadingPage && loadingPage === "play_workout" ? (
+        ) : (
           <CurrentWorkout
             workout={workouts.workoutList[index]}
             index={index}
@@ -125,25 +169,22 @@ export default function WorkoutDetail() {
             setLoadingPage={setLoadingPage}
             onNext={onNextWorkout}
           />
-        ) : null}
+        )}
       </ScrollView>
-      {index !== workouts.workoutList.length - 1 ? (
+
+      {/* Skip button — only while there are more exercises left */}
+      {index < totalCount && (
         <View
           style={{
             flexDirection: "row",
-
-            flexWrap: "wrap",
-            alignSelf: "flex-end", // ✅ KEY FIX
+            alignSelf: "flex-end",
             marginEnd: 15,
             marginBottom: 10,
           }}
         >
           <TouchableOpacity
             style={styles.skipButton}
-            onPress={() => {
-              setLoadingPage("next_workout");
-              setIndex(index + 1);
-            }}
+            onPress={handleSkip}
             activeOpacity={0.8}
           >
             <Text style={styles.skipText}>
@@ -151,11 +192,10 @@ export default function WorkoutDetail() {
             </Text>
           </TouchableOpacity>
         </View>
-      ) : null}
+      )}
 
-      {loadingPage &&
-      loadingPage === "next_workout" &&
-      index !== workouts.workoutList.length - 1 ? (
+      {/* Prev / Skip-Rest footer — only on the rest screen */}
+      {loadingPage === "next_workout" && index < totalCount && (
         <View style={styles.footer}>
           <TouchableOpacity
             style={[
@@ -183,36 +223,75 @@ export default function WorkoutDetail() {
 
           <TouchableOpacity
             style={[styles.navButton, styles.nextButton]}
-            onPress={() => {
-              if (index < workouts.workoutList.length - 1) {
-                setLoadingPage("play_workout");
-                // setIndex(index + 1);
-              }
-            }}
+            onPress={() => setLoadingPage("play_workout")}
           >
-            <Text style={styles.nextButtonText}>
-              {index === workouts.workoutList.length - 1
-                ? "Finish"
-                : "Skip Rest"}
-            </Text>
+            <Text style={styles.nextButtonText}>Skip Rest</Text>
             <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
-      ) : null}
-      {loadingPage && loadingPage === "play_workout" ? (
+      )}
+
+      {/* Next Exercise button — only on the play screen */}
+      {loadingPage === "play_workout" && index < totalCount && (
         <View style={styles.footer}>
           <TouchableOpacity
             style={styles.nextBtn}
-            onPress={() => {
-              onNextWorkout();
-            }}
+            onPress={onNextWorkout}
             activeOpacity={0.8}
           >
             <Text style={styles.nextButtonText}>Next Exercise</Text>
             <Ionicons name="arrow-forward" size={22} color="white" />
           </TouchableOpacity>
         </View>
-      ) : null}
+      )}
+
+      {/* Quit modal */}
+      <Modal
+        visible={quitModalVisible}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setQuitModalVisible(false)}
+      >
+        <View style={styles.quitOverlay}>
+          <View style={styles.quitCard}>
+            <View style={styles.quitIconWrap}>
+              <Ionicons
+                name="fitness-outline"
+                size={scaling().moderateScale(30)}
+                color={colors.primary}
+              />
+            </View>
+            <Text style={styles.quitTitle}>You&apos;re doing great!</Text>
+            <Text style={styles.quitMessage}>
+              You have completed {completedCount} workout
+              {completedCount !== 1 ? "s" : ""} out of {totalCount}.
+            </Text>
+            <Text style={styles.quitQuestion}>
+              Are you sure you want to quit this workout?
+            </Text>
+            <View style={styles.quitActions}>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                style={[styles.quitButton, styles.quitYesButton]}
+                onPress={() => {
+                  setQuitModalVisible(false);
+                  router.back();
+                }}
+              >
+                <Text style={styles.quitYesText}>Yes, quit</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                style={[styles.quitButton, styles.quitNoButton]}
+                onPress={() => setQuitModalVisible(false)}
+              >
+                <Text style={styles.quitNoText}>No, I&apos;m continuing</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -656,5 +735,101 @@ export const styles = StyleSheet.create({
 
   disabledButtonText: {
     color: "#CBD5E1",
+  },
+
+  quitOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: scaling().moderateScale(20),
+  },
+
+  quitCard: {
+    width: "100%",
+    backgroundColor: "#FFFFFF",
+    borderRadius: scaling().moderateScale(24),
+    paddingHorizontal: scaling().moderateScale(20),
+    paddingVertical: scaling().moderateScale(24),
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    elevation: 8,
+  },
+
+  quitIconWrap: {
+    width: scaling().moderateScale(64),
+    height: scaling().moderateScale(64),
+    borderRadius: scaling().moderateScale(32),
+    backgroundColor: colors.primary + "14",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: scaling().moderateScale(14),
+  },
+
+  quitTitle: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: scaling().moderateScale(20),
+    color: colors.text,
+    textAlign: "center",
+  },
+
+  quitMessage: {
+    fontFamily: "OpenSans_600SemiBold",
+    fontSize: scaling().moderateScale(14),
+    color: colors.primary,
+    textAlign: "center",
+    marginTop: scaling().moderateScale(8),
+    lineHeight: scaling().moderateScale(20),
+  },
+
+  quitQuestion: {
+    fontFamily: "OpenSans_500Medium",
+    fontSize: scaling().moderateScale(13),
+    color: colors.textLight || "#64748B",
+    textAlign: "center",
+    marginTop: scaling().moderateScale(8),
+    lineHeight: scaling().moderateScale(19),
+  },
+
+  quitActions: {
+    width: "100%",
+    marginTop: scaling().moderateScale(22),
+    gap: scaling().moderateScale(10),
+  },
+
+  quitButton: {
+    width: "100%",
+    height: scaling().moderateScale(48),
+    borderRadius: scaling().moderateScale(16),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  quitYesButton: {
+    backgroundColor: "#FEE2E2",
+    borderWidth: 1,
+    borderColor: "#FCA5A5",
+  },
+
+  quitNoButton: {
+    backgroundColor: colors.primary,
+  },
+
+  quitYesText: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: scaling().moderateScale(14),
+    color: "#DC2626",
+  },
+
+  quitNoText: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: scaling().moderateScale(14),
+    color: "#FFFFFF",
   },
 });

@@ -202,6 +202,8 @@ const getCurrentWeekDates = () => {
   });
 };
 
+export const BADGE_STORAGE_KEY = "userBadge";
+
 export const useWeeklyWorkouts = (workouts) => {
   const weekDates = getCurrentWeekDates();
   const todayKey = toLocalDateKey(new Date());

@@ -13,8 +13,13 @@ import {
   View,
 } from "react-native";
 
+import { BannerAd } from "react-native-google-mobile-ads";
 import Icon from "react-native-vector-icons/Ionicons";
-import { InterstitialAdManager } from "../../../ads/Admobmanager";
+import {
+  AD_UNIT_IDS,
+  BannerAdSize,
+  InterstitialAdManager,
+} from "../../../ads/Admobmanager";
 import { colors } from "../../../constants/colors";
 import { Logger } from "../../../constants/Logger";
 import { trackEvent } from "../../../constants/mixpanel";
@@ -41,7 +46,7 @@ const CongratsScreen = ({
   const progressAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const cardSlideAnim = useRef(new Animated.Value(24)).current;
-
+  const hasSavedWorkoutsRef = useRef(false);
   const animatedCalories = useRef(new Animated.Value(0)).current;
   const animatedWorkouts = useRef(new Animated.Value(0)).current;
 
@@ -154,26 +159,62 @@ const CongratsScreen = ({
 
   useEffect(() => {
     const setup = async () => {
-      await initDB();
+      try {
+        if (hasSavedWorkoutsRef.current) return;
 
-      const completedWorkouts = workoutCompletedWorkouts.map((workoutItem) => ({
-        workoutId: workouts.workoutId,
-        calories: workoutItem.calories,
-        name: workoutItem.name,
-        bodyPart: workouts.bodyPart,
-        level: workouts.level,
-      }));
+        if (!workouts?.workoutId) {
+          Logger.log("Skipping save: workoutId missing", workouts);
+          return;
+        }
 
-      Logger.log("CompletedWorkouts to Insert--->", completedWorkouts);
+        if (
+          !workoutCompletedWorkouts ||
+          workoutCompletedWorkouts.length === 0
+        ) {
+          Logger.log("Skipping save: no completed workouts");
+          return;
+        }
 
-      await insertMultipleWorkouts(completedWorkouts);
+        hasSavedWorkoutsRef.current = true;
 
-      const allWorkouts = await getAllWorkouts();
-      Logger.log("All workouts after insertion--->", allWorkouts);
+        await initDB();
+
+        const completedWorkouts = workoutCompletedWorkouts
+          .filter((workoutItem) => workoutItem?.name)
+          .map((workoutItem) => ({
+            workoutId: String(workouts.workoutId),
+            calories: String(workoutItem.calories || 0),
+            name: workoutItem.name,
+            bodyPart: workouts.bodyPart || "",
+            level: workouts.level || "",
+          }));
+
+        Logger.log("CompletedWorkouts to Insert--->", completedWorkouts);
+
+        if (completedWorkouts.length === 0) {
+          Logger.log(
+            "Skipping save: completedWorkouts became empty after filter",
+          );
+          return;
+        }
+
+        await insertMultipleWorkouts(completedWorkouts);
+
+        const allWorkouts = await getAllWorkouts();
+        Logger.log("All workouts after insertion--->", allWorkouts);
+      } catch (error) {
+        hasSavedWorkoutsRef.current = false;
+        Logger.log("Workout save failed--->", error);
+      }
     };
 
     setup();
-  }, []);
+  }, [
+    workouts?.workoutId,
+    workouts?.bodyPart,
+    workouts?.level,
+    workoutCompletedWorkouts,
+  ]);
 
   const CaloriesDetailsModal = () => (
     <Animated.View
@@ -456,6 +497,22 @@ const CongratsScreen = ({
         </Animated.View>
       </ScrollView>
 
+      <View style={styles.bannerContainer}>
+        <BannerAd
+          unitId={AD_UNIT_IDS.banner}
+          size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
+          requestOptions={{
+            requestNonPersonalizedAdsOnly: false,
+          }}
+          onAdLoaded={() => {
+            console.log("[AdMob] Banner loaded");
+          }}
+          onAdFailedToLoad={(error) => {
+            console.warn("[AdMob] Banner failed:", error);
+          }}
+        />
+      </View>
+
       {showCaloriesDetails && <CaloriesDetailsModal />}
     </View>
   );
@@ -465,6 +522,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F7F8FA",
+  },
+
+  bannerContainer: {
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: scaling().moderateScale(52),
   },
 
   scrollContent: {

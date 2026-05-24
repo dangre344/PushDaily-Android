@@ -8,6 +8,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { AD_UNIT_IDS } from "../../../ads/Admobmanager";
 import { colors } from "../../../constants/colors";
 import { Logger } from "../../../constants/Logger";
 import { scaling } from "../../../constants/useScaling";
@@ -24,7 +27,7 @@ export const AboutModal = ({
     transparent
     onRequestClose={() => setAboutVisible(false)}
   >
-    <View style={aboutStyles.overlay}>
+    <SafeAreaView style={aboutStyles.overlay}>
       <View style={aboutStyles.sheet}>
         <View style={aboutStyles.handle} />
 
@@ -80,7 +83,7 @@ export const AboutModal = ({
             value: Platform.OS === "ios" ? "iOS" : "Android",
           },
           { label: "Released", value: "May 2026" },
-          { label: "Contact", value: "dangre344@gmail.com" },
+          { label: "Contact", value: "supportflexicoach@gmail.com" },
           //   { label: "Website", value: "www.myworkoutapp.com" },
         ].map((row) => (
           <View key={row.label} style={aboutStyles.row}>
@@ -142,7 +145,23 @@ export const AboutModal = ({
           </TouchableOpacity>
         </View>
       </View>
-    </View>
+
+      <View style={aboutStyles.bannerContainer}>
+        <BannerAd
+          unitId={AD_UNIT_IDS.banner}
+          size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
+          requestOptions={{
+            requestNonPersonalizedAdsOnly: false,
+          }}
+          onAdLoaded={() => {
+            console.log("[AdMob] Banner loaded");
+          }}
+          onAdFailedToLoad={(error) => {
+            console.warn("[AdMob] Banner failed:", error);
+          }}
+        />
+      </View>
+    </SafeAreaView>
   </Modal>
 );
 
@@ -151,6 +170,13 @@ const aboutStyles = StyleSheet.create({
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.7)",
     justifyContent: "flex-end",
+  },
+
+  bannerContainer: {
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    height: scaling().scaleHeight(40),
   },
   sheet: {
     backgroundColor: colors.surface,

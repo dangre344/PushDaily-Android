@@ -1,3 +1,4 @@
+import { scaling } from "@/constants/useScaling";
 import Slider from "@react-native-community/slider";
 import { useState } from "react";
 import { Controller } from "react-hook-form";
@@ -31,7 +32,9 @@ const SliderSelector = ({
           {label && <Text style={styles.label}>{label}</Text>}
 
           <View style={styles.sliderRow}>
-            <Text style={styles.valueText}>{previewValue || defaultValue}</Text>
+            <Text style={styles.valueText}>
+              {previewValue || defaultValue}{" "}
+            </Text>
             <Text style={styles.unitText}>{units}</Text>
           </View>
 
@@ -75,12 +78,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   valueText: {
-    fontSize: 32,
+    fontSize: scaling().moderateScale(26),
     fontFamily: "OpenSans_700Bold",
     color: "#000",
   },
   unitText: {
-    fontSize: 16,
+    fontSize: scaling().moderateScale(16),
     fontFamily: "OpenSans_400Regular",
     color: "#555",
     marginLeft: 4,
