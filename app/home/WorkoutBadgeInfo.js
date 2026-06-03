@@ -1,5 +1,5 @@
 import { AntDesign, Ionicons } from "@expo/vector-icons";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import {
   Animated,
   Image,
@@ -12,204 +12,236 @@ import {
   View,
 } from "react-native";
 import { colors } from "../../constants/colors.js";
+import { Logger } from "../../constants/Logger.js";
 
+// ─── Ordered list — used anywhere a "next tier" lookup is needed ────────────
 export const BADGE_ORDER = {
   Rabbit: 1,
-  Wolf: 2,
-  Tiger: 3,
-  Rhino: 4,
+  Fox: 2,
+  Wolf: 3,
+  Leopard: 4,
+  Tiger: 5,
+  Lion: 6,
+  Rhino: 7,
+  Dragon: 8,
 };
 
 export const BADGE_DETAILS = {
-  Rabbit: {
-    title: "Rabbit",
-    subtitle: "Getting Started",
-    emoji: "🐰",
-  },
-  Wolf: {
-    title: "Wolf",
-    subtitle: "Consistent",
-    emoji: "🐺",
-  },
-  Tiger: {
-    title: "Tiger",
-    subtitle: "Strong",
-    emoji: "🐯",
-  },
-  Rhino: {
-    title: "Rhino",
-    subtitle: "Strongest",
-    emoji: "🦏",
-  },
+  Rabbit: { title: "Rabbit", subtitle: "Getting Started", emoji: "🐰" },
+  Fox: { title: "Fox", subtitle: "Building Habit", emoji: "🦊" },
+  Wolf: { title: "Wolf", subtitle: "Consistent", emoji: "🐺" },
+  Leopard: { title: "Leopard", subtitle: "Athletic", emoji: "🐆" },
+  Tiger: { title: "Tiger", subtitle: "Powerful", emoji: "🐯" },
+  Lion: { title: "Lion", subtitle: "Dominant", emoji: "🦁" },
+  Rhino: { title: "Rhino", subtitle: "Unstoppable", emoji: "🦏" },
+  Dragon: { title: "Dragon", subtitle: "Legendary", emoji: "🐉" },
 };
 
-export const BADGE_LEVELS = [
+// ─── Tier thresholds — single source of truth ───────────────────────────────
+// Change values here and the entire badge system updates.
+const BADGE_TIERS = [
   {
     title: "Rabbit",
     subtitle: "Getting Started",
-    range: "0–9 points",
     emoji: "🐰",
+    min: 0,
+    max: 24,
     description:
-      "You have started your fitness journey. Keep completing workouts to level up.",
+      "You have started your fitness journey. Keep going to level up.",
+  },
+  {
+    title: "Fox",
+    subtitle: "Building Habit",
+    emoji: "🦊",
+    min: 25,
+    max: 74,
+    description:
+      "You are building a habit and getting into a rhythm with regular workouts.",
   },
   {
     title: "Wolf",
     subtitle: "Consistent",
-    range: "10–24 points",
     emoji: "🐺",
+    min: 75,
+    max: 149,
     description:
-      "You are building consistency and showing regular workout effort.",
+      "Pack-level consistency. You are showing up regularly and putting in work.",
+  },
+  {
+    title: "Leopard",
+    subtitle: "Athletic",
+    emoji: "🐆",
+    min: 150,
+    max: 249,
+    description:
+      "Your speed and strength are growing. You are becoming athletic.",
   },
   {
     title: "Tiger",
-    subtitle: "Strong",
-    range: "25–49 points",
+    subtitle: "Powerful",
     emoji: "🐯",
+    min: 250,
+    max: 399,
     description:
-      "You are getting stronger and completing workouts with good consistency.",
+      "Powerful and disciplined. You are completing serious training volume.",
+  },
+  {
+    title: "Lion",
+    subtitle: "Dominant",
+    emoji: "🦁",
+    min: 400,
+    max: 599,
+    description: "You dominate your training. Your dedication is exceptional.",
   },
   {
     title: "Rhino",
-    subtitle: "Strongest",
-    range: "50+ points",
+    subtitle: "Unstoppable",
     emoji: "🦏",
+    min: 600,
+    max: 849,
+    description: "Unstoppable force. Few reach this level of consistency.",
+  },
+  {
+    title: "Dragon",
+    subtitle: "Legendary",
+    emoji: "🐉",
+    min: 850,
+    max: Infinity,
     description:
-      "You have reached the strongest badge level through high workout effort.",
+      "You have reached legendary status. The strongest badge in the system.",
   },
 ];
+
+// Used by the modal to render the full list of levels
+export const BADGE_LEVELS = BADGE_TIERS.map((t) => ({
+  title: t.title,
+  subtitle: t.subtitle,
+  emoji: t.emoji,
+  range: t.max === Infinity ? `${t.min}+ points` : `${t.min}–${t.max} points`,
+  description: t.description,
+}));
+
+// ─── Point weights per workout level ────────────────────────────────────────
+export const LEVEL_POINTS = {
+  Beginner: 2,
+  Intermediate: 5,
+  Advanced: 10,
+};
 
 export const LEVEL_WEIGHTS = [
   {
     level: "Beginner",
-    points: 1,
-    description: "Each beginner workout gives 1 point.",
+    points: 2,
+    description: "Each beginner workout gives 2 points.",
   },
   {
     level: "Intermediate",
-    points: 2,
-    description: "Each intermediate workout gives 2 points.",
+    points: 5,
+    description: "Each intermediate workout gives 5 points.",
   },
   {
     level: "Advanced",
-    points: 3,
-    description: "Each advanced workout gives 3 points.",
+    points: 10,
+    description: "Each advanced workout gives 10 points.",
   },
 ];
 
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+// Normalizes a stored level string to a canonical LEVEL_POINTS key.
+// Workout rows can drift in casing / whitespace ("beginner", " Advanced ");
+// a strict `LEVEL_POINTS[workout.level]` lookup would silently return
+// undefined → 0 points, which is why the badge progress appeared frozen.
+const normalizeLevel = (level) => {
+  const key = String(level ?? "")
+    .trim()
+    .toLowerCase();
+  if (key === "beginner") return "Beginner";
+  if (key === "intermediate") return "Intermediate";
+  if (key === "advanced") return "Advanced";
+  return null;
+};
+
+// Points earned for a single workout level (0 if unrecognised).
+export const getPointsForLevel = (level) => {
+  const canonical = normalizeLevel(level);
+  return canonical ? LEVEL_POINTS[canonical] : 0;
+};
+
+// Total points across a list of performed workout rows.
+export const getTotalPoints = (performedWorkouts = []) =>
+  performedWorkouts.reduce(
+    (total, workout) => total + getPointsForLevel(workout?.level),
+    0,
+  );
+
+const findTier = (score) =>
+  BADGE_TIERS.find((t) => score >= t.min && score <= t.max) ?? BADGE_TIERS[0];
+
+export const getUserBadge = (performedWorkouts = []) => {
+  const score = getTotalPoints(performedWorkouts);
+
+  const tier = findTier(score);
+  return {
+    title: tier.title,
+    subtitle: tier.subtitle,
+    emoji: tier.emoji,
+    score,
+  };
+};
+
 export const getNextBadgeProgress = (score = 0) => {
-  if (score >= 50) {
+  const currentTier = findTier(score);
+  const currentIndex = BADGE_TIERS.indexOf(currentTier);
+  const nextTier = BADGE_TIERS[currentIndex + 1];
+
+  // Max tier reached
+  if (!nextTier) {
     return {
-      currentMin: 50,
-      nextMin: 50,
+      currentMin: currentTier.min,
+      nextMin: currentTier.min,
       nextTitle: "Max Level",
       progress: 1,
-      progressText: "You unlocked the strongest badge!",
+      progressText: `You unlocked ${currentTier.title}, the strongest badge!`,
       remainingPoints: 0,
     };
   }
 
-  if (score >= 25) {
-    return {
-      currentMin: 25,
-      nextMin: 50,
-      nextTitle: "Rhino",
-      progress: (score - 25) / (50 - 25),
-      progressText: `${score} / 50 points to Rhino`,
-      remainingPoints: 50 - score,
-    };
-  }
-
-  if (score >= 10) {
-    return {
-      currentMin: 10,
-      nextMin: 25,
-      nextTitle: "Tiger",
-      progress: (score - 10) / (25 - 10),
-      progressText: `${score} / 25 points to Tiger`,
-      remainingPoints: 25 - score,
-    };
-  }
+  const span = nextTier.min - currentTier.min;
+  const progress = span > 0 ? (score - currentTier.min) / span : 0;
 
   return {
-    currentMin: 0,
-    nextMin: 10,
-    nextTitle: "Wolf",
-    progress: score / 10,
-    progressText: `${score} / 10 points to Wolf`,
-    remainingPoints: 10 - score,
+    currentMin: currentTier.min,
+    nextMin: nextTier.min,
+    nextTitle: nextTier.title,
+    progress: Math.max(0, Math.min(progress, 1)),
+    progressText: `${score} / ${nextTier.min} points to ${nextTier.title}`,
+    remainingPoints: Math.max(nextTier.min - score, 0),
   };
 };
 
-export const LEVEL_POINTS = {
-  Beginner: 1,
-  Intermediate: 2,
-  Advanced: 3,
-};
-
-export const getUserBadge = (performedWorkouts = []) => {
-  const score = performedWorkouts.reduce((total, workout) => {
-    return total + (LEVEL_POINTS[workout.level] || 0);
-  }, 0);
-
-  if (score >= 50) {
-    return {
-      title: "Rhino",
-      subtitle: "Strongest",
-      score,
-      emoji: "🦏",
-    };
-  }
-
-  if (score >= 25) {
-    return {
-      title: "Tiger",
-      subtitle: "Strong",
-      score,
-      emoji: "🐯",
-      // image: require("../assets/badges/tiger.png"),
-    };
-  }
-
-  if (score >= 10) {
-    return {
-      title: "Wolf",
-      subtitle: "Consistent",
-      score,
-      emoji: "🐺",
-      // image: require("../assets/badges/wolf.png"),
-    };
-  }
-
-  return {
-    title: "Rabbit",
-    subtitle: "Getting Started",
-    score,
-    emoji: "🐰",
-    // image: require("../assets/badges/rabbit.png"),
-  };
-};
-
-import { useEffect } from "react";
-import { Logger } from "../../constants/Logger.js";
-
+// ─── Component ──────────────────────────────────────────────────────────────
 export default function WorkoutBadgeInfo({ userBadge, visible, setVisible }) {
-  Logger.log(
-    "Rendering WorkoutBadgeInfo. User badge:",
-    userBadge,
-    "Visible:",
-    visible,
-  );
   const scaleAnim = useRef(new Animated.Value(0.85)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
 
   const badgeProgress = getNextBadgeProgress(userBadge?.score || 0);
   const progressPercent = Math.min(badgeProgress.progress * 100, 100);
 
+  // Capture the progress value at open-time so the bar animates to the correct
+  // target without re-running the effect every time the parent refreshes data.
+  const progressPercentRef = useRef(progressPercent);
+
   useEffect(() => {
     if (visible) {
-      Logger.log("WorkoutBadgeInfo is visible.");
+      // Snapshot the current progress so closing/reopening always reflects
+      // the latest score while mid-session re-renders don't restart the anim.
+      progressPercentRef.current = progressPercent;
+
       opacityAnim.setValue(0);
       scaleAnim.setValue(0.85);
+      progressAnim.setValue(0);
 
       Animated.parallel([
         Animated.timing(opacityAnim, {
@@ -223,8 +255,17 @@ export default function WorkoutBadgeInfo({ userBadge, visible, setVisible }) {
           tension: 80,
           useNativeDriver: true,
         }),
+        Animated.timing(progressAnim, {
+          toValue: progressPercentRef.current,
+          duration: 900,
+          delay: 150,
+          useNativeDriver: false,
+        }),
       ]).start();
     }
+    // ⚠️ Intentionally omitting progressPercent from deps — we only want to
+    // animate when the modal opens, not on every parent data refresh.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
   const closeModal = () => {
@@ -269,6 +310,7 @@ export default function WorkoutBadgeInfo({ userBadge, visible, setVisible }) {
               <Text style={styles.modalTitle}>Workout Badge System</Text>
               <Text style={styles.modalSubtitle}>
                 Complete workouts to earn points and unlock stronger badges.
+                There are 8 tiers — can you reach Dragon?
               </Text>
             </View>
 
@@ -326,11 +368,14 @@ export default function WorkoutBadgeInfo({ userBadge, visible, setVisible }) {
               </View>
 
               <View style={styles.progressTrack}>
-                <View
+                <Animated.View
                   style={[
                     styles.progressFill,
                     {
-                      width: `${progressPercent}%`,
+                      width: progressAnim.interpolate({
+                        inputRange: [0, 100],
+                        outputRange: ["0%", "100%"],
+                      }),
                     },
                   ]}
                 />
@@ -395,7 +440,8 @@ export default function WorkoutBadgeInfo({ userBadge, visible, setVisible }) {
             <View style={styles.infoBox}>
               <Text style={styles.infoText}>
                 Every completed workout gives points based on its difficulty
-                level. Your total points decide your badge level.
+                level. Harder workouts earn more points — push your level up to
+                unlock badges faster.
               </Text>
             </View>
 
@@ -461,6 +507,7 @@ const styles = StyleSheet.create({
   modalScrollContent: {
     paddingBottom: 8,
   },
+
   badgeContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -532,34 +579,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: "#64748B",
     marginTop: 4,
-  },
-
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.55)",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 18,
-  },
-
-  modalCard: {
-    width: "100%",
-    maxHeight: "84%",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 26,
-    padding: 18,
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 20,
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
-    elevation: 10,
-  },
-
-  modalScrollContent: {
-    paddingBottom: 8,
   },
 
   modalHeader: {

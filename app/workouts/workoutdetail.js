@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Animated,
   Modal,
   ScrollView,
@@ -13,8 +14,14 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "../../constants/colors";
 import { workoutListGlobal } from "../../constants/Constants";
+import { Logger } from "../../constants/Logger";
 import { useUser } from "../../constants/UserContext";
 import { scaling } from "../../constants/useScaling";
+import {
+  getAllWorkouts,
+  initDB,
+  insertMultipleWorkouts,
+} from "../../offlinedb/workoutdb";
 import CongratsScreen from "./Componenets/CongratsScreen";
 import CurrentWorkout from "./Componenets/CurrentWorkout";
 import NextWorkoutInfo from "./Componenets/NextWorkoutInfo";
@@ -25,36 +32,80 @@ export default function WorkoutDetail() {
   const [quitModalVisible, setQuitModalVisible] = useState(false);
   const { user } = useUser();
 
+  // ─── Helper: normalize strings for comparison ────────────────────────────
+  // Many string-mismatch bugs come from extra whitespace or casing differences
+  // ("Shoulder" vs "shoulder", "Full Body" vs " Full Body "). Normalizing both
+  // sides before comparing makes the lookup defensive against those.
+  const normalize = (s) =>
+    String(s ?? "")
+      .toLowerCase()
+      .trim();
+
   const bodyPartObj = { id: Number(id), name, level };
 
+  // ─── BUG FIX 2: Case-insensitive + trimmed lookup ────────────────────────
+  // The original strict === comparison silently failed when the navigating
+  // screen passed slightly different strings (e.g. "shoulder" vs "Shoulder"),
+  // returning undefined and causing the save to be skipped with no UI feedback.
   const workoutsListForBodyPart = workoutListGlobal.find(
     (item) =>
       Number(item.workoutId) === Number(bodyPartObj.id) &&
-      item.bodyPart === bodyPartObj.name &&
-      item.level === bodyPartObj.level,
+      normalize(item.bodyPart) === normalize(bodyPartObj.name) &&
+      normalize(item.level) === normalize(bodyPartObj.level),
   );
 
   const workouts = workoutsListForBodyPart;
   const totalCount = workouts?.workoutList?.length || 0;
 
+  // ─── BUG FIX 6: Diagnostic log so we can debug silent failures in prod ───
+  useEffect(() => {
+    Logger.log("WorkoutDetail mounted with params:", {
+      paramId: id,
+      paramName: name,
+      paramLevel: level,
+      found: !!workoutsListForBodyPart,
+      workoutId: workoutsListForBodyPart?.workoutId,
+      bodyPart: workoutsListForBodyPart?.bodyPart,
+      totalExercises: workoutsListForBodyPart?.workoutList?.length,
+    });
+
+    if (!workoutsListForBodyPart) {
+      Logger.log(
+        "WorkoutDetail: NO MATCH FOUND — check params vs workoutListGlobal",
+      );
+    }
+  }, [id, name, level, workoutsListForBodyPart]);
+
   const [index, setIndex] = useState(0);
-
-  // FIX: Track completed exercises by their LIST INDEX (a Set of numbers).
-  // Object-identity comparison (item.id) breaks because workout objects
-  // often have no id field — undefined === undefined always passes the filter,
-  // so nothing ever gets removed. Index-based tracking is always reliable.
   const [completedIndices, setCompletedIndices] = useState(new Set());
-
-  // Start on CurrentWorkout as requested.
   const [loadingPage, setLoadingPage] = useState("play_workout");
+
+  // Controls whether CongratsScreen can render
+  // "none"   → not finished yet
+  // "saving" → DB insert in progress, show loader
+  // "done"   → DB done, render CongratsScreen
+  const [finishState, setFinishState] = useState("none");
+
+  // ─── BUG FIX 1: Composite key for the save guard ─────────────────────────
+  // The original guard used `workoutId` alone. But workoutId is shared across
+  // levels of the same body part (Chest Beginner, Chest Intermediate, and
+  // Chest Advanced all have workoutId=4). That meant once any Chest workout
+  // was saved, subsequent Chest workouts at different levels would be skipped.
+  //
+  // We now key by `workoutId + bodyPart + level` so the three Chest levels
+  // are treated as three distinct workouts.
+  const lastSavedWorkoutKeyRef = useRef(null);
+
+  const getWorkoutKey = () =>
+    workouts
+      ? `${workouts.workoutId}-${workouts.bodyPart}-${workouts.level}`
+      : null;
 
   const completedCount = completedIndices.size;
 
-  // Build the array CongratsScreen expects (list of workout objects that were done)
   const workoutCompletedWorkouts =
     workouts?.workoutList?.filter((_, i) => completedIndices.has(i)) ?? [];
 
-  // ─── Mark an index as completed ──────────────────────────────────────────
   const markCompleted = (idx) => {
     setCompletedIndices((prev) => {
       const next = new Set(prev);
@@ -63,7 +114,6 @@ export default function WorkoutDetail() {
     });
   };
 
-  // ─── Remove an index from completed ──────────────────────────────────────
   const markIncomplete = (idx) => {
     setCompletedIndices((prev) => {
       const next = new Set(prev);
@@ -72,52 +122,166 @@ export default function WorkoutDetail() {
     });
   };
 
-  // ─── Called by CurrentWorkout "Next Exercise" button ─────────────────────
-  // FIX: capture nextIndex as a local variable — never rely on `index` from
-  // closure after setState, which is async and may return the old value.
-  const onNextWorkout = () => {
-    const nextIndex = index + 1; // capture before any setState
+  // ─── Save completed workouts to DB, then open Congrats ───────────────────
+  const finishWorkoutAndSave = async (completedList) => {
+    const currentKey = getWorkoutKey();
 
-    markCompleted(index); // record current exercise as done
+    // BUG FIX 1 GUARD: skip only if THIS exact (workoutId + bodyPart + level)
+    // was already saved. Different workouts always pass through.
+    if (
+      lastSavedWorkoutKeyRef.current &&
+      lastSavedWorkoutKeyRef.current === currentKey
+    ) {
+      Logger.log(
+        "Skipping save: this exact workout already saved →",
+        currentKey,
+      );
+      setFinishState("done");
+      return;
+    }
+
+    setFinishState("saving");
+
+    try {
+      if (!workouts?.workoutId) {
+        Logger.log(
+          "Skipping save: workoutId missing — likely a param mismatch",
+          { params: { id, name, level }, workouts },
+        );
+        setFinishState("done");
+        return;
+      }
+
+      if (!completedList || completedList.length === 0) {
+        Logger.log("Skipping save: no completed workouts in list");
+        setFinishState("done");
+        return;
+      }
+
+      await initDB();
+
+      const completedWorkouts = completedList
+        .filter((w) => w?.name)
+        .map((w) => ({
+          workoutId: String(workouts.workoutId),
+          calories: String(w.calories || 0),
+          name: w.name,
+          bodyPart: workouts.bodyPart || "",
+          level: workouts.level || "",
+        }));
+
+      if (completedWorkouts.length === 0) {
+        Logger.log("Skipping save: empty after filter");
+        setFinishState("done");
+        return;
+      }
+
+      Logger.log(
+        "Inserting workouts:",
+        completedWorkouts.length,
+        "key:",
+        currentKey,
+      );
+
+      await insertMultipleWorkouts(completedWorkouts);
+
+      // Remember the composite key so duplicate saves of the SAME workout
+      // (e.g. accidental re-trigger) are blocked, while different workouts
+      // (different level / body part) still save normally.
+      lastSavedWorkoutKeyRef.current = currentKey;
+
+      const allWorkouts = await getAllWorkouts();
+      Logger.log(
+        "Save successful. Total workouts in DB now:",
+        allWorkouts.length,
+      );
+    } catch (error) {
+      Logger.log("Workout save failed:", error);
+      // Don't update lastSavedWorkoutKeyRef on failure → allows retry on next attempt
+    } finally {
+      // Whether success or failure → proceed to Congrats (which shows the ad)
+      setFinishState("done");
+    }
+  };
+
+  // ─── Next Exercise ───────────────────────────────────────────────────────
+  const onNextWorkout = () => {
+    const nextIndex = index + 1;
+
+    // Build the updated completed-indices set synchronously so we can pass
+    // the correct list into the DB save without waiting on setState.
+    const updatedCompleted = new Set(completedIndices);
+    updatedCompleted.add(index);
+    setCompletedIndices(updatedCompleted);
 
     setIndex(nextIndex);
 
     if (nextIndex >= totalCount) {
-      // All exercises done — congrats condition triggers in render
-      // loadingPage value doesn't matter here; the index guard wins
-      setLoadingPage("play_workout");
+      // Finished — compute completed list and save BEFORE showing congrats
+      const completedList =
+        workouts?.workoutList?.filter((_, i) => updatedCompleted.has(i)) ?? [];
+      finishWorkoutAndSave(completedList);
     } else {
       setLoadingPage("next_workout");
     }
   };
 
-  // ─── Previous button (shown on NextWorkoutInfo rest screen) ──────────────
-  // FIX: go back to index-1, remove THAT index from completed (the user is
-  // replaying it), and stay on next_workout so NextWorkoutInfo renders for
-  // the previous exercise.
+  // ─── Previous ────────────────────────────────────────────────────────────
   const handlePrev = () => {
     if (index <= 0) return;
-
     const prevIndex = index - 1;
-
-    markIncomplete(prevIndex); // un-complete the exercise we're going back to
+    markIncomplete(prevIndex);
     setIndex(prevIndex);
-    setLoadingPage("next_workout"); // show rest/info screen for that exercise
+    setLoadingPage("next_workout");
   };
 
-  // ─── Skip button ─────────────────────────────────────────────────────────
-  // FIX: skipping an exercise should still count it as completed so the
-  // congrats screen shows the correct total.
+  // ─── Skip (does NOT mark completed) ──────────────────────────────────────
   const handleSkip = () => {
     const nextIndex = index + 1;
-    // Don't markCompleted — skipped exercises are NOT counted
     setIndex(nextIndex);
+
     if (nextIndex >= totalCount) {
-      setLoadingPage("play_workout");
+      // Finished via skip — save whatever was completed up to now.
+      // Note: if the user skipped every exercise, completedIndices is empty
+      // and finishWorkoutAndSave will short-circuit (no save). That's intentional.
+      const completedList =
+        workouts?.workoutList?.filter((_, i) => completedIndices.has(i)) ?? [];
+      finishWorkoutAndSave(completedList);
     } else {
       setLoadingPage("next_workout");
     }
   };
+
+  // Helper: are we on the finish flow?
+  const isFinishing = index >= totalCount;
+
+  // ─── Safety: if workout lookup failed entirely, render a fallback ────────
+  // Without this, accessing `workouts.bodyPart` below would throw and crash
+  // the screen with a red box, which is worse than a friendly message.
+  if (!workouts) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            activeOpacity={0.8}
+            style={styles.backButton}
+          >
+            <Ionicons
+              name="arrow-back"
+              size={scaling().moderateScale(24)}
+              color={colors.primary}
+            />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.savingContainer}>
+          <Text style={styles.savingText}>
+            Workout not found. Please go back and try again.
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -147,13 +311,20 @@ export default function WorkoutDetail() {
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
       >
-        {/* Congrats: index has moved past the last item */}
-        {index >= totalCount ? (
-          <CongratsScreen
-            workouts={workouts}
-            workoutCompletedWorkouts={workoutCompletedWorkouts}
-            userId={user?._id}
-          />
+        {isFinishing ? (
+          finishState === "done" ? (
+            <CongratsScreen
+              workouts={workouts}
+              workoutCompletedWorkouts={workoutCompletedWorkouts}
+              userId={user?._id}
+            />
+          ) : (
+            // Saving state — small inline loader before Congrats appears
+            <View style={styles.savingContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={styles.savingText}>Saving your workout…</Text>
+            </View>
+          )
         ) : loadingPage === "next_workout" ? (
           <NextWorkoutInfo
             workouts={workouts}
@@ -172,8 +343,8 @@ export default function WorkoutDetail() {
         )}
       </ScrollView>
 
-      {/* Skip button — only while there are more exercises left */}
-      {index < totalCount && (
+      {/* Skip button — only while not finishing */}
+      {!isFinishing && (
         <View
           style={{
             flexDirection: "row",
@@ -194,8 +365,7 @@ export default function WorkoutDetail() {
         </View>
       )}
 
-      {/* Prev / Skip-Rest footer — only on the rest screen */}
-      {loadingPage === "next_workout" && index < totalCount && (
+      {loadingPage === "next_workout" && !isFinishing && (
         <View style={styles.footer}>
           <TouchableOpacity
             style={[
@@ -231,8 +401,7 @@ export default function WorkoutDetail() {
         </View>
       )}
 
-      {/* Next Exercise button — only on the play screen */}
-      {loadingPage === "play_workout" && index < totalCount && (
+      {loadingPage === "play_workout" && !isFinishing && (
         <View style={styles.footer}>
           <TouchableOpacity
             style={styles.nextBtn}
@@ -317,6 +486,21 @@ export const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 12,
     backgroundColor: "rgba(255, 107, 53, 0.1)",
+  },
+
+  savingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 80,
+    gap: 14,
+  },
+  savingText: {
+    fontFamily: "OpenSans_600SemiBold",
+    fontSize: scaling().moderateScale(14),
+    color: colors.secondary,
+    textAlign: "center",
+    paddingHorizontal: 20,
   },
 
   headerCenter: {

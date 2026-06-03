@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1010580018426",
+    "project_id": "push-daily-home-workout",
+    "storage_bucket": "push-daily-home-workout.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1010580018426:android:ddb991cacd27bbfe046543",
+        "android_client_info": {
+          "package_name": "com.pushdaily.homeworkout.fit"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCdrvzItLAw4rkIA_bEx3uvNYDG7BUId0Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

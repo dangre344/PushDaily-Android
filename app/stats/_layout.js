@@ -1,5 +1,6 @@
 import { AntDesign, Ionicons } from "@expo/vector-icons";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
@@ -493,27 +494,50 @@ export default function StatsScreen() {
 
   const titleAnim = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        await initDB();
-        const data = await getAllWorkouts();
-        Logger.log("StatsScreen workouts--->", data.length);
-        setWorkouts(data);
-      } catch (error) {
-        Logger.log("StatsScreen error", error);
-      } finally {
-        setLoading(false);
-        Animated.timing(titleAnim, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: false,
-        }).start();
-      }
-    };
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
 
-    load();
-  }, []);
+      const load = async () => {
+        try {
+          setLoading(true);
+
+          // Reset header animation every time screen opens
+          titleAnim.setValue(0);
+
+          await initDB();
+
+          const data = await getAllWorkouts();
+
+          if (!isActive) return;
+
+          Logger.log("StatsScreen workouts--->", data?.length || 0);
+          setWorkouts(data || []);
+        } catch (error) {
+          if (!isActive) return;
+
+          Logger.log("StatsScreen error", error);
+          setWorkouts([]);
+        } finally {
+          if (!isActive) return;
+
+          setLoading(false);
+
+          Animated.timing(titleAnim, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: false,
+          }).start();
+        }
+      };
+
+      load();
+
+      return () => {
+        isActive = false;
+      };
+    }, [titleAnim]),
+  );
 
   const filteredWorkouts = useMemo(() => {
     if (filter === "All") return workouts;

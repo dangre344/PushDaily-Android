@@ -389,8 +389,6 @@ export default function ProfileScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      let isActive = true;
-
       const loadStats = async () => {
         await initDB();
 
@@ -399,17 +397,11 @@ export default function ProfileScreen() {
           getCurrentStreak(),
         ]);
 
-        if (isActive) {
-          setStats(data);
-          setStreak(currentStreak);
-        }
+        setStats(data);
+        setStreak(currentStreak);
       };
 
       loadStats();
-
-      return () => {
-        isActive = false;
-      };
     }, []),
   );
 
@@ -517,6 +509,7 @@ export default function ProfileScreen() {
       <View style={styles.glowLeft} pointerEvents="none" />
 
       <Animated.ScrollView
+        style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
         onScroll={Animated.event(
@@ -767,10 +760,16 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
   },
 
+  // Bound the scroll area so the pinned banner below it always stays on screen.
+  scrollView: {
+    flex: 1,
+  },
+
   bannerContainer: {
     width: "100%",
     alignItems: "center",
     justifyContent: "center",
+    minHeight: ms(52),
   },
 
   glowRight: {
