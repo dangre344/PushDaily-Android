@@ -19,6 +19,37 @@
       "android": {
         "buildType": "app-bundle"
       }
+    },
+    "production-apk": {
+      "autoIncrement": false,
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    // ✅ Local AAB build — for Play Store upload
+    "production-local": {
+      "autoIncrement": false,
+      "distribution": "internal",
+      "android": {
+        "buildType": "app-bundle",
+        "gradleCommand": ":app:bundleRelease"
+      },
+      "env": {
+        "APP_VARIANT": "production"
+      }
+    },
+    // ✅ Local APK build — for sideloading / testing
+    "production-apk-local": {
+      "autoIncrement": false,
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
+      },
+      "env": {
+        "APP_VARIANT": "production"
+      }
     }
   },
   "submit": {

@@ -9,7 +9,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { createUniqueId, daysArr } from "@/constants/utils.js";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { ScrollView, StyleSheet, View } from "react-native";
@@ -43,6 +43,8 @@ export default function Signup() {
 
   Logger.log("Signup screen - isEditMode:", isEditMode);
   const [updateSuccessVisible, setUpdateSuccessVisible] = useState(false);
+  // Prevents double-taps on "Finish" from re-triggering the permission popup.
+  const isFinishingRef = useRef(false);
   const { t } = useTranslation();
   const router = useRouter();
   const totalSteps = 7;
@@ -214,20 +216,6 @@ export default function Signup() {
     }
   };
 
-  const requestNotificationPermission = async () => {
-    const { status: existingStatus } =
-      await Notifications.getPermissionsAsync();
-
-    let finalStatus = existingStatus;
-
-    if (existingStatus !== "granted") {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-
-    return finalStatus === "granted";
-  };
-
   const scheduleNotification = async (timeValue) => {
     const notificationTime = getNotificationTime(timeValue);
     if (!notificationTime) return;
@@ -357,21 +345,41 @@ export default function Signup() {
     );
   };
 
-  const submitForm = () => {
-    Logger.log(" totalSteps:", form?.formState?.errors);
-    Logger.log("getValues:--->", form.getValues());
-    form.handleSubmit(onSubmit)();
+  // Runs when validation fails inside handleSubmit. Reset the guard so the
+  // user can tap "Finish" again instead of being permanently locked out.
+  const onInvalid = (errors) => {
+    Logger.log("Validation failed:", errors);
+    isFinishingRef.current = false;
+    Toast.error("Please complete all steps before finishing.", "top");
   };
 
-  const askNotificationPopup = async () => {
-    const alreadyGranted = await requestNotificationPermission();
+  const submitForm = () => {
+    Logger.log("getValues:--->", form.getValues());
+    form.handleSubmit(onSubmit, onInvalid)();
+  };
 
-    if (alreadyGranted) {
-      await scheduleNotification(form.getValues("time"));
-      submitForm();
-      return;
+  const requestNotificationPermission = async () => {
+    const { status: existingStatus } =
+      await Notifications.getPermissionsAsync();
+    if (existingStatus === "granted") return true;
+
+    const { status } = await Notifications.requestPermissionsAsync();
+    return status === "granted";
+  };
+
+  // Navigate right away and schedule the 14 reminders in the background, so the
+  // UI never freezes waiting on the sequential scheduleNotificationAsync calls.
+  const finishAndNavigate = (granted) => {
+    if (granted) {
+      scheduleNotification(form.getValues("time")).catch((e) =>
+        Logger.log("Failed to schedule notification:", e),
+      );
     }
+    // Defer to next tick so the OS/alert dialog fully dismisses before nav.
+    setTimeout(() => submitForm(), 0);
+  };
 
+  const askNotificationPopup = () => {
     Alert.alert(
       "Never miss your notification",
       "Allow notifications so we can remind you at your selected time.",
@@ -379,22 +387,25 @@ export default function Signup() {
         {
           text: "Later",
           style: "cancel",
-          onPress: submitForm,
+          // User chose to skip — continue without scheduling, no toast needed.
+          onPress: () => finishAndNavigate(false),
         },
         {
           text: "Yes",
           onPress: async () => {
             const granted = await requestNotificationPermission();
-
             Logger.log("Notification permission granted:", granted);
-            if (granted) {
-              await scheduleNotification(form.getValues("time"));
+            if (!granted) {
+              Toast.info(
+                "Reminders are off. You can enable them anytime in Settings.",
+                "top",
+              );
             }
-
-            submitForm();
+            finishAndNavigate(granted);
           },
         },
       ],
+      { cancelable: false },
     );
   };
 
@@ -429,6 +440,9 @@ export default function Signup() {
     if (step < totalSteps) {
       setStep(step + 1);
     } else {
+      // Ignore extra taps while the finish flow / permission popup is running.
+      if (isFinishingRef.current) return;
+      isFinishingRef.current = true;
       askNotificationPopup();
     }
   };

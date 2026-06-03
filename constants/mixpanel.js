@@ -36,6 +36,8 @@ export const trackEvent = async (eventName, properties = {}) => {
       app_source: "PushDaily",
       tracked_at: new Date().toISOString(),
     });
+
+    mixpanel.flush();
   } catch (error) {
     console.log(`Mixpanel track error: ${eventName}`, error);
   }

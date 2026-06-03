@@ -100,6 +100,7 @@ export const PrivacyPolicyModal = ({ privacyVisible, setPrivacyVisible }) => (
         <Text style={modalStyles.lastUpdated}>Last updated: March 2026</Text>
 
         <ScrollView
+          style={modalStyles.scroll}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={modalStyles.scrollContent}
         >
@@ -152,7 +153,8 @@ const modalStyles = StyleSheet.create({
     width: "100%",
     alignItems: "center",
     justifyContent: "center",
-    height: scaling().moderateScale(20),
+    minHeight: scaling().moderateScale(52),
+    marginTop: scaling().moderateScale(8),
   },
   sheet: {
     backgroundColor: colors.surface,
@@ -211,6 +213,11 @@ const modalStyles = StyleSheet.create({
     color: colors.muted,
     marginTop: scaling().moderateScale(8),
     marginBottom: scaling().moderateScale(4),
+  },
+  // flexShrink lets the list shrink within the sheet's maxHeight so it scrolls,
+  // keeping the "Got it" button and banner pinned at the bottom of the sheet.
+  scroll: {
+    flexShrink: 1,
   },
   scrollContent: {
     paddingVertical: scaling().moderateScale(8),

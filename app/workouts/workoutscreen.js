@@ -556,6 +556,7 @@ export default function WorkoutScreen() {
           setVisible={setBadgeLevelUpVisible}
           oldBadge={badgeUpgradeData.oldBadge}
           newBadge={badgeUpgradeData.newBadge}
+          score={userBadge?.score}
         />
       ) : null}
     </View>

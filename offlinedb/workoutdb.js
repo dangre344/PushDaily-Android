@@ -3,27 +3,32 @@ import * as SQLite from "expo-sqlite";
 import { Logger } from "../constants/Logger";
 
 let db = null;
+let dbInitPromise = null;
 
 export const initDB = async () => {
-  if (!db) {
-    db = await SQLite.openDatabaseAsync("workouts.db");
+  if (db) return db;
+
+  if (!dbInitPromise) {
+    dbInitPromise = (async () => {
+      const opened = await SQLite.openDatabaseAsync("workouts.db");
+      await opened.execAsync(`
+        CREATE TABLE IF NOT EXISTS workouts (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workoutId TEXT,
+          name TEXT,
+          calories TEXT,
+          level TEXT,
+          bodyPart TEXT,
+          dateTime TEXT
+        );
+      `);
+      db = opened;
+      Logger.log("Database initialized:", db);
+      return db;
+    })();
   }
 
-  Logger.log("Database initialized:", db);
-
-  await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS workouts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      workoutId TEXT,
-      name TEXT,
-      calories TEXT,
-      level TEXT,
-      bodyPart TEXT,
-      dateTime TEXT
-    );
-  `);
-
-  return db;
+  return dbInitPromise;
 };
 
 export const getDB = () => {
@@ -56,27 +61,33 @@ export const insertMultipleWorkouts = async (workouts = []) => {
     return false;
   }
 
-  Logger.log("Inserting multiple workouts count:", workouts.length);
+  // ✅ FIX 1: Filter BEFORE the transaction — never use `continue` inside
+  // withTransactionAsync. It can corrupt transaction state on some SQLite versions.
+  const validWorkouts = workouts.filter((w) => w?.name);
+
+  if (validWorkouts.length === 0) {
+    Logger.log("insertMultipleWorkouts: no valid workouts after filter");
+    return false;
+  }
+
+  Logger.log("Inserting workouts count:", validWorkouts.length);
 
   try {
     const dateTime = new Date().toISOString();
 
-    await database.withTransactionAsync(async () => {
-      for (const workout of workouts) {
+    // ✅ FIX 2: Use withExclusiveTransactionAsync — it does NOT swallow errors
+    // withTransactionAsync is deprecated and silently eats exceptions
+    await database.withExclusiveTransactionAsync(async (tx) => {
+      for (const workout of validWorkouts) {
         const {
           workoutId = "",
           name = "",
           calories = "0",
           level = "",
           bodyPart = "",
-        } = workout || {};
+        } = workout;
 
-        if (!name) {
-          Logger.log("Skipping workout insert: name missing", workout);
-          continue;
-        }
-
-        await database.runAsync(
+        await tx.runAsync(
           `INSERT INTO workouts 
             (workoutId, name, calories, level, bodyPart, dateTime)
            VALUES (?, ?, ?, ?, ?, ?)`,
@@ -96,7 +107,7 @@ export const insertMultipleWorkouts = async (workouts = []) => {
     return true;
   } catch (error) {
     Logger.log("insertMultipleWorkouts error:", error);
-    return false;
+    throw error; // ✅ FIX 3: Re-throw so the caller knows it failed
   }
 };
 

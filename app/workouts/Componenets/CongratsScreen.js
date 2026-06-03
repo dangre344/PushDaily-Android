@@ -24,11 +24,12 @@ import { colors } from "../../../constants/colors";
 import { Logger } from "../../../constants/Logger";
 import { trackEvent } from "../../../constants/mixpanel";
 import { scaling } from "../../../constants/useScaling";
+import { getAllWorkouts, initDB } from "../../../offlinedb/workoutdb";
 import {
-  getAllWorkouts,
-  initDB,
-  insertMultipleWorkouts,
-} from "../../../offlinedb/workoutdb";
+  getNextBadgeProgress,
+  getPointsForLevel,
+  getUserBadge,
+} from "../../home/WorkoutBadgeInfo";
 
 const { width, height } = Dimensions.get("window");
 
@@ -46,15 +47,30 @@ const CongratsScreen = ({
   const progressAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const cardSlideAnim = useRef(new Animated.Value(24)).current;
-  const hasSavedWorkoutsRef = useRef(false);
   const animatedCalories = useRef(new Animated.Value(0)).current;
   const animatedWorkouts = useRef(new Animated.Value(0)).current;
+  const badgeProgressAnim = useRef(new Animated.Value(0)).current;
+  const animatedPoints = useRef(new Animated.Value(0)).current;
 
   const [showCaloriesDetails, setShowCaloriesDetails] = useState(false);
 
+  // ─── Badge / level progress earned from this session ────────────────────
+  // Each completed exercise of this session earns points based on the
+  // session difficulty (Beginner 2 / Intermediate 5 / Advanced 10).
+  const [badge, setBadge] = useState(null);
+
   const completedCount = workoutCompletedWorkouts?.length || 0;
 
+  const pointsPerExercise = getPointsForLevel(workouts?.level);
+  const pointsEarned = completedCount * pointsPerExercise;
+
+  const badgeProgress = getNextBadgeProgress(badge?.score || 0);
+  const badgeProgressPercent = Math.round(
+    Math.min(badgeProgress.progress * 100, 100),
+  );
+
   Logger.log("CongratsScreen Rendered with completedCount:", completedCount);
+
   const totalWorkoutCount =
     workouts?.workoutList?.length || completedCount || 1;
   const progressValue = Math.min(completedCount / totalWorkoutCount, 1);
@@ -74,6 +90,10 @@ const CongratsScreen = ({
       ? "You completed the full session. That’s consistency in action."
       : "Great progress. Keep showing up and finish strong next time.";
 
+  // ─── Track event + show interstitial ad ─────────────────────────────────
+  // DB insertion is handled by the parent (WorkoutDetail) BEFORE this
+  // screen mounts. By the time we're here, the data is already saved, so
+  // it's safe to show the interstitial without risking an unmount mid-write.
   useEffect(() => {
     trackEvent("Exercise Completed", {
       userId: userId || "",
@@ -81,13 +101,10 @@ const CongratsScreen = ({
       level: workouts?.level || "",
     });
 
-    const timer = setTimeout(() => {
-      InterstitialAdManager.getInstance().show();
-    }, 2000);
-
-    return () => clearTimeout(timer);
+    InterstitialAdManager.getInstance().show();
   }, []);
 
+  // ─── Entry animations ───────────────────────────────────────────────────
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -143,6 +160,7 @@ const CongratsScreen = ({
     }, 350);
   }, []);
 
+  // ─── Animated number counters ───────────────────────────────────────────
   useEffect(() => {
     Animated.timing(animatedCalories, {
       toValue: safeCalories,
@@ -157,64 +175,43 @@ const CongratsScreen = ({
     }).start();
   }, [safeCalories, completedCount]);
 
+  // ─── Load total badge progress (data is already saved before we mount) ───
   useEffect(() => {
-    const setup = async () => {
+    let isActive = true;
+
+    (async () => {
       try {
-        if (hasSavedWorkoutsRef.current) return;
-
-        if (!workouts?.workoutId) {
-          Logger.log("Skipping save: workoutId missing", workouts);
-          return;
-        }
-
-        if (
-          !workoutCompletedWorkouts ||
-          workoutCompletedWorkouts.length === 0
-        ) {
-          Logger.log("Skipping save: no completed workouts");
-          return;
-        }
-
-        hasSavedWorkoutsRef.current = true;
-
         await initDB();
-
-        const completedWorkouts = workoutCompletedWorkouts
-          .filter((workoutItem) => workoutItem?.name)
-          .map((workoutItem) => ({
-            workoutId: String(workouts.workoutId),
-            calories: String(workoutItem.calories || 0),
-            name: workoutItem.name,
-            bodyPart: workouts.bodyPart || "",
-            level: workouts.level || "",
-          }));
-
-        Logger.log("CompletedWorkouts to Insert--->", completedWorkouts);
-
-        if (completedWorkouts.length === 0) {
-          Logger.log(
-            "Skipping save: completedWorkouts became empty after filter",
-          );
-          return;
-        }
-
-        await insertMultipleWorkouts(completedWorkouts);
-
-        const allWorkouts = await getAllWorkouts();
-        Logger.log("All workouts after insertion--->", allWorkouts);
-      } catch (error) {
-        hasSavedWorkoutsRef.current = false;
-        Logger.log("Workout save failed--->", error);
+        const all = await getAllWorkouts();
+        if (isActive) setBadge(getUserBadge(all));
+      } catch (e) {
+        Logger.log("CongratsScreen: failed to load badge", String(e));
       }
-    };
+    })();
 
-    setup();
-  }, [
-    workouts?.workoutId,
-    workouts?.bodyPart,
-    workouts?.level,
-    workoutCompletedWorkouts,
-  ]);
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  // ─── Animate the badge bar + earned-points counter once badge is known ───
+  useEffect(() => {
+    if (!badge) return;
+
+    Animated.timing(animatedPoints, {
+      toValue: pointsEarned,
+      duration: 1000,
+      useNativeDriver: false,
+    }).start();
+
+    Animated.timing(badgeProgressAnim, {
+      toValue: badgeProgressPercent,
+      duration: 1100,
+      delay: 250,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  }, [badge, pointsEarned, badgeProgressPercent]);
 
   const CaloriesDetailsModal = () => (
     <Animated.View
@@ -301,6 +298,7 @@ const CongratsScreen = ({
       />
 
       <ScrollView
+        style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
@@ -474,6 +472,79 @@ const CongratsScreen = ({
           </Text>
         </Animated.View>
 
+        {badge && (
+          <Animated.View
+            style={[
+              styles.badgeCard,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: cardSlideAnim }],
+              },
+            ]}
+          >
+            <View style={styles.badgeCardHeader}>
+              <View style={styles.badgeEmojiCircle}>
+                <Text style={styles.badgeEmoji}>{badge.emoji || "🏅"}</Text>
+              </View>
+
+              <View style={{ flex: 1 }}>
+                <Text style={styles.badgeCardTitle}>{badge.title}</Text>
+                <Text style={styles.badgeCardSubtitle}>
+                  {badge.subtitle} • {badge.score} pts
+                </Text>
+              </View>
+
+              {pointsEarned > 0 && (
+                <View style={styles.pointsPill}>
+                  <Icon name="add" size={13} color="#FFFFFF" />
+                  <Animated.Text style={styles.pointsPillText}>
+                    {animatedPoints.interpolate({
+                      inputRange: [0, Math.max(pointsEarned, 1)],
+                      outputRange: ["0", String(pointsEarned)],
+                    })}
+                  </Animated.Text>
+                  <Text style={styles.pointsPillText}> pts</Text>
+                </View>
+              )}
+            </View>
+
+            <View style={styles.badgeProgressHeader}>
+              <Text style={styles.badgeProgressLabel}>
+                {badgeProgress.nextTitle === "Max Level"
+                  ? "Highest badge reached"
+                  : `Next badge: ${badgeProgress.nextTitle}`}
+              </Text>
+              <Text style={styles.badgeProgressPercent}>
+                {badgeProgressPercent}%
+              </Text>
+            </View>
+
+            <View style={styles.badgeProgressTrack}>
+              <Animated.View
+                style={[
+                  styles.badgeProgressFill,
+                  {
+                    width: badgeProgressAnim.interpolate({
+                      inputRange: [0, 100],
+                      outputRange: ["0%", "100%"],
+                    }),
+                  },
+                ]}
+              />
+            </View>
+
+            <Text style={styles.badgeProgressText}>
+              {badgeProgress.remainingPoints > 0
+                ? `${pointsPerExercise} pts per ${
+                    workouts?.level || "workout"
+                  } exercise • ${
+                    badgeProgress.remainingPoints
+                  } pts to ${badgeProgress.nextTitle}`
+                : "You've unlocked the strongest badge. Keep the streak alive!"}
+            </Text>
+          </Animated.View>
+        )}
+
         <Animated.View
           style={[
             styles.consistencyCard,
@@ -522,6 +593,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F7F8FA",
+  },
+
+  // Bound the scroll area so the pinned banner below it always stays on screen.
+  scrollView: {
+    flex: 1,
   },
 
   bannerContainer: {
@@ -785,6 +861,109 @@ const styles = StyleSheet.create({
     color: colors.textLight,
     textAlign: "center",
     lineHeight: scaling().moderateScale(18),
+  },
+
+  badgeCard: {
+    width: "100%",
+    marginTop: scaling().scaleHeight(16),
+    backgroundColor: "#FFFFFF",
+    borderRadius: scaling().moderateScale(24),
+    padding: scaling().moderateScale(18),
+    borderWidth: 1,
+    borderColor: "#EEF0F4",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    elevation: 3,
+  },
+
+  badgeCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: scaling().scaleHeight(16),
+  },
+
+  badgeEmojiCircle: {
+    width: scaling().scaleWidth(48),
+    height: scaling().scaleWidth(48),
+    borderRadius: scaling().scaleWidth(24),
+    backgroundColor: colors.primary + "12",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: scaling().scaleWidth(12),
+  },
+
+  badgeEmoji: {
+    fontSize: scaling().moderateScale(26),
+  },
+
+  badgeCardTitle: {
+    fontSize: scaling().moderateScale(16),
+    fontFamily: "OpenSans_800ExtraBold",
+    color: colors.text,
+  },
+
+  badgeCardSubtitle: {
+    fontSize: scaling().moderateScale(12),
+    fontFamily: "OpenSans_600SemiBold",
+    color: colors.textLight,
+    marginTop: scaling().scaleHeight(2),
+  },
+
+  pointsPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.green,
+    paddingHorizontal: scaling().scaleWidth(10),
+    paddingVertical: scaling().scaleHeight(6),
+    borderRadius: scaling().moderateScale(999),
+  },
+
+  pointsPillText: {
+    fontSize: scaling().moderateScale(12),
+    fontFamily: "OpenSans_800ExtraBold",
+    color: "#FFFFFF",
+  },
+
+  badgeProgressHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: scaling().scaleHeight(8),
+  },
+
+  badgeProgressLabel: {
+    fontSize: scaling().moderateScale(12),
+    fontFamily: "OpenSans_700Bold",
+    color: colors.text,
+  },
+
+  badgeProgressPercent: {
+    fontSize: scaling().moderateScale(12),
+    fontFamily: "OpenSans_800ExtraBold",
+    color: colors.primary,
+  },
+
+  badgeProgressTrack: {
+    height: scaling().moderateScale(10),
+    backgroundColor: "#E9EDF3",
+    borderRadius: scaling().moderateScale(999),
+    overflow: "hidden",
+  },
+
+  badgeProgressFill: {
+    height: "100%",
+    backgroundColor: colors.primary,
+    borderRadius: scaling().moderateScale(999),
+  },
+
+  badgeProgressText: {
+    fontSize: scaling().moderateScale(11),
+    fontFamily: "OpenSans_500Medium",
+    color: colors.textLight,
+    marginTop: scaling().scaleHeight(8),
+    lineHeight: scaling().moderateScale(16),
   },
 
   consistencyCard: {

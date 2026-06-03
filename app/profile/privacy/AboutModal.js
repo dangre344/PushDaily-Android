@@ -3,6 +3,7 @@ import { nativeApplicationVersion } from "expo-application";
 import {
   Modal,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -58,8 +59,13 @@ export const AboutModal = ({
           </TouchableOpacity>
         </View>
 
-        {/* App info */}
-        <View style={aboutStyles.infoCard}>
+        {/* App info + details (scrollable, banner stays pinned below) */}
+        <ScrollView
+          style={aboutStyles.scroll}
+          contentContainerStyle={aboutStyles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={aboutStyles.infoCard}>
           <View style={aboutStyles.appIconWrap}>
             <Ionicons
               name="fitness"
@@ -143,23 +149,24 @@ export const AboutModal = ({
               Share
             </Text>
           </TouchableOpacity>
-        </View>
-      </View>
+          </View>
+        </ScrollView>
 
-      <View style={aboutStyles.bannerContainer}>
-        <BannerAd
-          unitId={AD_UNIT_IDS.banner}
-          size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
-          requestOptions={{
-            requestNonPersonalizedAdsOnly: false,
-          }}
-          onAdLoaded={() => {
-            console.log("[AdMob] Banner loaded");
-          }}
-          onAdFailedToLoad={(error) => {
-            console.warn("[AdMob] Banner failed:", error);
-          }}
-        />
+        <View style={aboutStyles.bannerContainer}>
+          <BannerAd
+            unitId={AD_UNIT_IDS.banner}
+            size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
+            requestOptions={{
+              requestNonPersonalizedAdsOnly: false,
+            }}
+            onAdLoaded={() => {
+              console.log("[AdMob] Banner loaded");
+            }}
+            onAdFailedToLoad={(error) => {
+              console.warn("[AdMob] Banner failed:", error);
+            }}
+          />
+        </View>
       </View>
     </SafeAreaView>
   </Modal>
@@ -176,17 +183,27 @@ const aboutStyles = StyleSheet.create({
     width: "100%",
     alignItems: "center",
     justifyContent: "center",
-    height: scaling().scaleHeight(40),
+    minHeight: scaling().moderateScale(52),
+    marginTop: scaling().moderateScale(8),
   },
   sheet: {
     backgroundColor: colors.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: scaling().moderateScale(20),
-    paddingBottom: scaling().moderateScale(36),
+    paddingBottom: scaling().moderateScale(20),
+    maxHeight: "88%",
     borderWidth: 1,
     borderBottomWidth: 0,
     borderColor: colors.border,
+  },
+  // flexShrink lets the content shrink within the sheet's maxHeight so it
+  // scrolls, keeping the banner pinned at the bottom of the sheet.
+  scroll: {
+    flexShrink: 1,
+  },
+  scrollContent: {
+    paddingBottom: scaling().moderateScale(4),
   },
   handle: {
     width: scaling().moderateScale(36),

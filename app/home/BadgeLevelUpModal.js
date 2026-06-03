@@ -4,6 +4,7 @@ import {
   Animated,
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -13,12 +14,14 @@ import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
 import { AD_UNIT_IDS } from "../../ads/Admobmanager.js";
 import { colors } from "../../constants/colors.js";
 import { scaling } from "../../constants/useScaling.js";
+import { BADGE_ORDER } from "./WorkoutBadgeInfo.js";
 
 export default function BadgeLevelUpModal({
   visible,
   setVisible,
   oldBadge,
   newBadge,
+  score,
 }) {
   const scaleAnim = useRef(new Animated.Value(0.75)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -27,6 +30,17 @@ export default function BadgeLevelUpModal({
   const oldBadgeAnim = useRef(new Animated.Value(1)).current;
   const newBadgeAnim = useRef(new Animated.Value(0)).current;
   const glowAnim = useRef(new Animated.Value(0)).current;
+
+  // ─── Derive "tiers jumped" so we can show a richer message ───────────────
+  // Example: Rabbit (1) → Wolf (3) = jumped 2 tiers. Worth celebrating extra.
+  const tiersJumped =
+    oldBadge?.title && newBadge?.title
+      ? (BADGE_ORDER[newBadge.title] ?? 0) - (BADGE_ORDER[oldBadge.title] ?? 0)
+      : 1;
+
+  // Use a special headline if the user leapt multiple tiers at once
+  const headline =
+    tiersJumped > 1 ? `${tiersJumped} Badges Unlocked!` : "Badge Upgraded!";
 
   useEffect(() => {
     if (visible) {
@@ -129,6 +143,15 @@ export default function BadgeLevelUpModal({
     outputRange: [0.18, 0.38],
   });
 
+  // ─── Safer defaults — use neutral placeholders instead of specific names ──
+  const oldEmoji = oldBadge?.emoji || "🏅";
+  const oldTitle = oldBadge?.title || "Previous";
+  const oldSubtitle = oldBadge?.subtitle || "";
+
+  const newEmoji = newBadge?.emoji || "🏆";
+  const newTitle = newBadge?.title || "New Badge";
+  const newSubtitle = newBadge?.subtitle || "";
+
   return (
     <Modal
       visible={visible}
@@ -140,9 +163,14 @@ export default function BadgeLevelUpModal({
       <View style={styles.overlay}>
         <Pressable style={StyleSheet.absoluteFill} onPress={closeModal} />
 
-        <Animated.View
-          style={[
-            styles.card,
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <Animated.View
+            style={[
+              styles.card,
             {
               opacity: opacityAnim,
               transform: [{ scale: scaleAnim }, { translateY: slideAnim }],
@@ -153,11 +181,12 @@ export default function BadgeLevelUpModal({
             <Ionicons name="trophy" size={34} color={colors.primary} />
           </View>
 
-          <Text style={styles.title}>Badge Upgraded!</Text>
+          <Text style={styles.title}>{headline}</Text>
 
           <Text style={styles.subtitle}>
-            Great job! Your consistency and workout effort helped you unlock a
-            stronger badge.
+            {tiersJumped > 1
+              ? `Incredible work! You leapt ${tiersJumped} tiers at once. That's serious commitment.`
+              : "Great job! Your consistency and workout effort helped you unlock a stronger badge."}
           </Text>
 
           <View style={styles.transitionBox}>
@@ -170,11 +199,9 @@ export default function BadgeLevelUpModal({
                 },
               ]}
             >
-              <Text style={styles.badgeEmoji}>{oldBadge?.emoji || "🐺"}</Text>
-              <Text style={styles.badgeName}>{oldBadge?.title || "Wolf"}</Text>
-              <Text style={styles.badgeLabel}>
-                {oldBadge?.subtitle || "Consistent"}
-              </Text>
+              <Text style={styles.badgeEmoji}>{oldEmoji}</Text>
+              <Text style={styles.badgeName}>{oldTitle}</Text>
+              <Text style={styles.badgeLabel}>{oldSubtitle}</Text>
             </Animated.View>
 
             <View style={styles.arrowBox}>
@@ -208,18 +235,20 @@ export default function BadgeLevelUpModal({
                 ]}
               />
 
-              <Text style={styles.badgeEmoji}>{newBadge?.emoji || "🐯"}</Text>
-              <Text style={styles.badgeName}>{newBadge?.title || "Tiger"}</Text>
-              <Text style={styles.badgeLabel}>
-                {newBadge?.subtitle || "Strong"}
-              </Text>
+              <Text style={styles.badgeEmoji}>{newEmoji}</Text>
+              <Text style={styles.badgeName}>{newTitle}</Text>
+              <Text style={styles.badgeLabel}>{newSubtitle}</Text>
             </Animated.View>
           </View>
 
           <View style={styles.progressSection}>
             <View style={styles.progressHeader}>
               <Text style={styles.progressTitle}>Level Progress</Text>
-              <Text style={styles.progressPercent}>100%</Text>
+              {typeof score === "number" ? (
+                <Text style={styles.progressPercent}>{score} pts</Text>
+              ) : (
+                <Text style={styles.progressPercent}>100%</Text>
+              )}
             </View>
 
             <View style={styles.progressTrack}>
@@ -234,8 +263,10 @@ export default function BadgeLevelUpModal({
             </View>
 
             <Text style={styles.progressText}>
-              You moved from {oldBadge?.title || "Wolf"} to{" "}
-              {newBadge?.title || "Tiger"}.
+              You moved from {oldTitle} to {newTitle}
+              {typeof score === "number"
+                ? ` with ${score} total points.`
+                : "."}
             </Text>
           </View>
 
@@ -257,7 +288,8 @@ export default function BadgeLevelUpModal({
           >
             <Text style={styles.okButtonText}>Awesome</Text>
           </TouchableOpacity>
-        </Animated.View>
+          </Animated.View>
+        </ScrollView>
 
         <View style={styles.bannerContainer}>
           <BannerAd
@@ -283,16 +315,26 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: "rgba(15, 23, 42, 0.6)",
-    alignItems: "center",
-    justifyContent: "center",
     paddingHorizontal: 20,
+  },
+
+  // Scroll area takes the space above the banner; content centers when short
+  // and scrolls when the card is taller than the screen.
+  scroll: {
+    flex: 1,
+    width: "100%",
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+    paddingVertical: scaling().scaleHeight(20),
   },
 
   bannerContainer: {
     width: "100%",
     alignItems: "center",
     justifyContent: "center",
-    height: scaling().scaleHeight(40),
+    minHeight: scaling().moderateScale(52),
   },
 
   card: {
