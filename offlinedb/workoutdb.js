@@ -273,3 +273,82 @@ export const getCurrentStreak = async () => {
 
   return streak;
 };
+
+// ─── Aggregate stats used by the Milestones screen ───────────────────────────
+// Returns everything the milestone definitions need in a single pass:
+//   totalWorkouts, totalCalories, activeDays, currentStreak, longestStreak,
+//   bestWeek (most workouts in one calendar week), variety (distinct bodyParts).
+export const getMilestoneStats = async () => {
+  const database = getDB();
+
+  const totalsRow = await database.getFirstAsync(
+    `SELECT
+       COUNT(*) as totalWorkouts,
+       SUM(CAST(REPLACE(calories, 'undefined', '') AS INTEGER)) as totalCalories,
+       COUNT(DISTINCT bodyPart) as variety,
+       COUNT(DISTINCT strftime('%Y-%m-%d', dateTime, 'localtime')) as activeDays
+     FROM workouts`,
+  );
+
+  const bestWeekRow = await database.getFirstAsync(
+    `SELECT MAX(c) as bestWeek FROM (
+       SELECT COUNT(*) as c
+       FROM workouts
+       GROUP BY strftime('%Y-%W', dateTime, 'localtime')
+     )`,
+  );
+
+  // Distinct local dates (ascending) — used to compute both streaks in JS.
+  const dateRows = await database.getAllAsync(
+    `SELECT DISTINCT strftime('%Y-%m-%d', dateTime, 'localtime') as d
+     FROM workouts
+     ORDER BY d ASC`,
+  );
+  const dates = dateRows.map((r) => r.d).filter(Boolean);
+
+  const toDate = (key) => {
+    const [y, m, d] = key.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  };
+  const dayDiff = (a, b) => Math.round((toDate(b) - toDate(a)) / 86400000);
+  const localKey = (dt) => {
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth() + 1).padStart(2, "0");
+    const d = String(dt.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+
+  // Longest run of consecutive days
+  let longestStreak = 0;
+  let run = 0;
+  for (let i = 0; i < dates.length; i++) {
+    if (i === 0) run = 1;
+    else run = dayDiff(dates[i - 1], dates[i]) === 1 ? run + 1 : 1;
+    if (run > longestStreak) longestStreak = run;
+  }
+
+  // Current streak (counts only if last activity was today or yesterday)
+  let currentStreak = 0;
+  if (dates.length) {
+    const last = dates[dates.length - 1];
+    const todayKey = localKey(new Date());
+    const yesterdayKey = localKey(new Date(Date.now() - 86400000));
+    if (last === todayKey || last === yesterdayKey) {
+      currentStreak = 1;
+      for (let i = dates.length - 1; i > 0; i--) {
+        if (dayDiff(dates[i - 1], dates[i]) === 1) currentStreak += 1;
+        else break;
+      }
+    }
+  }
+
+  return {
+    totalWorkouts: totalsRow?.totalWorkouts ?? 0,
+    totalCalories: totalsRow?.totalCalories ?? 0,
+    activeDays: totalsRow?.activeDays ?? 0,
+    variety: totalsRow?.variety ?? 0,
+    bestWeek: bestWeekRow?.bestWeek ?? 0,
+    currentStreak,
+    longestStreak,
+  };
+};

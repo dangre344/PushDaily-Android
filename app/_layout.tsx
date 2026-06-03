@@ -30,12 +30,15 @@ import {
   RewardedAdManager,
   RewardedInterstitialAdManager,
 } from "../ads/Admobmanager";
+import { checkForAppUpdate } from "../constants/appUpdate";
 import { Logger } from "../constants/Logger";
 import { initMixpanel } from "../constants/mixpanel";
 import {
   setupForegroundMessageHandler,
   subscribeToBroadcastTopic,
 } from "../constants/pushNotifications";
+import { initRemoteConfig } from "../constants/remoteConfig";
+import { useRouteTracking } from "../constants/useScreenTracking";
 import UserProvider from "../constants/UserContext";
 import "../locales/i18";
 
@@ -59,8 +62,17 @@ export default function RootLayout() {
     OpenSans_800ExtraBold,
   });
 
+  // Auto-track file-route screen changes (gated by the Remote Config flag).
+  useRouteTracking();
+
   useEffect(() => {
     initMixpanel();
+    // Fetch the screen-tracking flag from Firebase Remote Config so screen
+    // events can be switched on/off remotely without an app update.
+    initRemoteConfig();
+    // Nudge the user to update if a higher version is live on the Play Store.
+    // Non-blocking (flexible) flow; preserves all local data.
+    checkForAppUpdate("flexible");
 
     const initializeAds = async () => {
       try {

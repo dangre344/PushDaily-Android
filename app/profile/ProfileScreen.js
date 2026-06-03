@@ -31,6 +31,7 @@ import {
   initDB,
 } from "../../offlinedb/workoutdb";
 import WorkoutBadgeInfo from "../home/WorkoutBadgeInfo";
+import MilestonesModal from "./MilestonesModal";
 import { AboutModal } from "./privacy/AboutModal";
 import { PrivacyPolicyModal } from "./privacy/PrivacyPolicyModal";
 
@@ -123,6 +124,13 @@ const MENU_SECTIONS = [
         icon: "notifications-outline",
         color: colors.lightRed,
         key: "badge",
+      },
+
+      {
+        label: "Milestones",
+        icon: "trophy-outline",
+        color: colors.primary,
+        key: "milestones",
       },
 
       {
@@ -228,6 +236,7 @@ const MenuRow = ({
   setPrivacyVisible,
   setAboutVisible,
   setOpenBadgeModal,
+  setMilestonesVisible,
   setNotificationDialog,
 }) => {
   const anim = useRef(new Animated.Value(0)).current;
@@ -345,6 +354,8 @@ const MenuRow = ({
             });
           } else if (item.key === "badge") {
             setOpenBadgeModal(true);
+          } else if (item.key === "milestones") {
+            setMilestonesVisible(true);
           } else if (item.key === "notifs") {
             handleNotifications(setNotificationDialog);
           } else if (item.key === "privacy") {
@@ -414,6 +425,7 @@ export default function ProfileScreen() {
   const [privacyVisible, setPrivacyVisible] = useState(false);
   const [aboutVisible, setAboutVisible] = useState(false);
   const [openBadgeModal, setOpenBadgeModal] = useState(false);
+  const [milestonesVisible, setMilestonesVisible] = useState(false);
 
   const [storedBadge, setStoredBadge] = useState(null);
 
@@ -661,6 +673,7 @@ export default function ProfileScreen() {
                   setPrivacyVisible={setPrivacyVisible}
                   setAboutVisible={setAboutVisible}
                   setOpenBadgeModal={setOpenBadgeModal}
+                  setMilestonesVisible={setMilestonesVisible}
                   setNotificationDialog={setNotificationDialog}
                 />
               ))}
@@ -716,6 +729,13 @@ export default function ProfileScreen() {
           userBadge={storedBadge}
           visible={openBadgeModal}
           setVisible={setOpenBadgeModal}
+        />
+      ) : null}
+
+      {milestonesVisible ? (
+        <MilestonesModal
+          visible={milestonesVisible}
+          setVisible={setMilestonesVisible}
         />
       ) : null}
 
