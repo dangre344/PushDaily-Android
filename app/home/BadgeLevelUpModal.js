@@ -31,6 +31,11 @@ export default function BadgeLevelUpModal({
   const newBadgeAnim = useRef(new Animated.Value(0)).current;
   const glowAnim = useRef(new Animated.Value(0)).current;
 
+  // Ensures the entrance sequence plays exactly once per open. Without this a
+  // parent re-render (or dev double-invoke) can replay it → the "double blink".
+  const hasAnimatedRef = useRef(false);
+  const animationRef = useRef(null);
+
   // ─── Derive "tiers jumped" so we can show a richer message ───────────────
   // Example: Rabbit (1) → Wolf (3) = jumped 2 tiers. Worth celebrating extra.
   const tiersJumped =
@@ -44,6 +49,10 @@ export default function BadgeLevelUpModal({
 
   useEffect(() => {
     if (visible) {
+      // Guard: only animate once per open. Resets when the modal closes.
+      if (hasAnimatedRef.current) return;
+      hasAnimatedRef.current = true;
+
       scaleAnim.setValue(0.75);
       opacityAnim.setValue(0);
       slideAnim.setValue(30);
@@ -52,7 +61,7 @@ export default function BadgeLevelUpModal({
       newBadgeAnim.setValue(0);
       glowAnim.setValue(0);
 
-      Animated.sequence([
+      animationRef.current = Animated.sequence([
         Animated.parallel([
           Animated.timing(opacityAnim, {
             toValue: 1,
@@ -107,7 +116,12 @@ export default function BadgeLevelUpModal({
           ]),
           { iterations: 3 },
         ),
-      ]).start();
+      ]);
+      animationRef.current.start();
+    } else {
+      // Reset so the next open animates fresh, and stop any running sequence.
+      hasAnimatedRef.current = false;
+      animationRef.current?.stop?.();
     }
   }, [visible]);
 

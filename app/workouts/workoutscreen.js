@@ -550,15 +550,15 @@ export default function WorkoutScreen() {
         />
       ) : null}
 
-      {badgeLevelUpVisible ? (
-        <BadgeLevelUpModal
-          visible={badgeLevelUpVisible}
-          setVisible={setBadgeLevelUpVisible}
-          oldBadge={badgeUpgradeData.oldBadge}
-          newBadge={badgeUpgradeData.newBadge}
-          score={userBadge?.score}
-        />
-      ) : null}
+      {/* Always mounted (toggle via `visible`) — conditionally mounting a
+          <Modal> flickers/double-animates on Android. */}
+      <BadgeLevelUpModal
+        visible={badgeLevelUpVisible}
+        setVisible={setBadgeLevelUpVisible}
+        oldBadge={badgeUpgradeData.oldBadge}
+        newBadge={badgeUpgradeData.newBadge}
+        score={userBadge?.score}
+      />
     </View>
   );
 }

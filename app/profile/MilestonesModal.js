@@ -106,11 +106,7 @@ const MilestoneCard = ({ item, index }) => {
               <Text style={styles.statusPillText}>Unlocked</Text>
             </View>
           ) : (
-            <Ionicons
-              name="lock-closed"
-              size={ms(13)}
-              color={colors.muted}
-            />
+            <Ionicons name="lock-closed" size={ms(13)} color={colors.muted} />
           )}
         </View>
 
@@ -277,9 +273,7 @@ export default function MilestonesModal({ visible, setVisible }) {
 
           {/* Category sections */}
           {MILESTONE_CATEGORIES.map((cat) => {
-            const items = data.milestones.filter(
-              (m) => m.category === cat.key,
-            );
+            const items = data.milestones.filter((m) => m.category === cat.key);
             if (items.length === 0) return null;
 
             const unlockedInCat = items.filter((m) => m.unlocked).length;

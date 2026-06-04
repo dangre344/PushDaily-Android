@@ -31,6 +31,7 @@ import {
   RewardedInterstitialAdManager,
 } from "../ads/Admobmanager";
 import { checkForAppUpdate } from "../constants/appUpdate";
+import { initCrashlytics } from "../constants/crashlytics";
 import { Logger } from "../constants/Logger";
 import { initMixpanel } from "../constants/mixpanel";
 import {
@@ -67,6 +68,9 @@ export default function RootLayout() {
 
   useEffect(() => {
     initMixpanel();
+    // Crashlytics: enable collection + install the global JS error handler so
+    // uncaught crashes are recorded and an "App Crashed" event is fired.
+    initCrashlytics();
     // Fetch the screen-tracking flag from Firebase Remote Config so screen
     // events can be switched on/off remotely without an app update.
     initRemoteConfig();
