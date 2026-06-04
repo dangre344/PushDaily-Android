@@ -30,6 +30,7 @@ import {
   getPointsForLevel,
   getUserBadge,
 } from "../../home/WorkoutBadgeInfo";
+import ShareAchievementModal from "./ShareAchievementCard";
 
 const { width, height } = Dimensions.get("window");
 
@@ -53,6 +54,7 @@ const CongratsScreen = ({
   const animatedPoints = useRef(new Animated.Value(0)).current;
 
   const [showCaloriesDetails, setShowCaloriesDetails] = useState(false);
+  const [showShareCard, setShowShareCard] = useState(false);
 
   // ─── Badge / level progress earned from this session ────────────────────
   // Each completed exercise of this session earns points based on the
@@ -566,6 +568,30 @@ const CongratsScreen = ({
             </Text>
           </View>
         </Animated.View>
+
+        {/* ─── Share achievement ─── */}
+        <Animated.View
+          style={[
+            styles.shareCta,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: cardSlideAnim }],
+            },
+          ]}
+        >
+          <TouchableOpacity
+            style={styles.shareCtaBtn}
+            activeOpacity={0.9}
+            onPress={() => setShowShareCard(true)}
+          >
+            <Icon name="share-social" size={20} color="#FFFFFF" />
+            <Text style={styles.shareCtaText}>Share Achievement</Text>
+          </TouchableOpacity>
+
+          <Text style={styles.shareCtaHint}>
+            Inspire a friend to start their journey 💪
+          </Text>
+        </Animated.View>
       </ScrollView>
 
       <View style={styles.bannerContainer}>
@@ -585,6 +611,17 @@ const CongratsScreen = ({
       </View>
 
       {showCaloriesDetails && <CaloriesDetailsModal />}
+
+      <ShareAchievementModal
+        visible={showShareCard}
+        onClose={() => setShowShareCard(false)}
+        badge={badge}
+        completedCount={completedCount}
+        calories={safeCalories}
+        pointsEarned={pointsEarned}
+        bodyPart={workouts?.bodyPart || "Workout"}
+        level={workouts?.level || ""}
+      />
     </View>
   );
 };
@@ -989,6 +1026,39 @@ const styles = StyleSheet.create({
 
   consistencyContent: {
     flex: 1,
+  },
+
+  shareCta: {
+    width: "100%",
+    marginTop: scaling().scaleHeight(16),
+    alignItems: "center",
+  },
+  shareCtaBtn: {
+    width: "100%",
+    height: scaling().scaleHeight(54),
+    borderRadius: scaling().moderateScale(18),
+    backgroundColor: colors.primary,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: scaling().moderateScale(8),
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.28,
+    shadowRadius: 14,
+    elevation: 6,
+  },
+  shareCtaText: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: scaling().moderateScale(15),
+    color: "#FFFFFF",
+  },
+  shareCtaHint: {
+    fontFamily: "OpenSans_500Medium",
+    fontSize: scaling().moderateScale(11),
+    color: colors.textLight,
+    marginTop: scaling().scaleHeight(8),
+    textAlign: "center",
   },
 
   consistencyTitle: {

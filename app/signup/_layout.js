@@ -22,7 +22,7 @@ import InputText from "../../components/ui/InputText.js";
 import MeasurementsStep from "../../components/ui/MeasurementStep.js";
 import MultipleSelector from "../../components/ui/MultipleSelector.js";
 import StepContainer from "../../components/ui/StepContainer.js";
-import { trackEvent } from "../../constants/mixpanel.js";
+import { registerUser, trackEvent } from "../../constants/mixpanel.js";
 
 import { useUser } from "@/constants/UserContext.js";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -173,7 +173,9 @@ export default function Signup() {
     Logger.log("Generated user ID:", userData);
 
     if (isEditMode) {
-      // update existing profile
+      // Re-identify + refresh the Mixpanel People profile with edited values.
+      await registerUser(user?._id || userId, { ...userData, _id: userId });
+
       await trackEvent("Update", {
         ...userData,
         _id: userId,
@@ -184,6 +186,10 @@ export default function Signup() {
       setUpdateSuccessVisible(true);
       return;
     } else {
+      // Create the Mixpanel user (People profile) so the person shows up under
+      // Users and all later events are attributed to this distinct id.
+      await registerUser(userId, { ...userData, $created: new Date().toISOString() });
+
       await trackEvent("Signup Completed", {
         ...userData,
         _id: userId,

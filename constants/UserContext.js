@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { setCrashUser } from "./crashlytics";
 import { Logger } from "./Logger";
+import { identifyUser } from "./mixpanel";
 import { getSession, saveSession } from "./SessionManager";
 
 const UserContext = createContext();
@@ -25,6 +27,14 @@ export default function UserProvider({ children }) {
 
         if (session) {
           setUser(session);
+          // Re-identify on every launch so screen/journey events are always
+          // attributed to this user — even after a reinstall or cleared storage
+          // where Mixpanel's persisted distinct_id would otherwise be lost.
+          if (session._id) {
+            identifyUser(session._id);
+            // Tag crash reports with this user so we know who was affected.
+            setCrashUser(session._id);
+          }
         } else {
           setUser(null);
         }

@@ -68,9 +68,15 @@
         {
           "ios": {
             "useFrameworks": "static"
+          },
+          "android": {
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": false
           }
         }
-      ]
+      ],
+      "@react-native-firebase/crashlytics",
+      "./plugins/withProguardRules"
     ],
     "experiments": {
       "typedRoutes": true,

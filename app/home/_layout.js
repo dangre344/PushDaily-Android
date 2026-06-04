@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useEffect, useRef } from "react";
 import { colors } from "../../constants/colors.js";
+import { trackScreen } from "../../constants/mixpanel.js";
 import { scaling } from "../../constants/useScaling";
 import ProfileScreen from "../profile/ProfileScreen.js";
 import ProgressScreen from "../progress/ProgressScreen.js";
@@ -213,6 +214,11 @@ export default function AppLayout() {
       <Tab.Navigator
         tabBar={(props) => <CustomTabBar {...props} />}
         screenOptions={{ headerShown: false }}
+        screenListeners={({ route }) => ({
+          // Bottom-tab switches keep the same /home pathname, so track them here.
+          // Gated by the Remote Config flag inside trackScreen().
+          focus: () => trackScreen(route.name),
+        })}
       >
         <Tab.Screen name="Workout" component={WorkoutScreen} />
         <Tab.Screen name="Attendance" component={ProgressScreen} />
