@@ -121,7 +121,10 @@ export default function RootLayout() {
       (resp) => {
         const data = resp.notification.request.content.data;
         Logger.log("[Push] notification tapped:", data);
-        if (data?.screen === "Home" || data?.type === "daily_update") {
+        if (data?.type === "water") {
+          // Water reminder → open the Water Reminder screen directly.
+          router.push("/profile/water");
+        } else if (data?.screen === "Home" || data?.type === "daily_update") {
           router.replace("/home");
         }
       },

@@ -11,7 +11,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { AD_UNIT_IDS } from "../../ads/Admobmanager";
 import { colors } from "../../constants/colors";
 import { workoutListGlobal } from "../../constants/Constants";
 import { Logger } from "../../constants/Logger";
@@ -411,6 +413,18 @@ export default function WorkoutDetail() {
             <Text style={styles.nextButtonText}>Next Exercise</Text>
             <Ionicons name="arrow-forward" size={22} color="white" />
           </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Banner ad — pinned at the very bottom, below the footer; only on the
+          rest/next-workout screen */}
+      {loadingPage === "next_workout" && !isFinishing && (
+        <View style={styles.bannerContainer}>
+          <BannerAd
+            unitId={AD_UNIT_IDS.banner}
+            size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
+            requestOptions={{ requestNonPersonalizedAdsOnly: false }}
+          />
         </View>
       )}
 
@@ -1015,5 +1029,14 @@ export const styles = StyleSheet.create({
     fontFamily: "OpenSans_800ExtraBold",
     fontSize: scaling().moderateScale(14),
     color: "#FFFFFF",
+  },
+
+  bannerContainer: {
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: scaling().moderateScale(52),
+    backgroundColor: colors.lightColor,
+    flexShrink: 1,
   },
 });

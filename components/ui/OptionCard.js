@@ -10,6 +10,7 @@ export const OptionCardController = ({
   rules = {},
   options = [],
   defaultValue = "",
+  horizontal = false,
 }) => {
   return (
     <Controller
@@ -17,57 +18,99 @@ export const OptionCardController = ({
       name={name}
       rules={rules}
       defaultValue={defaultValue}
-      render={({ field: { value, onChange } }) => (
-        <View style={styles.optionsContainer}>
-          {options.map((option) => {
-            const isSelected = value === option.title;
-            return (
-              <TouchableOpacity
-                key={option.title}
-                style={[styles.card, isSelected && styles.cardSelected]}
-                onPress={() => onChange(option.title)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.cardContent}>
-                  <Text style={styles.emoji}>{option.emoji}</Text>
-                  <View style={styles.textContainer}>
+      render={({ field: { value, onChange } }) =>
+        horizontal ? (
+          // Compact 2-per-row grid — emoji on top, no description. Lets steps
+          // with several options + extra widgets fit on screen without scroll.
+          <View style={styles.gridContainer}>
+            {options.map((option) => {
+              const isSelected = value === option.title;
+              return (
+                <TouchableOpacity
+                  key={option.title}
+                  style={[styles.gridCard, isSelected && styles.cardSelected]}
+                  onPress={() => onChange(option.title)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.gridEmoji}>{option.emoji}</Text>
+                  <Text
+                    style={[
+                      styles.gridTitle,
+                      isSelected && styles.cardSelectedText,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {option.title}
+                  </Text>
+                  {option.time && (
                     <Text
                       style={[
-                        styles.title,
+                        styles.gridTime,
                         isSelected && styles.cardSelectedText,
                       ]}
                     >
-                      {option.title}
+                      {option.time}
                     </Text>
+                  )}
+                  {isSelected && (
+                    <Text style={styles.gridCheckmark}>✓</Text>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        ) : (
+          <View style={styles.optionsContainer}>
+            {options.map((option) => {
+              const isSelected = value === option.title;
+              return (
+                <TouchableOpacity
+                  key={option.title}
+                  style={[styles.card, isSelected && styles.cardSelected]}
+                  onPress={() => onChange(option.title)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.cardContent}>
+                    <Text style={styles.emoji}>{option.emoji}</Text>
+                    <View style={styles.textContainer}>
+                      <Text
+                        style={[
+                          styles.title,
+                          isSelected && styles.cardSelectedText,
+                        ]}
+                      >
+                        {option.title}
+                      </Text>
 
-                    {option.time && (
-                      <Text
-                        style={[
-                          styles.time,
-                          isSelected && styles.cardSelectedText,
-                        ]}
-                      >
-                        {option.time}
-                      </Text>
-                    )}
-                    {option.description && (
-                      <Text
-                        style={[
-                          styles.description,
-                          isSelected && styles.cardSelectedText,
-                        ]}
-                      >
-                        {option.description}
-                      </Text>
-                    )}
+                      {option.time && (
+                        <Text
+                          style={[
+                            styles.time,
+                            isSelected && styles.cardSelectedText,
+                          ]}
+                        >
+                          {option.time}
+                        </Text>
+                      )}
+                      {option.description && (
+                        <Text
+                          style={[
+                            styles.description,
+                            isSelected && styles.cardSelectedText,
+                          ]}
+                        >
+                          {option.description}
+                        </Text>
+                      )}
+                    </View>
                   </View>
-                </View>
-                {isSelected && <Text style={styles.checkmark}>✓</Text>}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      )}
+                  {isSelected && <Text style={styles.checkmark}>✓</Text>}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )
+      }
     />
   );
 };
@@ -128,6 +171,47 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.primary,
     fontFamily: "OpenSans_600SemiBold",
+  },
+
+  // ── Horizontal (compact grid) mode ──
+  gridContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  gridCard: {
+    flexGrow: 1,
+    flexBasis: "40%",
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.grey,
+  },
+  gridEmoji: {
+    fontSize: 22,
+  },
+  gridTitle: {
+    fontSize: 13,
+    color: "#333",
+    fontFamily: "OpenSans_600SemiBold",
+    marginTop: 4,
+  },
+  gridTime: {
+    fontSize: 11,
+    color: colors.green,
+    fontFamily: "OpenSans_700Bold",
+    marginTop: 1,
+  },
+  gridCheckmark: {
+    position: "absolute",
+    top: 6,
+    right: 8,
+    fontSize: 13,
+    color: colors.primary,
+    fontFamily: "OpenSans_700Bold",
   },
 });
 

@@ -10,10 +10,14 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useTranslation } from "react-i18next";
+import CircularImage from "../../components/ui/CircularImage";
 import { colors } from "../../constants/colors";
+import { bodyParts } from "../../constants/Constants";
 import { Logger } from "../../constants/Logger";
 import { scaling } from "../../constants/useScaling";
 import { getAllWorkouts, initDB } from "../../offlinedb/workoutdb";
+import WorkoutLevelModal from "../workouts/Componenets/WorkoutLevelModal";
 
 const { width, height } = Dimensions.get("window");
 const ms = (n) => scaling().moderateScale(n);
@@ -488,9 +492,19 @@ const SummaryPills = ({ totalCalories, totalWorkouts, activeDays }) => {
 };
 
 export default function StatsScreen() {
+  const { t } = useTranslation();
   const [workouts, setWorkouts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("7D");
+
+  // Same flow as WorkoutScreen: tap a body part → level modal → workout.
+  const [openModal, setOpenModal] = useState(false);
+  const [selectedBodyPart, setSelectedBodyPart] = useState(null);
+
+  const openWorkoutLevelModal = (item) => {
+    setSelectedBodyPart(item);
+    setOpenModal(true);
+  };
 
   const titleAnim = useRef(new Animated.Value(0)).current;
 
@@ -752,15 +766,58 @@ export default function StatsScreen() {
               />
             </View>
 
-            <Text style={styles.emptyText}>No stats yet</Text>
+            <Text style={styles.emptyText}>Start your workout</Text>
 
             <Text style={styles.emptySubText}>
-              Complete your first workout to see calories, progress, and
-              activity insights.
+              No stats yet — complete your first workout and your calories,
+              progress, and activity insights will show up here.
             </Text>
+
+            {/* Same quick-workout grid + flow as the Workout screen */}
+            <View style={styles.emptyGridHeader}>
+              <Text style={styles.emptyGridTitle}>
+                Choose where you want to train
+              </Text>
+              <View style={styles.emptyGridIcon}>
+                <Ionicons
+                  name="flash-outline"
+                  size={ms(16)}
+                  color={colors.primary}
+                />
+              </View>
+            </View>
+
+            <View style={styles.emptyGrid}>
+              {bodyParts.map((item, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.emptyGridItem}
+                  activeOpacity={0.85}
+                  onPress={() => openWorkoutLevelModal(item)}
+                >
+                  <CircularImage source={item.image} size={ms(60)} />
+                  <Text
+                    style={styles.emptyGridLabel}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {item.bodyPart}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
         )}
       </ScrollView>
+
+      {openModal ? (
+        <WorkoutLevelModal
+          visible={openModal}
+          selectedBodyPart={selectedBodyPart}
+          setOpenModal={setOpenModal}
+          t={t}
+        />
+      ) : null}
     </View>
   );
 }
@@ -850,6 +907,50 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: ms(20),
     marginTop: ms(8),
+  },
+  emptyGridHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "stretch",
+    justifyContent: "space-between",
+    marginTop: ms(26),
+    marginBottom: ms(12),
+  },
+  emptyGridTitle: {
+    fontFamily: "OpenSans_700Bold",
+    fontSize: ms(14),
+    color: "#0F172A",
+  },
+  emptyGridIcon: {
+    width: ms(30),
+    height: ms(30),
+    borderRadius: ms(9),
+    backgroundColor: colors.primary + "14",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyGrid: {
+    alignSelf: "stretch",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    rowGap: ms(14),
+  },
+  emptyGridItem: {
+    width: "31%",
+    backgroundColor: "#FFFFFF",
+    borderRadius: ms(18),
+    paddingVertical: ms(12),
+    alignItems: "center",
+    gap: ms(8),
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  emptyGridLabel: {
+    fontFamily: "OpenSans_600SemiBold",
+    fontSize: ms(11),
+    color: colors.text,
+    paddingHorizontal: ms(6),
   },
   filterRow: {
     flexDirection: "row",

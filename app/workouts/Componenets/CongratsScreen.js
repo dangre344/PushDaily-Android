@@ -1,4 +1,4 @@
-import { FontAwesome5 } from "@expo/vector-icons";
+import { FontAwesome5, Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import LottieView from "lottie-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -20,6 +20,7 @@ import {
   BannerAdSize,
   InterstitialAdManager,
 } from "../../../ads/Admobmanager";
+import { maybeAskForReview } from "../../../constants/appReview";
 import { colors } from "../../../constants/colors";
 import { Logger } from "../../../constants/Logger";
 import { trackEvent } from "../../../constants/mixpanel";
@@ -55,6 +56,14 @@ const CongratsScreen = ({
 
   const [showCaloriesDetails, setShowCaloriesDetails] = useState(false);
   const [showShareCard, setShowShareCard] = useState(false);
+
+  // ─── Workout rating ──────────────────────────────────────────────────────
+  const [ratingStars, setRatingStars] = useState(0);
+  const [selectedFeeling, setSelectedFeeling] = useState(null);
+  const [ratingSubmitted, setRatingSubmitted] = useState(false);
+  const ratingCardAnim = useRef(new Animated.Value(0)).current;
+  const thankYouScale = useRef(new Animated.Value(0.7)).current;
+  const starAnims = useRef([1, 2, 3, 4, 5].map(() => new Animated.Value(1))).current;
 
   // ─── Badge / level progress earned from this session ────────────────────
   // Each completed exercise of this session earns points based on the
@@ -180,12 +189,19 @@ const CongratsScreen = ({
   // ─── Load total badge progress (data is already saved before we mount) ───
   useEffect(() => {
     let isActive = true;
+    let reviewTimer;
 
     (async () => {
       try {
         await initDB();
         const all = await getAllWorkouts();
-        if (isActive) setBadge(getUserBadge(all));
+        if (!isActive) return;
+        setBadge(getUserBadge(all));
+
+        // Best moment to ask for a review — right after a completed workout.
+        // Delay so it doesn't collide with the interstitial ad. Reuses the
+        // already-fetched workouts list (all.length) — no extra query.
+        reviewTimer = setTimeout(() => maybeAskForReview(all.length), 3500);
       } catch (e) {
         Logger.log("CongratsScreen: failed to load badge", String(e));
       }
@@ -193,6 +209,7 @@ const CongratsScreen = ({
 
     return () => {
       isActive = false;
+      if (reviewTimer) clearTimeout(reviewTimer);
     };
   }, []);
 
@@ -214,6 +231,45 @@ const CongratsScreen = ({
       useNativeDriver: false,
     }).start();
   }, [badge, pointsEarned, badgeProgressPercent]);
+
+  const FEELINGS = [
+    { id: "good", label: "Good 👍", color: "#4F46E5" },
+    { id: "energetic", label: "Felt Energetic ⚡", color: "#F59E0B" },
+    { id: "challenging", label: "Challenging 🔥", color: colors.primary },
+    { id: "easy", label: "Too Easy 😅", color: "#10B981" },
+    { id: "tired", label: "Tired 😓", color: "#64748B" },
+    { id: "amazing", label: "Amazing 🚀", color: "#7C3AED" },
+  ];
+
+  const handleStarPress = (star) => {
+    setRatingStars(star);
+    // Pop the selected star
+    const anim = starAnims[star - 1];
+    anim.setValue(0.6);
+    Animated.spring(anim, {
+      toValue: 1,
+      friction: 4,
+      tension: 200,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handleSubmitRating = () => {
+    if (ratingStars === 0) return;
+    trackEvent("Workout Rated", {
+      stars: ratingStars,
+      feeling: selectedFeeling || "not_selected",
+      bodyPart: workouts?.bodyPart || "",
+      level: workouts?.level || "",
+    });
+    setRatingSubmitted(true);
+    Animated.spring(thankYouScale, {
+      toValue: 1,
+      friction: 5,
+      tension: 100,
+      useNativeDriver: true,
+    }).start();
+  };
 
   const CaloriesDetailsModal = () => (
     <Animated.View
@@ -567,6 +623,99 @@ const CongratsScreen = ({
               intensity.
             </Text>
           </View>
+        </Animated.View>
+
+        {/* ─── Workout rating ─── */}
+        <Animated.View
+          style={[
+            styles.ratingCard,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: cardSlideAnim }],
+            },
+          ]}
+        >
+          {ratingSubmitted ? (
+            <Animated.View
+              style={[styles.thankYouWrap, { transform: [{ scale: thankYouScale }] }]}
+            >
+              <Text style={styles.thankYouEmoji}>🎉</Text>
+              <Text style={styles.thankYouTitle}>Thanks for your feedback!</Text>
+              <Text style={styles.thankYouSub}>
+                It helps us build a better experience for you.
+              </Text>
+            </Animated.View>
+          ) : (
+            <>
+              <Text style={styles.ratingTitle}>How was your workout?</Text>
+              <Text style={styles.ratingSubtitle}>
+                Rate your session and tell us how you felt
+              </Text>
+
+              {/* Stars */}
+              <View style={styles.starsRow}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <TouchableOpacity
+                    key={star}
+                    onPress={() => handleStarPress(star)}
+                    activeOpacity={0.8}
+                  >
+                    <Animated.View style={{ transform: [{ scale: starAnims[star - 1] }] }}>
+                      <Ionicons
+                        name={star <= ratingStars ? "star" : "star-outline"}
+                        size={scaling().moderateScale(34)}
+                        color={star <= ratingStars ? "#F59E0B" : "#CBD5E1"}
+                      />
+                    </Animated.View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Feeling chips */}
+              <View style={styles.feelingsWrap}>
+                {FEELINGS.map((f) => {
+                  const active = selectedFeeling === f.id;
+                  return (
+                    <TouchableOpacity
+                      key={f.id}
+                      onPress={() =>
+                        setSelectedFeeling(active ? null : f.id)
+                      }
+                      activeOpacity={0.85}
+                      style={[
+                        styles.feelingChip,
+                        active && {
+                          backgroundColor: f.color,
+                          borderColor: f.color,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.feelingChipText,
+                          active && styles.feelingChipTextActive,
+                        ]}
+                      >
+                        {f.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <TouchableOpacity
+                style={[
+                  styles.ratingSubmitBtn,
+                  ratingStars === 0 && styles.ratingSubmitBtnDisabled,
+                ]}
+                onPress={handleSubmitRating}
+                activeOpacity={0.9}
+                disabled={ratingStars === 0}
+              >
+                <Text style={styles.ratingSubmitText}>Submit Rating</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </Animated.View>
 
         {/* ─── Share achievement ─── */}
@@ -1197,6 +1346,110 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: scaling().moderateScale(15),
     fontFamily: "OpenSans_700Bold",
+  },
+
+  // ─── Workout rating card ─────────────────────────────────────────────────
+  ratingCard: {
+    width: "100%",
+    marginTop: scaling().scaleHeight(16),
+    backgroundColor: "#FFFFFF",
+    borderRadius: scaling().moderateScale(24),
+    padding: scaling().moderateScale(18),
+    borderWidth: 1,
+    borderColor: "#EEF0F4",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    elevation: 3,
+    alignItems: "center",
+  },
+  ratingTitle: {
+    fontSize: scaling().moderateScale(17),
+    fontFamily: "OpenSans_800ExtraBold",
+    color: colors.text,
+    textAlign: "center",
+  },
+  ratingSubtitle: {
+    fontSize: scaling().moderateScale(12),
+    fontFamily: "OpenSans_500Medium",
+    color: colors.textLight,
+    textAlign: "center",
+    marginTop: scaling().scaleHeight(4),
+    marginBottom: scaling().scaleHeight(18),
+  },
+  starsRow: {
+    flexDirection: "row",
+    gap: scaling().moderateScale(10),
+    marginBottom: scaling().scaleHeight(18),
+  },
+  feelingsWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: scaling().moderateScale(8),
+    justifyContent: "center",
+    marginBottom: scaling().scaleHeight(18),
+  },
+  feelingChip: {
+    paddingHorizontal: scaling().scaleWidth(14),
+    paddingVertical: scaling().scaleHeight(8),
+    borderRadius: scaling().moderateScale(999),
+    borderWidth: 1.5,
+    borderColor: "#E2E8F0",
+    backgroundColor: "#F7F8FA",
+  },
+  feelingChipText: {
+    fontFamily: "OpenSans_600SemiBold",
+    fontSize: scaling().moderateScale(12),
+    color: colors.text,
+  },
+  feelingChipTextActive: {
+    color: "#FFFFFF",
+  },
+  ratingSubmitBtn: {
+    width: "100%",
+    height: scaling().scaleHeight(48),
+    borderRadius: scaling().moderateScale(16),
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  ratingSubmitBtnDisabled: {
+    backgroundColor: "#CBD5E1",
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  ratingSubmitText: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: scaling().moderateScale(14),
+    color: "#FFFFFF",
+  },
+  thankYouWrap: {
+    alignItems: "center",
+    paddingVertical: scaling().scaleHeight(8),
+  },
+  thankYouEmoji: {
+    fontSize: scaling().moderateScale(44),
+    marginBottom: scaling().scaleHeight(8),
+  },
+  thankYouTitle: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: scaling().moderateScale(16),
+    color: colors.text,
+    textAlign: "center",
+  },
+  thankYouSub: {
+    fontFamily: "OpenSans_500Medium",
+    fontSize: scaling().moderateScale(12),
+    color: colors.textLight,
+    textAlign: "center",
+    marginTop: scaling().scaleHeight(6),
+    lineHeight: scaling().moderateScale(18),
   },
 });
 

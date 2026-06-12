@@ -1,6 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import * as Sharing from "expo-sharing";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -13,11 +12,15 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Share from "react-native-share";
 import { captureRef } from "react-native-view-shot";
 import { colors } from "../../../constants/colors";
 import { Logger } from "../../../constants/Logger";
 import { trackEvent } from "../../../constants/mixpanel";
 import { scaling } from "../../../constants/useScaling";
+
+const PLAY_STORE_URL =
+  "https://play.google.com/store/apps/details?id=com.pushdaily.homeworkout.fit";
 
 const { width } = Dimensions.get("window");
 const ms = (n) => scaling().moderateScale(n);
@@ -68,23 +71,29 @@ export default function ShareAchievementModal({
     try {
       setSharing(true);
 
-      // Render → bitmap. tmpfile gives a path the OS share sheet can attach.
+      // Render the branded card → PNG that we attach to the share.
       const uri = await captureRef(cardRef, {
         format: "png",
         quality: 1,
         result: "tmpfile",
       });
+      const fileUrl = uri.startsWith("file://") ? uri : `file://${uri}`;
 
-      const available = await Sharing.isAvailableAsync();
-      if (!available) {
-        Logger.log("[Share] Sharing not available on this device");
-        setSharing(false);
-        return;
-      }
+      // Caption shared alongside the image — includes the Play Store link so
+      // recipients can download the app.
+      const message =
+        `I earned the ${badge?.title || "Rabbit"} badge and just completed a ` +
+        `${bodyPart}${level ? ` (${level})` : ""} workout on Push Daily — ` +
+        `feeling amazing! 💪🔥\n\n` +
+        `You can be a part of this too. Hurry up and download the app 👇\n` +
+        `${PLAY_STORE_URL}`;
 
-      await Sharing.shareAsync(uri, {
-        mimeType: "image/png",
-        dialogTitle: "Share your achievement",
+      await Share.open({
+        title: "Share your achievement",
+        message,
+        url: fileUrl,
+        type: "image/png",
+        failOnCancel: false,
       });
 
       trackEvent("Achievement Shared", {
@@ -94,7 +103,8 @@ export default function ShareAchievementModal({
         points: pointsEarned,
       });
     } catch (e) {
-      Logger.log("[Share] failed:", String(e));
+      // react-native-share can reject on user cancel — treat as non-fatal.
+      Logger.log("[Share] dismissed/failed:", String(e));
     } finally {
       setSharing(false);
     }

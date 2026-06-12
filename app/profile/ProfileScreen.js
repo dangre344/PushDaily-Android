@@ -20,6 +20,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { AD_UNIT_IDS, BannerAdSize } from "../../ads/Admobmanager";
 import { FemaleIcon, ManIconSVG } from "../../assets/AllSvgs";
 import NotificationDialog from "../../components/ui/NotificationDialog";
+import { maybeAskForReview } from "../../constants/appReview";
 import { colors } from "../../constants/colors";
 import { Logger } from "../../constants/Logger";
 import { useUser } from "../../constants/UserContext";
@@ -32,6 +33,7 @@ import {
 } from "../../offlinedb/workoutdb";
 import WorkoutBadgeInfo from "../home/WorkoutBadgeInfo";
 import MilestonesModal from "./MilestonesModal";
+import WaterReminderModal from "./WaterReminderModal";
 import { AboutModal } from "./privacy/AboutModal";
 import { PrivacyPolicyModal } from "./privacy/PrivacyPolicyModal";
 
@@ -131,6 +133,13 @@ const MENU_SECTIONS = [
         icon: "trophy-outline",
         color: colors.primary,
         key: "milestones",
+      },
+
+      {
+        label: "Water Reminder",
+        icon: "water-outline",
+        color: "#2E90FA",
+        key: "water",
       },
 
       {
@@ -237,6 +246,7 @@ const MenuRow = ({
   setAboutVisible,
   setOpenBadgeModal,
   setMilestonesVisible,
+  setWaterVisible,
   setNotificationDialog,
 }) => {
   const anim = useRef(new Animated.Value(0)).current;
@@ -356,6 +366,8 @@ const MenuRow = ({
             setOpenBadgeModal(true);
           } else if (item.key === "milestones") {
             setMilestonesVisible(true);
+          } else if (item.key === "water") {
+            setWaterVisible(true);
           } else if (item.key === "notifs") {
             handleNotifications(setNotificationDialog);
           } else if (item.key === "privacy") {
@@ -410,6 +422,9 @@ export default function ProfileScreen() {
 
         setStats(data);
         setStreak(currentStreak);
+
+        // Nudge for a Play Store in-app review (uses already-fetched count).
+        maybeAskForReview(data?.totalWorkouts);
       };
 
       loadStats();
@@ -426,6 +441,7 @@ export default function ProfileScreen() {
   const [aboutVisible, setAboutVisible] = useState(false);
   const [openBadgeModal, setOpenBadgeModal] = useState(false);
   const [milestonesVisible, setMilestonesVisible] = useState(false);
+  const [waterVisible, setWaterVisible] = useState(false);
 
   const [storedBadge, setStoredBadge] = useState(null);
 
@@ -674,6 +690,7 @@ export default function ProfileScreen() {
                   setAboutVisible={setAboutVisible}
                   setOpenBadgeModal={setOpenBadgeModal}
                   setMilestonesVisible={setMilestonesVisible}
+                  setWaterVisible={setWaterVisible}
                   setNotificationDialog={setNotificationDialog}
                 />
               ))}
@@ -736,6 +753,13 @@ export default function ProfileScreen() {
         <MilestonesModal
           visible={milestonesVisible}
           setVisible={setMilestonesVisible}
+        />
+      ) : null}
+
+      {waterVisible ? (
+        <WaterReminderModal
+          visible={waterVisible}
+          setVisible={setWaterVisible}
         />
       ) : null}
 

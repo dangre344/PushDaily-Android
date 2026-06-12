@@ -76,7 +76,8 @@
         }
       ],
       "@react-native-firebase/crashlytics",
-      "./plugins/withProguardRules"
+      "./plugins/withProguardRules",
+      ["react-native-share", {}]
     ],
     "experiments": {
       "typedRoutes": true,

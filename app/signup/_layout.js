@@ -20,6 +20,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Toast } from "toastify-react-native";
 import InputText from "../../components/ui/InputText.js";
 import MeasurementsStep from "../../components/ui/MeasurementStep.js";
+import ReminderTimePicker from "../../components/ui/ReminderTimePicker.js";
 import MultipleSelector from "../../components/ui/MultipleSelector.js";
 import StepContainer from "../../components/ui/StepContainer.js";
 import { registerUser, trackEvent } from "../../constants/mixpanel.js";
@@ -47,7 +48,7 @@ export default function Signup() {
   const isFinishingRef = useRef(false);
   const { t } = useTranslation();
   const router = useRouter();
-  const totalSteps = 7;
+  const totalSteps = 6;
   const [step, setStep] = useState(1);
   const progress = (step / totalSteps) * 100;
 
@@ -119,6 +120,9 @@ export default function Signup() {
       .required("Days are required"),
 
     time: yup.string().trim().required("Workout time is required"),
+
+    // Custom reminder time ("HH:mm", 24h). Optional — seeded from the slot.
+    reminderTime: yup.string().notRequired(),
   });
 
   useEffect(() => {
@@ -155,6 +159,7 @@ export default function Signup() {
       goal: user?.goal || "",
       days: user?.days || [],
       time: user?.time || "",
+      reminderTime: user?.reminderTime || "",
     },
   });
 
@@ -223,7 +228,18 @@ export default function Signup() {
   };
 
   const scheduleNotification = async (timeValue) => {
-    const notificationTime = getNotificationTime(timeValue);
+    // Prefer the user's custom reminder time; fall back to the slot default.
+    const custom = form.getValues("reminderTime");
+    let notificationTime = null;
+    if (custom && /^\d{1,2}:\d{2}$/.test(custom)) {
+      const [hh, mm] = custom.split(":").map((n) => parseInt(n, 10));
+      if (Number.isFinite(hh) && Number.isFinite(mm)) {
+        notificationTime = { hour: hh, minute: mm };
+      }
+    }
+    if (!notificationTime) {
+      notificationTime = getNotificationTime(timeValue);
+    }
     if (!notificationTime) return;
 
     await Notifications.cancelAllScheduledNotificationsAsync();
@@ -417,25 +433,26 @@ export default function Signup() {
 
   const nextStep = () => {
     Logger.log("gender---->" + form.getValues("gender"));
+    // Step 1 combines gender + name + age.
     if (step == 1 && form.getValues("gender") == "") {
       Toast.error(t("selectGender"), "top");
       return;
-    } else if (step == 2 && form.getValues("name") == "") {
+    } else if (step == 1 && form.getValues("name") == "") {
       Toast.error(t("enterName"), "top");
       return;
-    } else if (step == 2 && form.getValues("age") == 0) {
+    } else if (step == 1 && form.getValues("age") == 0) {
       Toast.error(t("selectAge"), "top");
       return;
-    } else if (step == 4 && form.getValues("experience") == "") {
+    } else if (step == 3 && form.getValues("experience") == "") {
       Toast.error(t("selectExp"), "top");
       return;
-    } else if (step == 5 && form.getValues("goal") == "") {
+    } else if (step == 4 && form.getValues("goal") == "") {
       Toast.error(t("selectGoal"), "top");
       return;
-    } else if (step == 6 && form.getValues("days") == "") {
+    } else if (step == 5 && form.getValues("days") == "") {
       Toast.error(t("selectDays"), "top");
       return;
-    } else if (step == 7 && form.getValues("time") == "") {
+    } else if (step == 6 && form.getValues("time") == "") {
       Toast.error(t("selectTime"), "top");
       return;
     }
@@ -463,8 +480,8 @@ export default function Signup() {
     form.setValue("days", updated);
   };
 
-  // Each step as component:
-  const GenderStep = () => {
+  // Step 1: gender + name + age combined on one screen.
+  const AboutYouStep = () => {
     const { t } = useTranslation();
 
     return (
@@ -478,6 +495,7 @@ export default function Signup() {
             name="gender"
             rules={{ required: "Please select a gender" }}
             defaultValue={form.getValues("gender")}
+            horizontal
             options={[
               { emoji: "🚹", title: "Male" },
               { emoji: "🚺", title: "Female" },
@@ -485,17 +503,16 @@ export default function Signup() {
             ]}
           />
         </View>
-      </View>
-    );
-  };
 
-  const AgeStep = () => {
-    const { t } = useTranslation();
-
-    return (
-      <View style={styles.stepContainer}>
-        <Text style={styles.stepTitle}>{t("signup.age_title")}</Text>
-        <Text style={styles.stepSubtitle}>{t("signup.age_subtitle")}</Text>
+        <InputText
+          form={form}
+          isOptional={false}
+          titleTextLabel={t("enterName")}
+          fieldName={"name"}
+          inputType="text"
+          placeholder={t("enterName")}
+          rootContainer={styles.inputMargin}
+        />
 
         <SliderSelector
           control={form.control}
@@ -507,27 +524,6 @@ export default function Signup() {
           rules={{ required: "Please select your age" }}
           units={t("years")}
         />
-
-        <InputText
-          form={form}
-          isOptional={false}
-          titleTextLabel={t("enterName")}
-          fieldName={"name"}
-          inputType="text"
-          placeholder={t("enterName")}
-        />
-
-        {/* <InputText
-          form={form}
-          isOptional={true}
-          titleTextLabel={t("enterEmail")}
-          fieldName="email"
-          inputType="text"
-          placeholder={t("enterEmail")}
-          rootContainer={styles.inputMargin}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        /> */}
       </View>
     );
   };
@@ -643,6 +639,7 @@ export default function Signup() {
             name="time"
             rules={{ required: "Please select your expereince" }}
             defaultValue=""
+            horizontal
             options={[
               {
                 emoji: "🌅",
@@ -674,43 +671,12 @@ export default function Signup() {
               },
             ]}
           />
+
+          {/* Custom reminder time — defaults from the selected slot */}
+          <ReminderTimePicker form={form} />
         </View>
       </View>
     );
-  };
-
-  const renderStep = () => {
-    console.log("renderStep---->" + step);
-    switch (step) {
-      case 1:
-        return <GenderStep form={form} />;
-      case 2:
-        return <AgeStep />;
-      case 3:
-        return (
-          <MeasurementsStep
-            form={form}
-            minHeight={120}
-            maxHeight={240}
-            unitHeight="cm"
-            minWeight={30}
-            maxWeight={170}
-            unitWeight="kg"
-            selectedWeight={form.getValues("weight")}
-            selectedHeight={form.getValues("height")}
-          />
-        );
-      case 4:
-        return <ExperienceStep />;
-      case 5:
-        return <GoalStep />;
-      case 6:
-        return <DaysStep />;
-      case 7:
-        return <TimeStep />;
-      default:
-        return null;
-    }
   };
 
   return (
@@ -736,13 +702,12 @@ export default function Signup() {
           keyboardShouldPersistTaps="handled"
         >
           <StepContainer step={step}>
-            {step === 1 && <GenderStep form={form} />}
-            {step === 2 && <AgeStep form={form} />}
-            {step === 3 && <MeasurementsStep form={form} />}
-            {step === 4 && <ExperienceStep form={form} />}
-            {step === 5 && <GoalStep form={form} />}
-            {step === 6 && <DaysStep form={form} />}
-            {step === 7 && <TimeStep form={form} />}
+            {step === 1 && <AboutYouStep form={form} />}
+            {step === 2 && <MeasurementsStep form={form} />}
+            {step === 3 && <ExperienceStep form={form} />}
+            {step === 4 && <GoalStep form={form} />}
+            {step === 5 && <DaysStep form={form} />}
+            {step === 6 && <TimeStep form={form} />}
           </StepContainer>
         </ScrollView>
 

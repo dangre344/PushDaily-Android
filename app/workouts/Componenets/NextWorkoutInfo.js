@@ -407,7 +407,7 @@ export const styles = StyleSheet.create({
   // Progress
   progressContainer: {
     paddingHorizontal: 20,
-    marginTop: 10,
+    marginTop: 5,
   },
 
   progressHeader: {
@@ -459,9 +459,9 @@ export const styles = StyleSheet.create({
 
   // Image Card
   imageCard: {
-    height: scaling().scaleHeight(220),
+    height: scaling().scaleHeight(200),
     marginHorizontal: 20,
-    marginTop: 20,
+    marginTop: 10,
     borderRadius: 20,
     overflow: "hidden",
   },
@@ -546,7 +546,7 @@ export const styles = StyleSheet.create({
 
   sectionTitle: {
     fontFamily: "OpenSans_600SemiBold",
-    fontSize: 20,
+    fontSize: scaling().moderateScale(16),
     color: colors.text,
     marginBottom: 5,
   },
@@ -575,7 +575,7 @@ export const styles = StyleSheet.create({
   // Steps
   stepsToggle: {
     marginBottom: 20,
-    marginTop: 15,
+    marginTop: 10,
   },
 
   stepsToggleHeader: {
@@ -651,7 +651,7 @@ export const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     padding: 25,
     borderRadius: 20,
-    marginTop: 10,
+    marginTop: 5,
     elevation: 3,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },

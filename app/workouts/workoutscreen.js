@@ -21,6 +21,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Image } from "expo-image";
 import { FemaleIcon, ManIconSVG } from "../../assets/AllSvgs";
 import CircularImage from "../../components/ui/CircularImage";
+import { maybeAskForReview } from "../../constants/appReview";
 import { colors } from "../../constants/colors";
 import {
   bodyParts,
@@ -58,6 +59,22 @@ export default function WorkoutScreen() {
   const slideAnim = useRef(new Animated.Value(22)).current;
   const scaleAnim = useRef(new Animated.Value(0.96)).current;
 
+  // Trainer FAB: 1 = expanded pill ("Chat with Trainer"), 0 = circle (icon only).
+  const fabAnim = useRef(new Animated.Value(1)).current;
+  const fabCollapsedRef = useRef(false);
+
+  const handleScroll = (e) => {
+    const y = e.nativeEvent.contentOffset.y;
+    const shouldCollapse = y > 30;
+    if (shouldCollapse === fabCollapsedRef.current) return;
+    fabCollapsedRef.current = shouldCollapse;
+    Animated.timing(fabAnim, {
+      toValue: shouldCollapse ? 0 : 1,
+      duration: 240,
+      useNativeDriver: false, // animates maxWidth
+    }).start();
+  };
+
   const [openModal, setOpenModal] = useState(false);
   const [openBadgeModal, setOpenBadgeModal] = useState(false);
   const [badgeLevelUpVisible, setBadgeLevelUpVisible] = useState(false);
@@ -90,6 +107,10 @@ export default function WorkoutScreen() {
 
       setStats(data);
       setWeekWorkouts(week);
+
+      // Nudge for a Play Store in-app review once the habit is forming
+      // (uses the count we just fetched — no extra query).
+      maybeAskForReview(data?.totalWorkouts);
     } catch (error) {
       Logger.log("Error loading screen data:", error);
     }
@@ -298,6 +319,8 @@ export default function WorkoutScreen() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
         >
           {/* HEADER */}
           <View style={styles.header}>
@@ -533,6 +556,31 @@ export default function WorkoutScreen() {
         </ScrollView>
       </Animated.View>
 
+      {/* Floating "Chat with Trainer" button — collapses to a circle on scroll */}
+      <TouchableOpacity
+        style={styles.trainerFab}
+        activeOpacity={1}
+        onPress={() => router.push("/trainer/chat")}
+      >
+        <View style={styles.trainerFabIcon}>
+          <Text style={styles.trainerFabEmoji}>🏋️</Text>
+        </View>
+        <Animated.View
+          style={{
+            overflow: "hidden",
+            opacity: fabAnim,
+            maxWidth: fabAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0, moderateScale(150)],
+            }),
+          }}
+        >
+          <Text style={styles.trainerFabText} numberOfLines={1}>
+            Chat with Trainer
+          </Text>
+        </Animated.View>
+      </TouchableOpacity>
+
       {openModal ? (
         <WorkoutLevelModal
           visible={openModal}
@@ -567,6 +615,45 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F7F8FA",
+  },
+
+  trainerFab: {
+    position: "absolute",
+    right: moderateScale(16),
+    // The custom bottom tab bar is absolutely positioned (~70 high, elevation
+    // 20), so the FAB must sit above it or it gets covered.
+    bottom: moderateScale(84),
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.white,
+    borderRadius: moderateScale(999),
+    // 28-high icon + 12 padding all round → collapses into a 52×52 circle.
+    paddingVertical: moderateScale(12),
+    paddingHorizontal: moderateScale(12),
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    elevation: 8,
+  },
+  trainerFabIcon: {
+    width: moderateScale(28),
+    height: moderateScale(28),
+    borderRadius: moderateScale(14),
+    backgroundColor: "rgba(255,255,255,0.25)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  trainerFabEmoji: {
+    fontSize: moderateScale(14),
+  },
+  trainerFabText: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: moderateScale(13),
+    color: colors.gradient2,
+
+    marginLeft: moderateScale(8),
+    marginRight: moderateScale(4),
   },
 
   animatedContainer: {
