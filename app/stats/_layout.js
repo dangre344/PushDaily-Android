@@ -495,7 +495,10 @@ export default function StatsScreen() {
   const { t } = useTranslation();
   const [workouts, setWorkouts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("7D");
+  // Default to "All" so the charts (incl. Body Part Focus) always show when
+  // history exists — "7D"/"30D" would hide everything if the user's workouts
+  // are older than the window.
+  const [filter, setFilter] = useState("All");
 
   // Same flow as WorkoutScreen: tap a body part → level modal → workout.
   const [openModal, setOpenModal] = useState(false);

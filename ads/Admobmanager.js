@@ -6,6 +6,7 @@ import {
   RewardedAd,
   RewardedAdEventType,
   RewardedInterstitialAd,
+  TestIds,
 } from "react-native-google-mobile-ads";
 
 // ─────────────────────────────────────────────
@@ -24,7 +25,10 @@ export const AD_UNIT_IDS = {
 
   interstitial: "ca-app-pub-3788587565382003/5080777760",
 
-  rewarded: "ca-app-pub-3788587565382003/9813772844",
+  // Test ID in dev so the rewarded ad always fills/shows; real ID in production.
+  rewarded: __DEV__
+    ? TestIds.REWARDED
+    : "ca-app-pub-3788587565382003/9813772844",
 
   rewardedInterstitial: "ca-app-pub-3788587565382003/6633532586",
 

@@ -41,6 +41,12 @@ import {
 import { initRemoteConfig } from "../constants/remoteConfig";
 import { useRouteTracking } from "../constants/useScreenTracking";
 import UserProvider from "../constants/UserContext";
+import {
+  getGoalGlasses,
+  logGlass,
+  WATER_ACTION_DETAILS,
+  WATER_ACTION_LOG,
+} from "../constants/waterReminder";
 import "../locales/i18";
 
 // Expo Router calls preventAutoHideAsync() internally, which pins the native
@@ -118,13 +124,41 @@ export default function RootLayout() {
     // Fires when the user taps a notification (foreground, background, or after
     // the app was launched from a killed state by tapping it).
     const responseSub = Notifications.addNotificationResponseReceivedListener(
-      (resp) => {
+      async (resp) => {
         const data = resp.notification.request.content.data;
-        Logger.log("[Push] notification tapped:", data);
-        if (data?.type === "water") {
-          // Water reminder → open the Water Reminder screen directly.
+        const notifId = resp.notification.request.identifier;
+        Logger.log(
+          "[Push] notification response:",
+          resp.actionIdentifier,
+          data,
+        );
+
+        // Action buttons don't auto-dismiss on Android — clear the notification
+        // from the shade once the user has acted on it.
+        const dismiss = () =>
+          Notifications.dismissNotificationAsync(notifId).catch(() => {});
+
+        // "Yes, I drank water" action → increment the count from the shade,
+        // without opening the app. Works while the JS runtime is alive.
+        if (resp.actionIdentifier === WATER_ACTION_LOG) {
+          try {
+            const goal = await getGoalGlasses();
+            const next = await logGlass(goal);
+            Logger.log("[Water] logged from notification →", next, "/", goal);
+          } catch (e) {
+            Logger.log("[Water] notification log failed:", String(e));
+          }
+          dismiss();
+          return;
+        }
+
+        // "Show me details" action OR tapping the notification body → open the
+        // Water Reminder screen.
+        if (resp.actionIdentifier === WATER_ACTION_DETAILS || data?.type === "water") {
+          dismiss();
           router.push("/profile/water");
         } else if (data?.screen === "Home" || data?.type === "daily_update") {
+          dismiss();
           router.replace("/home");
         }
       },

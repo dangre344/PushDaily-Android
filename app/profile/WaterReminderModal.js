@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  AppState,
   Easing,
   Linking,
   Modal,
@@ -124,6 +125,20 @@ export default function WaterReminderModal({ visible, setVisible }) {
     return () => { active = false; };
   }, [visible]);
 
+  // A glass can be logged from the notification's action button while the app
+  // is backgrounded — re-read the count when the user returns to the foreground.
+  useEffect(() => {
+    if (!visible) return;
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        getConsumedGlasses()
+          .then(setConsumed)
+          .catch((e) => Logger.log("[Water] refresh failed:", String(e)));
+      }
+    });
+    return () => sub.remove();
+  }, [visible]);
+
   useEffect(() => {
     Animated.timing(progressAnim, {
       toValue: percent,
@@ -152,7 +167,7 @@ export default function WaterReminderModal({ visible, setVisible }) {
 
   const handleStart = async () => {
     setLoading(true);
-    const res = await startWaterTracking();
+    const res = await startWaterTracking(goal.glasses);
     setLoading(false);
     if (res.ok) {
       setEnabled(true);

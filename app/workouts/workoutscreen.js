@@ -44,11 +44,25 @@ import WorkoutBadgeInfo, {
   BADGE_ORDER,
   getUserBadge,
 } from "../home/WorkoutBadgeInfo";
+import {
+  markWaterPromptDismissed,
+  markWaterPromptShown,
+  shouldOfferWaterReminder,
+} from "../../constants/waterReminder";
 import HIITCard from "./Componenets/HIITCard";
+import WaterPromptModal from "./Componenets/WaterPromptModal";
 import WorkoutLevelModal from "./Componenets/WorkoutLevelModal";
 
 const { width } = Dimensions.get("window");
 const { scaleHeight, scaleWidth, moderateScale } = scaling();
+
+// Rotating prompts shown on the trainer FAB (first = plan today's workout).
+const FAB_TEXTS = [
+  "Plan today's session 💪",
+  "Ask about your diet 🥗",
+  "What should I train today?",
+  "Ask your trainer anything",
+];
 
 export default function WorkoutScreen() {
   const { t } = useTranslation();
@@ -59,9 +73,12 @@ export default function WorkoutScreen() {
   const slideAnim = useRef(new Animated.Value(22)).current;
   const scaleAnim = useRef(new Animated.Value(0.96)).current;
 
-  // Trainer FAB: 1 = expanded pill ("Chat with Trainer"), 0 = circle (icon only).
+  // Trainer FAB: 1 = expanded pill, 0 = circle (icon only).
   const fabAnim = useRef(new Animated.Value(1)).current;
   const fabCollapsedRef = useRef(false);
+  // Cross-fade for the rotating FAB label.
+  const fabTextAnim = useRef(new Animated.Value(1)).current;
+  const [fabTextIndex, setFabTextIndex] = useState(0);
 
   const handleScroll = (e) => {
     const y = e.nativeEvent.contentOffset.y;
@@ -75,9 +92,30 @@ export default function WorkoutScreen() {
     }).start();
   };
 
+  // Rotate the FAB label every ~3s with a cross-fade (non-native driver to
+  // stay compatible with the maxWidth collapse animation on the same view).
+  useEffect(() => {
+    const id = setInterval(() => {
+      Animated.timing(fabTextAnim, {
+        toValue: 0,
+        duration: 280,
+        useNativeDriver: false,
+      }).start(() => {
+        setFabTextIndex((i) => (i + 1) % FAB_TEXTS.length);
+        Animated.timing(fabTextAnim, {
+          toValue: 1,
+          duration: 280,
+          useNativeDriver: false,
+        }).start();
+      });
+    }, 3000);
+    return () => clearInterval(id);
+  }, []);
+
   const [openModal, setOpenModal] = useState(false);
   const [openBadgeModal, setOpenBadgeModal] = useState(false);
   const [badgeLevelUpVisible, setBadgeLevelUpVisible] = useState(false);
+  const [waterPromptVisible, setWaterPromptVisible] = useState(false);
 
   const [badgeUpgradeData, setBadgeUpgradeData] = useState({
     oldBadge: null,
@@ -164,6 +202,25 @@ export default function WorkoutScreen() {
       };
     }, []),
   );
+
+  // Occasionally nudge the user to set up water reminders. Gating lives in
+  // waterReminder.js (never right after sign-in, has a cooldown, only sometimes).
+  // Delayed so it doesn't collide with the startup interstitial / badge modal.
+  useEffect(() => {
+    let active = true;
+    const t = setTimeout(async () => {
+      try {
+        if ((await shouldOfferWaterReminder()) && active) {
+          setWaterPromptVisible(true);
+          markWaterPromptShown();
+        }
+      } catch {}
+    }, 1800);
+    return () => {
+      active = false;
+      clearTimeout(t);
+    };
+  }, []);
 
   const { weeklyWorkouts, attendedDays } = useWeeklyWorkouts(weekWorkouts);
 
@@ -568,15 +625,15 @@ export default function WorkoutScreen() {
         <Animated.View
           style={{
             overflow: "hidden",
-            opacity: fabAnim,
+            opacity: Animated.multiply(fabAnim, fabTextAnim),
             maxWidth: fabAnim.interpolate({
               inputRange: [0, 1],
-              outputRange: [0, moderateScale(150)],
+              outputRange: [0, moderateScale(190)],
             }),
           }}
         >
           <Text style={styles.trainerFabText} numberOfLines={1}>
-            Chat with Trainer
+            {FAB_TEXTS[fabTextIndex]}
           </Text>
         </Animated.View>
       </TouchableOpacity>
@@ -606,6 +663,18 @@ export default function WorkoutScreen() {
         oldBadge={badgeUpgradeData.oldBadge}
         newBadge={badgeUpgradeData.newBadge}
         score={userBadge?.score}
+      />
+
+      <WaterPromptModal
+        visible={waterPromptVisible}
+        onClose={() => {
+          setWaterPromptVisible(false);
+          markWaterPromptDismissed();
+        }}
+        onEnable={() => {
+          setWaterPromptVisible(false);
+          router.push("/profile/water");
+        }}
       />
     </View>
   );

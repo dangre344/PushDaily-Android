@@ -9,6 +9,15 @@ export const WATER_GLASS_ML = 250;
 const K_ENABLED = "water_tracking_enabled";
 const K_IDS = "water_notification_ids";
 const K_CONSUMED = "water_consumed"; // { date: "YYYY-MM-DD", glasses }
+const K_GOAL = "water_goal_glasses"; // remembered so the notification action can cap
+const K_PROMPT = "water_prompt_state"; // { opens, lastShown, declines }
+
+// Notification action buttons wired via a category:
+//   • LOG     → "Yes, I drank water" (increments the count from the shade)
+//   • DETAILS → "Show me details"    (opens the Water Reminder screen)
+export const WATER_CATEGORY = "water-reminder";
+export const WATER_ACTION_LOG = "WATER_LOG_GLASS";
+export const WATER_ACTION_DETAILS = "WATER_SHOW_DETAILS";
 
 const localDateKey = (d = new Date()) => {
   const y = d.getFullYear();
@@ -72,10 +81,44 @@ export const ensureWaterChannel = async () => {
 };
 
 /**
+ * Registers the two water-reminder action buttons:
+ *   • "Yes, I drank water" — opensAppToForeground:false → logs the glass straight
+ *     from the shade without opening the app.
+ *   • "Show me details"    — opensAppToForeground:true → opens the Water screen.
+ * Both are handled by the response listener in app/_layout.tsx.
+ */
+export const registerWaterCategory = async () => {
+  try {
+    await Notifications.setNotificationCategoryAsync(WATER_CATEGORY, [
+      {
+        identifier: WATER_ACTION_LOG,
+        buttonTitle: "✅ Yes, I drank water",
+        options: { opensAppToForeground: false },
+      },
+      {
+        identifier: WATER_ACTION_DETAILS,
+        buttonTitle: "📊 Show me details",
+        options: { opensAppToForeground: true },
+      },
+    ]);
+  } catch (e) {
+    Logger.log("[Water] category register failed:", String(e));
+  }
+};
+
+// Today's goal in glasses — used by the notification action to cap the count.
+export const getGoalGlasses = async () => {
+  const raw = await AsyncStorage.getItem(K_GOAL);
+  const n = parseInt(raw || "", 10);
+  return Number.isFinite(n) && n > 0 ? n : 8;
+};
+
+/**
  * Requests permission and schedules the repeating daily water reminders.
+ * `goalGlasses` is stored so the notification action can cap the count.
  * Returns { ok, reason?, count? }.
  */
-export const startWaterTracking = async () => {
+export const startWaterTracking = async (goalGlasses = 8) => {
   const { status: existing } = await Notifications.getPermissionsAsync();
   let finalStatus = existing;
   if (existing !== "granted") {
@@ -87,6 +130,8 @@ export const startWaterTracking = async () => {
   }
 
   await ensureWaterChannel();
+  await registerWaterCategory();
+  await AsyncStorage.setItem(K_GOAL, String(goalGlasses));
 
   // Clear any previous water reminders first to avoid duplicates.
   await stopWaterTracking(false);
@@ -95,13 +140,23 @@ export const startWaterTracking = async () => {
   for (let i = 0; i < WATER_SLOTS.length; i++) {
     const slot = WATER_SLOTS[i];
     const msg = WATER_MESSAGES[i % WATER_MESSAGES.length];
+    // A DAILY repeating notification's text is fixed at schedule time, so we
+    // can't show the live count. Instead show the pace target for this slot —
+    // i.e. roughly how many of the total you should have had by now.
+    const target = Math.max(
+      1,
+      Math.min(goalGlasses, Math.round(((i + 1) / WATER_SLOTS.length) * goalGlasses)),
+    );
+    const body = `${msg.body}\n🎯 Goal: about ${target} of ${goalGlasses} glasses by now.`;
     try {
       const id = await Notifications.scheduleNotificationAsync({
         content: {
           title: msg.title,
-          body: msg.body,
+          body,
           sound: "default",
           data: { type: "water" },
+          // Attaches the "I drank a glass" action button.
+          categoryIdentifier: WATER_CATEGORY,
         },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.DAILY,
@@ -155,6 +210,59 @@ export const stopWaterTracking = async (clearState = true) => {
 
 export const isWaterTrackingEnabled = async () =>
   (await AsyncStorage.getItem(K_ENABLED)) === "true";
+
+// ─── "Set a water reminder?" nudge gating ─────────────────────────────────────
+// Decides whether to occasionally prompt the user. Rules:
+//   • never if tracking is already on
+//   • not in the first 2 app opens (so we don't ask right after sign-in)
+//   • stop nagging after 3 dismissals
+//   • at most once every 4 days
+//   • only "sometimes" even when eligible
+const PROMPT_COOLDOWN_MS = 4 * 24 * 60 * 60 * 1000;
+
+const readPromptState = async () => {
+  try {
+    const raw = await AsyncStorage.getItem(K_PROMPT);
+    return raw ? JSON.parse(raw) : { opens: 0, lastShown: 0, declines: 0 };
+  } catch {
+    return { opens: 0, lastShown: 0, declines: 0 };
+  }
+};
+
+/**
+ * Call once per app launch. Increments the open counter and returns true only
+ * when it's a good moment to show the water-reminder nudge.
+ */
+export const shouldOfferWaterReminder = async () => {
+  try {
+    if (await isWaterTrackingEnabled()) return false;
+
+    const s = await readPromptState();
+    s.opens = (s.opens || 0) + 1;
+    await AsyncStorage.setItem(K_PROMPT, JSON.stringify(s));
+
+    if (s.opens < 3) return false; // skip first launches (incl. just after sign-in)
+    if ((s.declines || 0) >= 3) return false; // they keep saying no — stop asking
+    if (s.lastShown && Date.now() - s.lastShown < PROMPT_COOLDOWN_MS) return false;
+
+    return Math.random() < 0.5; // only sometimes, so it never feels naggy
+  } catch {
+    return false;
+  }
+};
+
+export const markWaterPromptShown = async () => {
+  const s = await readPromptState();
+  s.lastShown = Date.now();
+  await AsyncStorage.setItem(K_PROMPT, JSON.stringify(s));
+};
+
+export const markWaterPromptDismissed = async () => {
+  const s = await readPromptState();
+  s.declines = (s.declines || 0) + 1;
+  s.lastShown = Date.now();
+  await AsyncStorage.setItem(K_PROMPT, JSON.stringify(s));
+};
 
 // Returns today's consumed glasses, resetting automatically on a new day.
 export const getConsumedGlasses = async () => {
