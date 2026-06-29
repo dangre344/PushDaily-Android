@@ -12,7 +12,10 @@
       "dev": true
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "We use the camera to detect your push-up form and count reps in real time."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -28,7 +31,8 @@
       "permissions": [
         "com.google.android.gms.permission.AD_ID",
         "android.permission.INTERNET",
-        "android.permission.VIBRATE"
+        "android.permission.VIBRATE",
+        "android.permission.CAMERA"
       ]
     },
     "web": {
@@ -45,6 +49,13 @@
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
+        }
+      ],
+
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "We use the camera to detect your push-up form and count reps in real time."
         }
       ],
       [

@@ -33,7 +33,7 @@ import {
 import { checkForAppUpdate } from "../constants/appUpdate";
 import { initCrashlytics } from "../constants/crashlytics";
 import { Logger } from "../constants/Logger";
-import { initMixpanel } from "../constants/mixpanel";
+import { initMixpanel, trackEvent } from "../constants/mixpanel";
 import {
   setupForegroundMessageHandler,
   subscribeToBroadcastTopic,
@@ -132,6 +132,31 @@ export default function RootLayout() {
           resp.actionIdentifier,
           data,
         );
+
+        // ── Track EVERY notification interaction (workouts, water, FCM…) ──
+        const DEFAULT_ACTION = Notifications.DEFAULT_ACTION_IDENTIFIER;
+        const notifType =
+          resp.actionIdentifier === WATER_ACTION_LOG
+            ? "water_log_action"
+            : resp.actionIdentifier === WATER_ACTION_DETAILS
+              ? "water_details_action"
+              : data?.type === "water"
+                ? "water_reminder"
+                : data?.type === "daily_update"
+                  ? "daily_update"
+                  : data?.screen === "Home"
+                    ? "workout_reminder"
+                    : (data?.type as string) || "other";
+
+        trackEvent("Notification Opened", {
+          type: notifType,
+          action:
+            resp.actionIdentifier === DEFAULT_ACTION
+              ? "tap"
+              : resp.actionIdentifier,
+          title: resp.notification.request.content.title || "",
+          ...(data || {}),
+        });
 
         // Action buttons don't auto-dismiss on Android — clear the notification
         // from the shade once the user has acted on it.

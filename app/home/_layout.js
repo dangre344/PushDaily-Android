@@ -15,6 +15,7 @@ import { useEffect, useRef } from "react";
 import { colors } from "../../constants/colors.js";
 import { trackScreen } from "../../constants/mixpanel.js";
 import { scaling } from "../../constants/useScaling";
+import EventScreen from "../event/EventScreen.js";
 import ProfileScreen from "../profile/ProfileScreen.js";
 import ProgressScreen from "../progress/ProgressScreen.js";
 import StatsScreen from "../stats/_layout.js";
@@ -27,13 +28,17 @@ const ms = (n) => scaling().moderateScale(n);
 const { width } = Dimensions.get("window");
 
 const TABS = [
-  { name: "Workout", icon: "barbell-outline", activeIcon: "barbell" },
+  { name: "Stats", icon: "accessibility", activeIcon: "accessibility" },
+
   {
     name: "Attendance",
     icon: "stats-chart-outline",
     activeIcon: "stats-chart",
   },
-  { name: "Stats", icon: "accessibility", activeIcon: "accessibility" },
+
+  { name: "Workouts", icon: "barbell-outline", activeIcon: "barbell" },
+
+  { name: "Event", icon: "trophy-outline", activeIcon: "trophy" },
   { name: "Profile", icon: "person-outline", activeIcon: "person" },
 ];
 
@@ -220,9 +225,13 @@ export default function AppLayout() {
           focus: () => trackScreen(route.name),
         })}
       >
-        <Tab.Screen name="Workout" component={WorkoutScreen} />
-        <Tab.Screen name="Attendance" component={ProgressScreen} />
         <Tab.Screen name="Stats" component={StatsScreen} />
+
+        <Tab.Screen name="Attendance" component={ProgressScreen} />
+
+        <Tab.Screen name="Workouts" component={WorkoutScreen} />
+
+        <Tab.Screen name="Event" component={EventScreen} />
         <Tab.Screen name="Profile" component={ProfileScreen} />
       </Tab.Navigator>
     </SafeAreaView>
