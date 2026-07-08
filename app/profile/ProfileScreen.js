@@ -33,9 +33,9 @@ import {
 } from "../../offlinedb/workoutdb";
 import WorkoutBadgeInfo from "../home/WorkoutBadgeInfo";
 import MilestonesModal from "./MilestonesModal";
-import WaterReminderModal from "./WaterReminderModal";
 import { AboutModal } from "./privacy/AboutModal";
 import { PrivacyPolicyModal } from "./privacy/PrivacyPolicyModal";
+import WaterReminderModal from "./WaterReminderModal";
 
 const { width } = Dimensions.get("window");
 const ms = (n) => scaling().moderateScale(n);
@@ -109,6 +109,18 @@ const handleShareApp = async () => {
   }
 };
 
+// ── Join WhatsApp community (app announcements) ──
+// Replace with your real group invite link from WhatsApp → Group → Invite.
+const WHATSAPP_GROUP_URL = "https://chat.whatsapp.com/Hv1HdzVbqOPJwPiuv1h2FE";
+
+const handleJoinWhatsApp = async () => {
+  try {
+    await Linking.openURL(WHATSAPP_GROUP_URL);
+  } catch (error) {
+    Logger.log("WhatsApp open error:", error);
+  }
+};
+
 // ─── Menu sections ────────────────────────────────────────────────────────────
 const MENU_SECTIONS = [
   {
@@ -147,6 +159,18 @@ const MENU_SECTIONS = [
         icon: "notifications-outline",
         color: colors.green,
         key: "notifs",
+      },
+    ],
+  },
+
+  {
+    title: "Community",
+    items: [
+      {
+        label: "Join WhatsApp Community",
+        icon: "logo-whatsapp",
+        color: "#25D366",
+        key: "whatsapp",
       },
     ],
   },
@@ -370,6 +394,8 @@ const MenuRow = ({
             setWaterVisible(true);
           } else if (item.key === "notifs") {
             handleNotifications(setNotificationDialog);
+          } else if (item.key === "whatsapp") {
+            handleJoinWhatsApp();
           } else if (item.key === "privacy") {
             setPrivacyVisible(true);
           } else if (item.key === "share") {

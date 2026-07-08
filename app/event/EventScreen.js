@@ -21,12 +21,12 @@ import {
   getLeaderboard,
   getTodaySessionCount,
 } from "../../constants/leaderboard";
-
-const PLAY_STORE_URL =
-  "https://play.google.com/store/apps/details?id=com.pushdaily.homeworkout.fit";
 import { trackScreen } from "../../constants/mixpanel";
 import { useUser } from "../../constants/UserContext";
 import { scaling } from "../../constants/useScaling";
+
+const PLAY_STORE_URL =
+  "https://play.google.com/store/apps/details?id=com.pushdaily.homeworkout.fit";
 
 const ms = (n) => scaling().moderateScale(n);
 const CHART_H = ms(150); // height of the bar plotting area
@@ -185,7 +185,11 @@ export default function EventScreen() {
       ? `I just hit ${best} push-ups on Push Daily 💪🔥 Think you can beat me?\n\n${PLAY_STORE_URL}`
       : `I'm training push-ups on Push Daily 💪 Join the challenge!\n\n${PLAY_STORE_URL}`;
     try {
-      await Share.open({ title: "My push-up score", message: msg, failOnCancel: false });
+      await Share.open({
+        title: "My push-up score",
+        message: msg,
+        failOnCancel: false,
+      });
     } catch {
       // user dismissed — ignore
     }

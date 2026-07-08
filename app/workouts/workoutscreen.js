@@ -56,12 +56,11 @@ import WorkoutLevelModal from "./Componenets/WorkoutLevelModal";
 const { width } = Dimensions.get("window");
 const { scaleHeight, scaleWidth, moderateScale } = scaling();
 
-// Rotating prompts shown on the trainer FAB (first = plan today's workout).
+// Rotating prompts shown next to the chat icon on the trainer FAB.
 const FAB_TEXTS = [
-  "Plan today's session 💪",
-  "Ask about your diet 🥗",
-  "What should I train today?",
-  "Ask your trainer anything",
+  "Chat with trainer",
+  "Ask diet queries 🥗",
+  "Plan your workout 💪",
 ];
 
 export default function WorkoutScreen() {
@@ -73,39 +72,22 @@ export default function WorkoutScreen() {
   const slideAnim = useRef(new Animated.Value(22)).current;
   const scaleAnim = useRef(new Animated.Value(0.96)).current;
 
-  // Trainer FAB: 1 = expanded pill, 0 = circle (icon only).
-  const fabAnim = useRef(new Animated.Value(1)).current;
-  const fabCollapsedRef = useRef(false);
-  // Cross-fade for the rotating FAB label.
+  // Cross-fade for the rotating FAB label next to the chat icon.
   const fabTextAnim = useRef(new Animated.Value(1)).current;
   const [fabTextIndex, setFabTextIndex] = useState(0);
 
-  const handleScroll = (e) => {
-    const y = e.nativeEvent.contentOffset.y;
-    const shouldCollapse = y > 30;
-    if (shouldCollapse === fabCollapsedRef.current) return;
-    fabCollapsedRef.current = shouldCollapse;
-    Animated.timing(fabAnim, {
-      toValue: shouldCollapse ? 0 : 1,
-      duration: 240,
-      useNativeDriver: false, // animates maxWidth
-    }).start();
-  };
-
-  // Rotate the FAB label every ~3s with a cross-fade (non-native driver to
-  // stay compatible with the maxWidth collapse animation on the same view).
   useEffect(() => {
     const id = setInterval(() => {
       Animated.timing(fabTextAnim, {
         toValue: 0,
-        duration: 280,
-        useNativeDriver: false,
+        duration: 250,
+        useNativeDriver: true,
       }).start(() => {
         setFabTextIndex((i) => (i + 1) % FAB_TEXTS.length);
         Animated.timing(fabTextAnim, {
           toValue: 1,
-          duration: 280,
-          useNativeDriver: false,
+          duration: 250,
+          useNativeDriver: true,
         }).start();
       });
     }, 3000);
@@ -376,8 +358,6 @@ export default function WorkoutScreen() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
         >
           {/* HEADER */}
           <View style={styles.header}>
@@ -418,54 +398,56 @@ export default function WorkoutScreen() {
             </View>
           </View>
 
-          {/* HERO CARD */}
-          <LinearGradient
-            colors={[colors.primary, "#7C3AED"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.heroCard}
-          >
-            <View style={styles.heroTopRow}>
-              <View>
-                <Text style={styles.heroSmallText}>Your progress</Text>
-                <Text style={styles.heroTitle}>Keep the streak alive</Text>
+          {/* HERO CARD — hidden entirely until the user has workout records */}
+          {stats.totalWorkouts > 0 && (
+            <LinearGradient
+              colors={[colors.primary, "#7C3AED"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.heroCard}
+            >
+              <View style={styles.heroTopRow}>
+                <View>
+                  <Text style={styles.heroSmallText}>Your progress</Text>
+                  <Text style={styles.heroTitle}>Keep the streak alive</Text>
+                </View>
+
+                <View style={styles.heroIconCircle}>
+                  <Ionicons name="barbell-outline" size={24} color="#FFFFFF" />
+                </View>
               </View>
 
-              <View style={styles.heroIconCircle}>
-                <Ionicons name="barbell-outline" size={24} color="#FFFFFF" />
+              <View style={styles.heroStatsRow}>
+                <View style={styles.heroStatItem}>
+                  <Ionicons name="barbell-outline" size={18} color="#FFFFFF" />
+                  <Text style={styles.heroStatValue}>
+                    {stats.totalWorkouts || 0}
+                  </Text>
+                  <Text style={styles.heroStatLabel}>Completed</Text>
+                </View>
+
+                <View style={styles.heroDivider} />
+
+                <View style={styles.heroStatItem}>
+                  <Ionicons name="flame-outline" size={18} color="#FFFFFF" />
+                  <Text style={styles.heroStatValue}>
+                    {stats.totalCalories || 0}
+                  </Text>
+                  <Text style={styles.heroStatLabel}>Kcal Burned</Text>
+                </View>
+
+                <View style={styles.heroDivider} />
+
+                <View style={styles.heroStatItem}>
+                  <Ionicons name="calendar-outline" size={18} color="#FFFFFF" />
+                  <Text style={styles.heroStatValue}>
+                    {stats.activeDays || 0}
+                  </Text>
+                  <Text style={styles.heroStatLabel}>Active Days</Text>
+                </View>
               </View>
-            </View>
-
-            <View style={styles.heroStatsRow}>
-              <View style={styles.heroStatItem}>
-                <Ionicons name="barbell-outline" size={18} color="#FFFFFF" />
-                <Text style={styles.heroStatValue}>
-                  {stats.totalWorkouts || 0}
-                </Text>
-                <Text style={styles.heroStatLabel}>Completed</Text>
-              </View>
-
-              <View style={styles.heroDivider} />
-
-              <View style={styles.heroStatItem}>
-                <Ionicons name="flame-outline" size={18} color="#FFFFFF" />
-                <Text style={styles.heroStatValue}>
-                  {stats.totalCalories || 0}
-                </Text>
-                <Text style={styles.heroStatLabel}>Kcal Burned</Text>
-              </View>
-
-              <View style={styles.heroDivider} />
-
-              <View style={styles.heroStatItem}>
-                <Ionicons name="calendar-outline" size={18} color="#FFFFFF" />
-                <Text style={styles.heroStatValue}>
-                  {stats.activeDays || 0}
-                </Text>
-                <Text style={styles.heroStatLabel}>Active Days</Text>
-              </View>
-            </View>
-          </LinearGradient>
+            </LinearGradient>
+          )}
 
           {/* WEEKLY ATTENDANCE */}
 
@@ -613,29 +595,23 @@ export default function WorkoutScreen() {
         </ScrollView>
       </Animated.View>
 
-      {/* Floating "Chat with Trainer" button — collapses to a circle on scroll */}
+      {/* Floating trainer chat button — icon + rotating label */}
       <TouchableOpacity
         style={styles.trainerFab}
-        activeOpacity={1}
+        activeOpacity={0.85}
         onPress={() => router.push("/trainer/chat")}
       >
-        <View style={styles.trainerFabIcon}>
-          <Text style={styles.trainerFabEmoji}>🏋️</Text>
-        </View>
-        <Animated.View
-          style={{
-            overflow: "hidden",
-            opacity: Animated.multiply(fabAnim, fabTextAnim),
-            maxWidth: fabAnim.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, moderateScale(190)],
-            }),
-          }}
+        <Ionicons
+          name="chatbubble-ellipses"
+          size={moderateScale(20)}
+          color="#FFFFFF"
+        />
+        <Animated.Text
+          style={[styles.trainerFabText, { opacity: fabTextAnim }]}
+          numberOfLines={1}
         >
-          <Text style={styles.trainerFabText} numberOfLines={1}>
-            {FAB_TEXTS[fabTextIndex]}
-          </Text>
-        </Animated.View>
+          {FAB_TEXTS[fabTextIndex]}
+        </Animated.Text>
       </TouchableOpacity>
 
       {openModal ? (
@@ -694,35 +670,21 @@ const styles = StyleSheet.create({
     bottom: moderateScale(84),
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.white,
+    gap: moderateScale(8),
     borderRadius: moderateScale(999),
-    // 28-high icon + 12 padding all round → collapses into a 52×52 circle.
-    paddingVertical: moderateScale(12),
-    paddingHorizontal: moderateScale(12),
+    paddingVertical: moderateScale(11),
+    paddingHorizontal: moderateScale(16),
+    backgroundColor: colors.primary,
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.35,
     shadowRadius: 14,
     elevation: 8,
   },
-  trainerFabIcon: {
-    width: moderateScale(28),
-    height: moderateScale(28),
-    borderRadius: moderateScale(14),
-    backgroundColor: "rgba(255,255,255,0.25)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  trainerFabEmoji: {
-    fontSize: moderateScale(14),
-  },
   trainerFabText: {
     fontFamily: "OpenSans_800ExtraBold",
     fontSize: moderateScale(13),
-    color: colors.gradient2,
-
-    marginLeft: moderateScale(8),
-    marginRight: moderateScale(4),
+    color: "#FFFFFF",
   },
 
   animatedContainer: {

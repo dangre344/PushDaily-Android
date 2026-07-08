@@ -5,8 +5,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 // the APK. The secret key grants full DB access and must NEVER be embedded.
 // The publishable key requires Row Level Security policies on the `scores`
 // table that allow public SELECT and INSERT/UPSERT.
-const SUPABASE_URL = "https://ndtwywoaakuucrpmxkkt.supabase.co";
-const SUPABASE_KEY = "sb_publishable_9SpIsAJ4K1uF7ubZncX9KQ_GLe36eza";
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const SUPABASE_KEY = process.env.EXPO_PUBLIC_SUPABASE_KEY;
 
 const REST = `${SUPABASE_URL}/rest/v1/scores`;
 const baseHeaders = {
@@ -42,16 +42,25 @@ export const incrementTodaySession = async () => {
   return next;
 };
 
-// ── Local personal best ──
+// ── Local personal best (TODAY only — resets to 0 each new day) ──
 export const getPushupBest = async () => {
-  const v = parseInt((await AsyncStorage.getItem(K_BEST)) || "0", 10);
-  return Number.isFinite(v) ? v : 0;
+  try {
+    const raw = await AsyncStorage.getItem(K_BEST);
+    const o = raw ? JSON.parse(raw) : null;
+    if (!o || o.date !== todayKey()) return 0; // no record for today → 0
+    return o.best || 0;
+  } catch {
+    return 0;
+  }
 };
 
 export const savePushupBest = async (count) => {
-  const best = await getPushupBest();
+  const best = await getPushupBest(); // today's best (0 on a new day)
   if (count > best) {
-    await AsyncStorage.setItem(K_BEST, String(count));
+    await AsyncStorage.setItem(
+      K_BEST,
+      JSON.stringify({ date: todayKey(), best: count }),
+    );
     return count;
   }
   return best;
@@ -74,7 +83,20 @@ const flagOf = (cc) =>
       )
     : "🌍";
 
-// ── Supabase: upsert this user's best score ──
+// PostgREST filter for "date within today (UTC)". Shared by fetch + rank so the
+// board and the user's rank are always scoped to the current day.
+const todayRangeQuery = () => {
+  const n = new Date();
+  const start = new Date(
+    Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate(), 0, 0, 0, 0),
+  ).toISOString();
+  const end = new Date(
+    Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate(), 23, 59, 59, 999),
+  ).toISOString();
+  return `&date=gte.${start}&date=lte.${end}`;
+};
+
+// ── Supabase: upsert this user's best score (stamped with today's date) ──
 export const saveScore = async (id, name, count, country) => {
   if (!id) return false;
   try {
@@ -86,6 +108,7 @@ export const saveScore = async (id, name, count, country) => {
         name: name || "Anonymous",
         pushup_count: count,
         country: country || null,
+        date: new Date().toISOString(), // refresh so the row counts for today
       }),
     });
     return res.ok;
@@ -94,10 +117,12 @@ export const saveScore = async (id, name, count, country) => {
   }
 };
 
+// Top scores for TODAY only.
 const fetchTop = async (limit = 10) => {
   try {
     const res = await fetch(
-      `${REST}?select=id,name,pushup_count,country&order=pushup_count.desc&limit=${limit}`,
+      `${REST}?select=id,name,pushup_count,country&order=pushup_count.desc&limit=${limit}` +
+        todayRangeQuery(),
       { headers: baseHeaders },
     );
     if (!res.ok) return [];
@@ -107,13 +132,13 @@ const fetchTop = async (limit = 10) => {
   }
 };
 
-// Number of athletes who scored higher than `best` (for the user's global rank).
+// How many athletes scored higher than `best` TODAY (for the user's rank).
 const countAbove = async (best) => {
   try {
-    const res = await fetch(`${REST}?select=id&pushup_count=gt.${best}`, {
-      method: "HEAD",
-      headers: { ...baseHeaders, Prefer: "count=exact" },
-    });
+    const res = await fetch(
+      `${REST}?select=id&pushup_count=gt.${best}` + todayRangeQuery(),
+      { method: "HEAD", headers: { ...baseHeaders, Prefer: "count=exact" } },
+    );
     const cr = res.headers.get("content-range"); // "*/N"
     const total = cr ? parseInt(cr.split("/")[1], 10) : 0;
     return Number.isFinite(total) ? total : 0;

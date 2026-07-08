@@ -15,10 +15,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
+import Markdown from "react-native-markdown-display";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Toast } from "toastify-react-native";
-import { AD_UNIT_IDS, RewardedAdManager } from "../../ads/Admobmanager";
+import { RewardedAdManager } from "../../ads/Admobmanager";
 import { colors } from "../../constants/colors";
 import { bodyParts } from "../../constants/Constants";
 import { Logger } from "../../constants/Logger";
@@ -222,10 +222,16 @@ function Bubble({ message, streamingText }) {
           isUser ? styles.bubbleUser : styles.bubbleTrainer,
         ]}
       >
-        <Text style={isUser ? styles.bubbleTextUser : styles.bubbleTextTrainer}>
-          {text}
-          {message.streaming ? " ▍" : ""}
-        </Text>
+        <Markdown
+          style={{
+            body: isUser ? styles.bubbleTextUser : styles.bubbleTextTrainer,
+            strong: {
+              fontFamily: "OpenSans_700Bold",
+            },
+          }}
+        >
+          {text + (message.streaming ? " ▍" : "")}
+        </Markdown>
         {!message.streaming && (
           <Text style={isUser ? styles.timeUser : styles.timeTrainer}>
             {message.time}
@@ -775,13 +781,13 @@ export default function TrainerChat() {
 
       {/* Banner pinned at the very bottom — outside the KeyboardAvoidingView
           so it doesn't ride up while typing (keyboard simply covers it). */}
-      <View style={styles.bannerContainer}>
+      {/* <View style={styles.bannerContainer}>
         <BannerAd
           unitId={AD_UNIT_IDS.banner}
           size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
           requestOptions={{ requestNonPersonalizedAdsOnly: false }}
         />
-      </View>
+      </View> */}
 
       {/* Level picker → navigates into the workout, same as the Workout tab. */}
       {levelModalVisible && selectedBodyPart ? (
@@ -888,7 +894,6 @@ const styles = StyleSheet.create({
     maxWidth: "78%",
     borderRadius: ms(18),
     paddingHorizontal: ms(14),
-    paddingVertical: ms(10),
   },
   bubbleUser: {
     backgroundColor: colors.primary,
@@ -904,13 +909,11 @@ const styles = StyleSheet.create({
     fontFamily: "OpenSans_500Medium",
     fontSize: ms(13.5),
     color: "#FFFFFF",
-    lineHeight: ms(20),
   },
   bubbleTextTrainer: {
     fontFamily: "OpenSans_500Medium",
     fontSize: ms(13.5),
     color: colors.text,
-    lineHeight: ms(20),
   },
   timeUser: {
     fontFamily: "OpenSans_500Medium",
@@ -918,6 +921,7 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.75)",
     alignSelf: "flex-end",
     marginTop: ms(4),
+    marginBottom: ms(4),
   },
   timeTrainer: {
     fontFamily: "OpenSans_500Medium",
@@ -925,6 +929,7 @@ const styles = StyleSheet.create({
     color: colors.textLight,
     alignSelf: "flex-end",
     marginTop: ms(4),
+    marginBottom: ms(10),
   },
 
   // ── Typing dots ──

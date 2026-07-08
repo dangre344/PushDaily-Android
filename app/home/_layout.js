@@ -11,7 +11,10 @@ import {
 
 import { Ionicons } from "@expo/vector-icons";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import TabTourOverlay, {
+  hasSeenTabTour,
+} from "../../components/ui/TabTourOverlay.js";
 import { colors } from "../../constants/colors.js";
 import { trackScreen } from "../../constants/mixpanel.js";
 import { scaling } from "../../constants/useScaling";
@@ -148,7 +151,7 @@ const TabButton = ({ tab, isFocused, onPress }) => {
         style={[
           tabStyles.label,
           {
-            color: isFocused ? colors.primary : colors.muted, // ✅ FIX
+            color: isFocused ? colors.primary : colors.muted,
             opacity: labelOpacity,
             transform: [{ translateY: labelTranslate }],
           },
@@ -213,10 +216,29 @@ const CustomTabBar = ({ state, navigation }) => {
 // MAIN LAYOUT
 // ═════════════════════════════════════════════════════════════════════════════
 export default function AppLayout() {
+  const [showTour, setShowTour] = useState(false);
+
+  // First app open only: walk the user through the tabs. Delayed slightly so
+  // it doesn't collide with the tab bar's own entrance animation.
+  useEffect(() => {
+    let active = true;
+    const t = setTimeout(async () => {
+      try {
+        const seen = await hasSeenTabTour();
+        if (!seen && active) setShowTour(true);
+      } catch {}
+    }, 1200);
+    return () => {
+      active = false;
+      clearTimeout(t);
+    };
+  }, []);
+
   return (
     <SafeAreaView style={layoutStyles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
       <Tab.Navigator
+        initialRouteName="Workouts" // 👈 Added: set Workouts as default tab
         tabBar={(props) => <CustomTabBar {...props} />}
         screenOptions={{ headerShown: false }}
         screenListeners={({ route }) => ({
@@ -234,6 +256,8 @@ export default function AppLayout() {
         <Tab.Screen name="Event" component={EventScreen} />
         <Tab.Screen name="Profile" component={ProfileScreen} />
       </Tab.Navigator>
+
+      <TabTourOverlay visible={showTour} onDone={() => setShowTour(false)} />
     </SafeAreaView>
   );
 }
