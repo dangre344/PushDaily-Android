@@ -1,5 +1,6 @@
 import { Logger } from "@/constants/Logger";
 import { Entypo, Ionicons, Octicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -67,6 +68,7 @@ export default function WorkoutScreen() {
   const { t } = useTranslation();
   const { user } = useUser();
   const router = useRouter();
+  const navigation = useNavigation(); // bottom-tab navigator (Attendance etc.)
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(22)).current;
@@ -501,7 +503,11 @@ export default function WorkoutScreen() {
             </View>
           </View>
 
-          <View style={styles.sectionCard}>
+          <TouchableOpacity
+            style={styles.sectionCard}
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate("Attendance")}
+          >
             <View style={styles.sectionHeader}>
               <View>
                 <Text style={styles.sectionTitle}>{t("weeklyAttendance")}</Text>
@@ -544,13 +550,13 @@ export default function WorkoutScreen() {
                     {item.isWorkout
                       ? getShortBodyPartName(item.bodyPart)
                       : item.isWorkout === null
-                        ? "Soon"
+                        ? "Up next"
                         : "-"}
                   </Text>
                 </View>
               ))}
             </View>
-          </View>
+          </TouchableOpacity>
 
           {/* POPULAR WORKOUTS */}
           <View style={styles.popularHeader}>

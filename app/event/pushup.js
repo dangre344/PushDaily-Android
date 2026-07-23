@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import * as Speech from "expo-speech";
-import { Component, useRef, useState } from "react";
+import { Component, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Dimensions,
@@ -170,6 +170,25 @@ export default function PushupScreen() {
   const loggedSampleRef = useRef(false);
   const loggedStructRef = useRef(false);
 
+  // Some devices can't run the pose model (GPU/hardware). The native side only
+  // shows a toast, so we detect it: if NO landmark frames arrive within a few
+  // seconds of the camera opening, treat the device as unsupported.
+  useEffect(() => {
+    if (phase !== "counting") return;
+    const t = setTimeout(() => {
+      if (frameCountRef.current === 0) {
+        Logger.log("[Pushup] no landmarks after 8s — device unsupported");
+        Alert.alert(
+          "Not supported on this device",
+          "Automatic push-up counting needs on-device pose detection, which isn't available on this phone. Your other workouts still work normally.",
+          [{ text: "OK", onPress: () => router.back() }],
+          { cancelable: false },
+        );
+      }
+    }, 8000);
+    return () => clearTimeout(t);
+  }, [phase]);
+
   const bumpRep = () => {
     setCount((c) => {
       const next = c + 1;
@@ -199,7 +218,10 @@ export default function PushupScreen() {
       }
     } catch (e) {
       if (frameCountRef.current % 60 === 0) {
-        console.warn("[Pushup] Could not JSON.parse landmark payload:", String(e));
+        console.warn(
+          "[Pushup] Could not JSON.parse landmark payload:",
+          String(e),
+        );
       }
       return;
     }
@@ -209,7 +231,9 @@ export default function PushupScreen() {
       loggedStructRef.current = true;
       console.log(
         "[Pushup] Parsed payload keys:",
-        payload && typeof payload === "object" ? Object.keys(payload) : typeof payload,
+        payload && typeof payload === "object"
+          ? Object.keys(payload)
+          : typeof payload,
       );
     }
 
@@ -217,8 +241,10 @@ export default function PushupScreen() {
     let landmarks = null;
     if (Array.isArray(payload?.landmarks)) landmarks = payload.landmarks;
     else if (Array.isArray(payload)) landmarks = payload;
-    else if (Array.isArray(payload?.poseLandmarks)) landmarks = payload.poseLandmarks;
-    else if (Array.isArray(payload?.worldLandmarks)) landmarks = payload.worldLandmarks;
+    else if (Array.isArray(payload?.poseLandmarks))
+      landmarks = payload.poseLandmarks;
+    else if (Array.isArray(payload?.worldLandmarks))
+      landmarks = payload.worldLandmarks;
 
     // World landmarks give true 3D positions (metres) — best for the elbow angle.
     const world = Array.isArray(payload?.worldLandmarks)
@@ -336,7 +362,8 @@ export default function PushupScreen() {
     // ── Signal A: shoulder DEPTH (vertical position, 0 top → 1 bottom). ──
     const y = (Number(ls.y) + Number(rs.y)) / 2;
     if (!Number.isFinite(y)) return;
-    const sy = smoothRef.current == null ? y : smoothRef.current * 0.7 + y * 0.3;
+    const sy =
+      smoothRef.current == null ? y : smoothRef.current * 0.7 + y * 0.3;
     smoothRef.current = sy;
     // "Up" baseline tracks the highest position (smallest y) but slowly relaxes
     // downward so it follows the real up-level instead of sticking forever.
@@ -538,12 +565,12 @@ export default function PushupScreen() {
         <View style={styles.onbBody}>
           <View style={styles.onbImageWrap}>
             <Image
-              source={require("../../assets/images/chestImages/pushups.webp")}
+              source={require("../../assets/images/pushupcam.png")}
               style={styles.onbImage}
-              contentFit="contain"
+              contentFit="cover"
             />
             <Text style={styles.onbImageCaption}>
-              Plank position · hands facing the front camera
+              Plank position · phone ~1.5 m away, facing you
             </Text>
           </View>
 

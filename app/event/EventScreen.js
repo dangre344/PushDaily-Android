@@ -7,6 +7,7 @@ import {
   Animated,
   Easing,
   Platform,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -99,6 +100,16 @@ export default function EventScreen() {
   const router = useRouter();
   const { user } = useUser();
   const [board, setBoard] = useState({ top: [], me: { rank: 0, best: 0 } });
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const b = await getLeaderboard(user?._id, user?.name);
+      setBoard(b);
+    } catch {}
+    setRefreshing(false);
+  };
 
   const enter = useRef(new Animated.Value(0)).current;
   const didEnter = useRef(false);
@@ -138,6 +149,49 @@ export default function EventScreen() {
   // Top 5 arranged so #1 is centered, flanked by 2 & 3, then 4 & 5 (podium look).
   const top5 = board.top.slice(0, 5);
   const podium = [3, 1, 0, 2, 4].map((i) => top5[i]).filter(Boolean);
+
+  // ── Rotating trash-talk above the Start button (only with records) ──
+  const leader = board.top[0];
+  const leaderName = leader ? (leader.name || "").trim().split(" ")[0] : "";
+  const taunts = leader?.isUser
+    ? [
+        "You're #1 — defend your crown 👑",
+        "Nobody's caught you yet 🔥",
+        "Keep the throne, champ 💪",
+        "Stay untouchable 😎",
+      ]
+    : [
+        `Are you sure you can beat ${leaderName}? 😤`,
+        `Let's show ${leaderName} who's the real gangsta 😎`,
+        `Let's beat ${leaderName}! 🔥`,
+        `Show them who's worth it 💪`,
+        `Hattkeee!!! move aside ${leaderName} 😏`,
+      ];
+
+  const tauntAnim = useRef(new Animated.Value(1)).current;
+  const [tauntIndex, setTauntIndex] = useState(0);
+  const showTaunts = board.top.length > 0;
+
+  useEffect(() => {
+    if (!showTaunts) return;
+    setTauntIndex(0);
+    const id = setInterval(() => {
+      Animated.timing(tauntAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start(() => {
+        setTauntIndex((i) => (i + 1) % taunts.length);
+        Animated.timing(tauntAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }).start();
+      });
+    }, 2600);
+    return () => clearInterval(id);
+    // Restart the cycle when the leader (and thus the taunt set) changes.
+  }, [showTaunts, leaderName, leader?.isUser]);
 
   const waitForAd = async (mgr, timeoutMs = 12000) => {
     if (mgr.isLoaded()) return true;
@@ -252,6 +306,14 @@ export default function EventScreen() {
       <ScrollView
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
       >
         <Text style={styles.sectionLabel}>Leaderboard</Text>
 
@@ -302,6 +364,15 @@ export default function EventScreen() {
           },
         ]}
       >
+        {showTaunts && (
+          <Animated.Text
+            style={[styles.tauntText, { opacity: tauntAnim }]}
+            numberOfLines={1}
+          >
+            {taunts[tauntIndex]}
+          </Animated.Text>
+        )}
+
         <TouchableOpacity
           style={styles.startBtn}
           activeOpacity={0.9}
@@ -509,6 +580,13 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: ms(86),
     paddingHorizontal: ms(18),
+  },
+  tauntText: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: ms(13),
+    color: colors.primary,
+    textAlign: "center",
+    marginBottom: ms(8),
   },
   startBtn: {
     flexDirection: "row",

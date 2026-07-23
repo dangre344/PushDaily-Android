@@ -2,8 +2,13 @@ import { AnimatePresence, MotiView } from "moti";
 import { View } from "react-native";
 
 const StepContainer = ({ step, children }) => {
+  // `overflow: hidden` clips the horizontal slide overshoot. We must NOT use
+  // flex:1 here — inside the signup ScrollView that forces the container to the
+  // viewport height and clips anything below it, which was hiding the Weight
+  // card on the (tall) Measurements step. No flex → the container grows to its
+  // content height and the ScrollView scrolls both cards into view.
   return (
-    <View style={{ flex: 1, overflow: "hidden" }}>
+    <View style={{ width: "100%", overflow: "hidden" }}>
       <AnimatePresence exitBeforeEnter>
         <MotiView
           key={step}
@@ -23,7 +28,7 @@ const StepContainer = ({ step, children }) => {
             type: "timing",
             duration: 100,
           }}
-          style={{ flex: 1 }}
+          style={{ width: "100%" }}
         >
           {children}
         </MotiView>

@@ -5,8 +5,15 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 // the APK. The secret key grants full DB access and must NEVER be embedded.
 // The publishable key requires Row Level Security policies on the `scores`
 // table that allow public SELECT and INSERT/UPSERT.
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const SUPABASE_KEY = process.env.EXPO_PUBLIC_SUPABASE_KEY;
+// Fallback to the literal publishable values so RELEASE builds work even when
+// the .env isn't bundled (it's gitignored, so EAS builds don't upload it).
+// These are the PUBLISHABLE (anon) values — safe to ship; never the secret key.
+const SUPABASE_URL =
+  process.env.EXPO_PUBLIC_SUPABASE_URL ||
+  "https://ndtwywoaakuucrpmxkkt.supabase.co";
+const SUPABASE_KEY =
+  process.env.EXPO_PUBLIC_SUPABASE_KEY ||
+  "sb_publishable_9SpIsAJ4K1uF7ubZncX9KQ_GLe36eza";
 
 const REST = `${SUPABASE_URL}/rest/v1/scores`;
 const baseHeaders = {

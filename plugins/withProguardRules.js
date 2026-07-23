@@ -117,6 +117,34 @@ const RULES = `
 -dontwarn com.google.android.play.**
 
 # ============================================================================
+# MediaPipe pose detection (@thinksys/react-native-mediapipe + tasks-vision)
+# R8 was stripping/obfuscating these in release, so PoseLandmarker.createFrom
+# Options() threw → "Pose Landmarker failed to initialize" on ALL release
+# builds (debug isn't minified, which is why it only broke in production).
+# MediaPipe + its protobuf/AutoValue models rely heavily on reflection & JNI.
+# ============================================================================
+-keep class com.google.mediapipe.** { *; }
+-keep interface com.google.mediapipe.** { *; }
+-keep class com.google.mediapipe.framework.** { *; }
+-keep class com.google.mediapipe.tasks.** { *; }
+-keepclassmembers class com.google.mediapipe.** { *; }
+-dontwarn com.google.mediapipe.**
+# The thinksys native wrapper (view manager, fragment, pose helper)
+-keep class com.tsmediapipe.** { *; }
+-dontwarn com.tsmediapipe.**
+# Protocol Buffers used by MediaPipe task graphs
+-keep class com.google.protobuf.** { *; }
+-keepclassmembers class com.google.protobuf.** { *; }
+-dontwarn com.google.protobuf.**
+# AutoValue (MediaPipe result/options classes are generated AutoValue types)
+-keep class autovalue.shaded.** { *; }
+-keep @com.google.auto.value.AutoValue class * { *; }
+-dontwarn com.google.auto.value.**
+# CameraX (used by the wrapper for the live preview)
+-keep class androidx.camera.** { *; }
+-dontwarn androidx.camera.**
+
+# ============================================================================
 # Mixpanel
 # ============================================================================
 -keep class com.mixpanel.android.** { *; }
@@ -202,10 +230,18 @@ const withProguardRules = (config) => {
         contents = "";
       }
 
-      // Idempotent — only append once.
-      if (!contents.includes(MARKER)) {
-        fs.writeFileSync(file, `${contents.trimEnd()}\n${RULES}\n`, "utf8");
+      // Replace (not just skip) the managed block so edits to these rules apply
+      // on a plain `expo prebuild`, not only `--clean`. Our block is always the
+      // tail of the file, so strip from its marker (and the decorative comment
+      // line above it) to EOF, then re-append the current version.
+      const startIdx = contents.indexOf(MARKER);
+      if (startIdx !== -1) {
+        const lineStart = contents.lastIndexOf("\n", startIdx);
+        let before = lineStart === -1 ? "" : contents.slice(0, lineStart);
+        before = before.replace(/\n#[=\s]*$/, ""); // drop trailing "# ====" line
+        contents = before;
       }
+      fs.writeFileSync(file, `${contents.trimEnd()}\n${RULES}\n`, "utf8");
 
       return cfg;
     },

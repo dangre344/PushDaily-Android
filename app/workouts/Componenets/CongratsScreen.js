@@ -40,6 +40,7 @@ const CongratsScreen = ({
   navigation,
   workoutCompletedWorkouts = [],
   userId,
+  startTime,
 }) => {
   const confettiAnim = useRef(null);
 
@@ -106,10 +107,19 @@ const CongratsScreen = ({
   // screen mounts. By the time we're here, the data is already saved, so
   // it's safe to show the interstitial without risking an unmount mid-write.
   useEffect(() => {
+    // Total time from entering the workout to reaching this screen.
+    const durationSec = startTime
+      ? Math.max(0, Math.round((Date.now() - startTime) / 1000))
+      : 0;
+
     trackEvent("Exercise Completed", {
       userId: userId || "",
       bodyPart: workouts?.bodyPart || "",
       level: workouts?.level || "",
+      totalExercises: totalWorkoutCount,
+      completedCount,
+      durationSec,
+      durationMinutes: Math.round((durationSec / 60) * 10) / 10,
     });
 
     InterstitialAdManager.getInstance().show();

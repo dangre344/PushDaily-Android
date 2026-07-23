@@ -170,25 +170,6 @@ export default function NextWorkoutInfo({
 
   return (
     <View>
-      <View style={styles.progressContainer}>
-        <View style={styles.progressHeader}>
-          <Text style={styles.progressText}>
-            Exercise {index + 1} of {workouts.workoutList.length}
-          </Text>
-        </View>
-
-        <View style={styles.progressBar}>
-          <View
-            style={[
-              styles.progressFill,
-              {
-                width: `${((index + 1) / workouts.workoutList.length) * 100}%`,
-              },
-            ]}
-          />
-        </View>
-      </View>
-
       <View style={styles.imageCard}>
         <Image
           source={workouts.workoutList[index].photo}

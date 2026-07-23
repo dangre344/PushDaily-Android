@@ -28,31 +28,54 @@ const MultipleSelector = ({
           onChange(updatedDays);
         };
 
+        // Works in signup AND edit mode — `value` always reflects the form
+        // state, so the checkbox is checked whenever every day is selected.
+        const allSelected = options.every((d) => value.includes(d));
+        const toggleAll = () => onChange(allSelected ? [] : [...options]);
+
         return (
-          <View style={styles.daysGrid}>
-            {options.map((day) => {
+          <View>
+            <TouchableOpacity
+              style={styles.selectAllRow}
+              onPress={toggleAll}
+              activeOpacity={0.8}
+            >
+              <View
+                style={[
+                  styles.checkbox,
+                  allSelected && styles.checkboxChecked,
+                ]}
+              >
+                {allSelected && <Text style={styles.checkmark}>✓</Text>}
+              </View>
+              <Text style={styles.selectAllText}>Select all days</Text>
+            </TouchableOpacity>
+
+            <View style={styles.daysGrid}>
+              {options.map((day) => {
               const isSelected = value.includes(day);
 
-              return (
-                <TouchableOpacity
-                  key={day}
-                  style={[
-                    styles.dayButton,
-                    isSelected && styles.dayButtonSelected,
-                  ]}
-                  onPress={() => toggleDay(day)}
-                >
-                  <Text
+                return (
+                  <TouchableOpacity
+                    key={day}
                     style={[
-                      styles.dayText,
-                      isSelected && styles.dayTextSelected,
+                      styles.dayButton,
+                      isSelected && styles.dayButtonSelected,
                     ]}
+                    onPress={() => toggleDay(day)}
                   >
-                    {t(day)}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+                    <Text
+                      style={[
+                        styles.dayText,
+                        isSelected && styles.dayTextSelected,
+                      ]}
+                    >
+                      {t(day)}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
         );
       }}
@@ -61,6 +84,37 @@ const MultipleSelector = ({
 };
 
 const styles = StyleSheet.create({
+  selectAllRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.background,
+  },
+  checkboxChecked: {
+    backgroundColor: colors.primary,
+  },
+  checkmark: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontFamily: "OpenSans_800ExtraBold",
+    lineHeight: 16,
+  },
+  selectAllText: {
+    fontSize: 14,
+    fontFamily: "OpenSans_700Bold",
+    color: colors.text,
+  },
   daysGrid: {
     flexDirection: "row",
     flexWrap: "wrap",

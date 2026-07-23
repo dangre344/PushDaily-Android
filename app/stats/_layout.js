@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -500,6 +501,18 @@ export default function StatsScreen() {
   // are older than the window.
   const [filter, setFilter] = useState("All");
 
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await initDB();
+      const data = await getAllWorkouts();
+      setWorkouts(data || []);
+    } catch {}
+    setRefreshing(false);
+  };
+
   // Same flow as WorkoutScreen: tap a body part → level modal → workout.
   const [openModal, setOpenModal] = useState(false);
   const [selectedBodyPart, setSelectedBodyPart] = useState(null);
@@ -586,6 +599,14 @@ export default function StatsScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
       >
         <Animated.View
           style={[
@@ -618,7 +639,7 @@ export default function StatsScreen() {
         {workouts && workouts.length > 0 && data ? (
           <View>
             <Animated.View style={[styles.filterRow, { opacity: titleAnim }]}>
-              {["7D", "30D", "All"].map((f) => (
+              {["All", "7D", "30D"].map((f) => (
                 <TouchableOpacity
                   key={f}
                   style={[

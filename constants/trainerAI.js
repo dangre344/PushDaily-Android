@@ -16,9 +16,12 @@ export const MSG_DAILY_LIMIT =
 // Your deployed Cloudflare Worker URL (see server/trainer-worker/README.md).
 // LEAVE EMPTY to stay 100% on the offline rule-based Jack — the chat works
 // exactly as before until you set this.
-const WORKER_URL = process.env.EXPO_PUBLIC_TRAINER_WORKER_URL || "";
-// Must equal the APP_TOKEN secret you set via `wrangler secret put APP_TOKEN`.
-const APP_TOKEN = process.env.EXPO_PUBLIC_TRAINER_APP_TOKEN || "";
+// Fallback literals so release builds work without the (gitignored) .env.
+const WORKER_URL =
+  process.env.EXPO_PUBLIC_TRAINER_WORKER_URL ||
+  "https://push-daily-trainer.pushdaily.workers.dev";
+const APP_TOKEN =
+  process.env.EXPO_PUBLIC_TRAINER_APP_TOKEN || "pushdaily-7h3k9x2";
 
 // Tunables (could later be driven by Firebase Remote Config without an update).
 const FREE_AI_PER_DAY = 2; // free Gemini answers before the rewarded-ad gate

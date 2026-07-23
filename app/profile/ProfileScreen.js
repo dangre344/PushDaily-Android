@@ -168,6 +168,7 @@ const MENU_SECTIONS = [
     items: [
       {
         label: "Join WhatsApp Community",
+        subtitle: "Diet tips, workouts, motivation & app updates 🔥",
         icon: "logo-whatsapp",
         color: "#25D366",
         key: "whatsapp",
@@ -412,11 +413,19 @@ const MenuRow = ({
         >
           <Ionicons name={item.icon} size={ms(18)} color={item.color} />
         </View>
-        <Text style={menuStyles.label}>{item.label}</Text>
+        <View style={menuStyles.labelWrap}>
+          <Text style={menuStyles.label}>{item.label}</Text>
+          {item.subtitle ? (
+            <Text style={menuStyles.subtitle} numberOfLines={2}>
+              {item.subtitle}
+            </Text>
+          ) : null}
+        </View>
         <Ionicons name="chevron-forward" size={ms(16)} color={colors.dim} />
       </TouchableOpacity>
 
-      <View style={menuStyles.divider} />
+      {/* No divider under the last row — it overlapped the card edge. */}
+      {!isLast && <View style={menuStyles.divider} />}
     </Animated.View>
   );
 };
@@ -1118,11 +1127,20 @@ const menuStyles = StyleSheet.create({
     justifyContent: "center",
     marginRight: ms(12),
   },
-  label: {
+  labelWrap: {
     flex: 1,
+  },
+  label: {
     fontFamily: "OpenSans_500Medium",
     fontSize: ms(14),
     color: colors.text,
+  },
+  subtitle: {
+    fontFamily: "OpenSans_500Medium",
+    fontSize: ms(11),
+    color: colors.textLight,
+    marginTop: ms(2),
+    lineHeight: ms(15),
   },
   divider: {
     height: 0.5,

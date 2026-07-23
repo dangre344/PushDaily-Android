@@ -1,6 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { yupResolver } from "@hookform/resolvers/yup";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import {
   Alert,
@@ -39,6 +41,7 @@ const WorkoutLevelModal = ({
     control,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
   } = useForm({
     defaultValues: {
@@ -47,11 +50,24 @@ const WorkoutLevelModal = ({
     resolver: yupResolver(schema),
   });
 
+  // Preselect the level the user picked last time, so they don't have to
+  // re-select it on every workout.
+  useEffect(() => {
+    AsyncStorage.getItem("last_workout_level")
+      .then((saved) => {
+        if (saved) setValue("experience", saved);
+      })
+      .catch(() => {});
+  }, []);
+
   const selectedExperience = watch("experience");
   const router = useRouter();
 
   function next(data) {
     Logger.log("next------>", data.experience);
+
+    // Remember for next time (best-effort).
+    AsyncStorage.setItem("last_workout_level", data.experience).catch(() => {});
 
     setOpenModal(false);
 

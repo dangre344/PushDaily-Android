@@ -389,6 +389,14 @@ export default function TrainerChat() {
 
     const reply =
       result?.text || "Hmm, something went wrong. Please try again.";
+
+    // Save the reply together with the question (capped for Mixpanel limits).
+    trackEvent("Trainer Reply", {
+      question: text.slice(0, 300),
+      response: String(reply).slice(0, 500),
+      source: result?.source || "unknown", // "ai" | "rule" | "error" | ...
+    });
+
     const thinkMs = 500 + Math.random() * 500;
     setTimeout(() => {
       setThinking(false);

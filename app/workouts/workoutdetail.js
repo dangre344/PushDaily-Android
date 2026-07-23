@@ -16,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { AD_UNIT_IDS } from "../../ads/Admobmanager";
 import { colors } from "../../constants/colors";
 import { workoutListGlobal } from "../../constants/Constants";
+import { successHaptic, tapHaptic } from "../../constants/haptics";
 import { Logger } from "../../constants/Logger";
 import { useUser } from "../../constants/UserContext";
 import { scaling } from "../../constants/useScaling";
@@ -81,6 +82,9 @@ export default function WorkoutDetail() {
   const [index, setIndex] = useState(0);
   const [completedIndices, setCompletedIndices] = useState(new Set());
   const [loadingPage, setLoadingPage] = useState("play_workout");
+
+  // When the user entered the workout — used to report total time on completion.
+  const startTimeRef = useRef(Date.now());
 
   // Controls whether CongratsScreen can render
   // "none"   → not finished yet
@@ -219,11 +223,13 @@ export default function WorkoutDetail() {
     setIndex(nextIndex);
 
     if (nextIndex >= totalCount) {
+      successHaptic(); // whole workout done
       // Finished — compute completed list and save BEFORE showing congrats
       const completedList =
         workouts?.workoutList?.filter((_, i) => updatedCompleted.has(i)) ?? [];
       finishWorkoutAndSave(completedList);
     } else {
+      tapHaptic(); // exercise done → next
       setLoadingPage("next_workout");
     }
   };
@@ -308,6 +314,32 @@ export default function WorkoutDetail() {
         </View>
       </Animated.View>
 
+      {/* Session progress — always visible while working out */}
+      {!isFinishing && totalCount > 0 && (
+        <View style={styles.sessionProgress}>
+          <View style={styles.sessionProgressHeader}>
+            <Text style={styles.sessionProgressText}>
+              Exercise {Math.min(index + 1, totalCount)} of {totalCount}
+            </Text>
+            <Text style={styles.sessionProgressPct}>
+              {Math.round((Math.min(index + 1, totalCount) / totalCount) * 100)}%
+            </Text>
+          </View>
+          <View style={styles.sessionProgressTrack}>
+            <View
+              style={[
+                styles.sessionProgressFill,
+                {
+                  width: `${
+                    (Math.min(index + 1, totalCount) / totalCount) * 100
+                  }%`,
+                },
+              ]}
+            />
+          </View>
+        </View>
+      )}
+
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -319,6 +351,7 @@ export default function WorkoutDetail() {
               workouts={workouts}
               workoutCompletedWorkouts={workoutCompletedWorkouts}
               userId={user?._id}
+              startTime={startTimeRef.current}
             />
           ) : (
             // Saving state — small inline loader before Congrats appears
@@ -534,6 +567,39 @@ export const styles = StyleSheet.create({
 
     color: "#718096",
     marginTop: 2,
+  },
+
+  // Session progress
+  sessionProgress: {
+    paddingHorizontal: 20,
+    paddingBottom: 8,
+  },
+  sessionProgressHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  sessionProgressText: {
+    fontFamily: "OpenSans_700Bold",
+    fontSize: scaling().moderateScale(12),
+    color: colors.secondary,
+  },
+  sessionProgressPct: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: scaling().moderateScale(12),
+    color: colors.primary,
+  },
+  sessionProgressTrack: {
+    height: scaling().moderateScale(7),
+    backgroundColor: "#E2E8F0",
+    borderRadius: 999,
+    overflow: "hidden",
+  },
+  sessionProgressFill: {
+    height: "100%",
+    backgroundColor: colors.primary,
+    borderRadius: 999,
   },
 
   // ScrollView

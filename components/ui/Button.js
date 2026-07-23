@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { colors } from "../../constants/colors.js";
+import { tapHaptic } from "../../constants/haptics.js";
 
 export const Button = ({
   title,
@@ -13,7 +14,12 @@ export const Button = ({
   disabled = false,
   loading = false,
   style,
+  haptic = true,
 }) => {
+  const handlePress = (e) => {
+    if (haptic) tapHaptic();
+    onPress?.(e);
+  };
   const buttonStyle = [
     styles.button,
     variant === "primary" && styles.buttonPrimary,
@@ -31,7 +37,7 @@ export const Button = ({
   return (
     <TouchableOpacity
       style={buttonStyle}
-      onPress={onPress}
+      onPress={handlePress}
       disabled={disabled || loading}
       activeOpacity={0.8}
     >

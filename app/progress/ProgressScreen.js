@@ -5,6 +5,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
+  RefreshControl,
   SectionList,
   StyleSheet,
   Text,
@@ -17,7 +18,9 @@ import Animated, {
   ZoomIn,
 } from "react-native-reanimated";
 
+import { Image } from "expo-image";
 import { colors } from "../../constants/colors";
+import { bodyParts } from "../../constants/Constants";
 import { Logger } from "../../constants/Logger";
 import { scaling } from "../../constants/useScaling";
 import {
@@ -83,6 +86,15 @@ const levelColor = (level) => {
     default:
       return colors.primary;
   }
+};
+
+// Body-part photo (same images as the Workout screen grid). Returns null for
+// parts without one (e.g. HIIT/Full Body) — we fall back to the icon then.
+const bodyPartImage = (bodyPart) => {
+  const found = bodyParts.find(
+    (b) => b.bodyPart.toLowerCase() === String(bodyPart || "").toLowerCase(),
+  );
+  return found?.image || null;
 };
 
 const bodyPartIcon = (bodyPart) => {
@@ -195,6 +207,13 @@ export default function ProgressScreen() {
   const [workoutDates, setWorkoutDates] = useState([]);
   const [totalCalories, setTotalCalories] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  };
 
   const allWorkouts = useMemo(() => {
     return allWorkoutHistory.filter((workout) => {
@@ -552,6 +571,14 @@ export default function ProgressScreen() {
         keyExtractor={(item, index) => `${item.id || item.name}-${index}`}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
         ItemSeparatorComponent={() => (
           <View style={{ height: scaleHeight(10) }} />
         )}
@@ -560,11 +587,19 @@ export default function ProgressScreen() {
         renderSectionHeader={({ section }) => (
           <View style={styles.workoutSectionHeader}>
             <View style={styles.sectionTitleRow}>
-              <Ionicons
-                name={bodyPartIcon(section.title)}
-                size={18}
-                color={colors.primary}
-              />
+              {bodyPartImage(section.title) ? (
+                <Image
+                  source={bodyPartImage(section.title)}
+                  style={styles.sectionImage}
+                  contentFit="cover"
+                />
+              ) : (
+                <Ionicons
+                  name={bodyPartIcon(section.title)}
+                  size={18}
+                  color={colors.primary}
+                />
+              )}
 
               <Text style={styles.workoutSectionTitle}>{section.title}</Text>
             </View>
@@ -885,7 +920,16 @@ const styles = StyleSheet.create({
   sectionTitleRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: scaleWidth(7),
+    gap: scaleWidth(8),
+  },
+
+  sectionImage: {
+    width: scaleWidth(30),
+    height: scaleWidth(30),
+    borderRadius: scaleWidth(15),
+    borderWidth: 1.5,
+    borderColor: colors.primary + "40",
+    backgroundColor: "#F7F8FA",
   },
 
   workoutSectionTitle: {

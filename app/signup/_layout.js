@@ -507,10 +507,10 @@ export default function Signup() {
         <InputText
           form={form}
           isOptional={false}
-          titleTextLabel={t("enterName")}
+          titleTextLabel="Full Name"
           fieldName={"name"}
           inputType="text"
-          placeholder={t("enterName")}
+          placeholder="Enter your full name"
           rootContainer={styles.inputMargin}
         />
 
@@ -691,6 +691,19 @@ export default function Signup() {
       <View style={styles.progressBarContainer}>
         <View style={[styles.progressBar, { width: `${progress}%` }]} />
       </View>
+
+      {/* Shown on every step */}
+      <View style={styles.formNote}>
+        <Ionicons
+          name="information-circle-outline"
+          size={scaling().moderateScale(15)}
+          color={colors.primary}
+        />
+        <Text style={styles.formNoteText}>
+          Filling correct details helps us create customized plans for you.
+        </Text>
+      </View>
+
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -804,6 +817,24 @@ const styles = StyleSheet.create({
   progressBar: {
     height: "100%",
     backgroundColor: colors.primary,
+  },
+  formNote: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginHorizontal: 20,
+    marginTop: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: colors.primary + "12",
+  },
+  formNoteText: {
+    flex: 1,
+    fontFamily: "OpenSans_500Medium",
+    fontSize: 12,
+    color: colors.text,
+    lineHeight: 17,
   },
   content: {
     flex: 1,
