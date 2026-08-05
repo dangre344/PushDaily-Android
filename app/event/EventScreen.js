@@ -21,6 +21,7 @@ import { colors } from "../../constants/colors";
 import {
   getLeaderboard,
   getTodaySessionCount,
+  msUntilUtcReset,
 } from "../../constants/leaderboard";
 import { trackScreen } from "../../constants/mixpanel";
 import { useUser } from "../../constants/UserContext";
@@ -46,7 +47,7 @@ const barColorFor = (row) =>
           : "#C7D2DA";
 
 // A single animated vertical bar (grows from the bottom on first load).
-function ChartBar({ row, max, index }) {
+function ChartBar({ row, max, index, userName }) {
   const anim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -61,7 +62,15 @@ function ChartBar({ row, max, index }) {
 
   const pct = max > 0 ? Math.max(0.06, row.pushups / max) : 0.06;
   const color = barColorFor(row);
-  const firstName = row.isUser ? "You" : (row.name || "").split(" ")[0];
+  // Show the real username (from the record, or the local profile name for the
+  // current user) instead of a generic "You".
+  const rawName =
+    row.name && row.name !== "Anonymous"
+      ? row.name
+      : row.isUser
+        ? userName || ""
+        : "";
+  const firstName = rawName.split(" ")[0] || (row.isUser ? "You" : "Anon");
 
   return (
     <View style={styles.barItem}>
@@ -99,8 +108,24 @@ function ChartBar({ row, max, index }) {
 export default function EventScreen() {
   const router = useRouter();
   const { user } = useUser();
-  const [board, setBoard] = useState({ top: [], me: { rank: 0, best: 0 } });
+  const [board, setBoard] = useState({
+    top: [],
+    me: { rank: 0, best: 0, lifetime: 0 },
+  });
   const [refreshing, setRefreshing] = useState(false);
+  const [resetIn, setResetIn] = useState(msUntilUtcReset());
+
+  // The board is global, so it rolls over at UTC midnight for everyone.
+  useEffect(() => {
+    const id = setInterval(() => setResetIn(msUntilUtcReset()), 30000);
+    return () => clearInterval(id);
+  }, []);
+
+  const resetLabel = (() => {
+    const h = Math.floor(resetIn / 3600000);
+    const m = Math.floor((resetIn % 3600000) / 60000);
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  })();
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -273,9 +298,10 @@ export default function EventScreen() {
         >
           <View style={styles.heroRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.heroEyebrow}>WEEKLY EVENT</Text>
-              <Text style={styles.heroTitle}>Push-Up Champions 💪</Text>
-              <Text style={styles.heroSub}>Top 10 athletes worldwide</Text>
+              <Text style={styles.heroTitle}>Daily Push-Up Challenge 💪</Text>
+              <Text style={styles.heroSub}>
+                Top 5 worldwide · resets in {resetLabel}
+              </Text>
             </View>
             <View style={styles.heroRight}>
               <Text style={styles.heroTrophy}>🏆</Text>
@@ -292,8 +318,14 @@ export default function EventScreen() {
 
           <View style={styles.meCard}>
             <View>
-              <Text style={styles.meLabel}>Your best</Text>
+              <Text style={styles.meLabel}>Today&apos;s best</Text>
               <Text style={styles.meValue}>{board.me.best} push-ups</Text>
+              <View style={styles.lifetimeRow}>
+                <Ionicons name="infinite" size={ms(12)} color="#FDE047" />
+                <Text style={styles.lifetimeText}>
+                  {board.me.lifetime ?? 0} total till date
+                </Text>
+              </View>
             </View>
             <View style={styles.meRankWrap}>
               <Text style={styles.meRankLabel}>Rank</Text>
@@ -315,7 +347,10 @@ export default function EventScreen() {
           />
         }
       >
-        <Text style={styles.sectionLabel}>Leaderboard</Text>
+        <Text style={styles.sectionLabel}>
+          Today&apos;s Global Push-Up Leaderboard
+        </Text>
+        <Text style={styles.sectionNote}>Only the top 5 are shown</Text>
 
         {/* ── Bar chart (top 5, #1 centered, no horizontal scroll) ── */}
         <View style={styles.chartCard}>
@@ -336,15 +371,12 @@ export default function EventScreen() {
                   row={row}
                   max={maxPushups}
                   index={i}
+                  userName={user?.name}
                 />
               ))}
             </View>
           )}
         </View>
-
-        <Text style={styles.footNote}>
-          Complete a session to upload your count and climb the board.
-        </Text>
       </ScrollView>
 
       {/* Start button pinned above the tab bar */}
@@ -401,15 +433,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  heroEyebrow: {
-    fontFamily: "OpenSans_700Bold",
-    fontSize: ms(10),
-    letterSpacing: 1.5,
-    color: "rgba(255,255,255,0.8)",
-  },
   heroTitle: {
     fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(22),
+    fontSize: ms(17),
     color: "#FFFFFF",
     marginTop: ms(2),
   },
@@ -419,7 +445,7 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.85)",
     marginTop: ms(2),
   },
-  heroTrophy: { fontSize: ms(36) },
+  heroTrophy: { fontSize: ms(24) },
   heroRight: { alignItems: "center", gap: ms(8) },
   sharePill: {
     flexDirection: "row",
@@ -461,6 +487,17 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     marginTop: ms(2),
   },
+  lifetimeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: ms(5),
+    marginTop: ms(6),
+  },
+  lifetimeText: {
+    fontFamily: "OpenSans_700Bold",
+    fontSize: ms(11),
+    color: "rgba(255,255,255,0.9)",
+  },
   meRankWrap: { alignItems: "center" },
   meRankLabel: {
     fontFamily: "OpenSans_500Medium",
@@ -482,6 +519,13 @@ const styles = StyleSheet.create({
     fontFamily: "OpenSans_800ExtraBold",
     fontSize: ms(13),
     color: colors.text,
+    marginLeft: ms(2),
+  },
+  sectionNote: {
+    fontFamily: "OpenSans_500Medium",
+    fontSize: ms(10.5),
+    color: colors.textLight,
+    marginTop: ms(2),
     marginBottom: ms(10),
     marginLeft: ms(2),
   },
@@ -566,13 +610,6 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
 
-  footNote: {
-    fontFamily: "OpenSans_500Medium",
-    fontSize: ms(11),
-    color: colors.textLight,
-    textAlign: "center",
-    marginTop: ms(14),
-  },
 
   ctaWrap: {
     position: "absolute",

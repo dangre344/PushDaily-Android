@@ -492,7 +492,10 @@ const SummaryPills = ({ totalCalories, totalWorkouts, activeDays }) => {
   );
 };
 
-export default function StatsScreen() {
+// `onPickBodyPart` lets an embedding screen (Profile → StatsModal) take over the
+// empty-state tap, since router.push() from inside a Modal would be hidden
+// behind it. When omitted, the inline level modal is used as before.
+export default function StatsScreen({ onPickBodyPart }) {
   const { t } = useTranslation();
   const [workouts, setWorkouts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -817,7 +820,11 @@ export default function StatsScreen() {
                   key={index}
                   style={styles.emptyGridItem}
                   activeOpacity={0.85}
-                  onPress={() => openWorkoutLevelModal(item)}
+                  onPress={() =>
+                    onPickBodyPart
+                      ? onPickBodyPart(item)
+                      : openWorkoutLevelModal(item)
+                  }
                 >
                   <CircularImage source={item.image} size={ms(60)} />
                   <Text

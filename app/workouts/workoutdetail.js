@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
+  BackHandler,
   Modal,
   ScrollView,
   StyleSheet,
@@ -263,6 +264,25 @@ export default function WorkoutDetail() {
   // Helper: are we on the finish flow?
   const isFinishing = index >= totalCount;
 
+  // The workout is already saved by the time Congrats shows, so there is nothing
+  // to "quit" — go straight back to the Workouts screen instead of asking.
+  const exitToWorkouts = () => {
+    router.replace("/home");
+  };
+
+  // Android hardware back: mirror the header button in both states.
+  useEffect(() => {
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (isFinishing) {
+        exitToWorkouts();
+      } else {
+        setQuitModalVisible(true);
+      }
+      return true; // we handled it
+    });
+    return () => sub.remove();
+  }, [isFinishing]);
+
   // ─── Safety: if workout lookup failed entirely, render a fallback ────────
   // Without this, accessing `workouts.bodyPart` below would throw and crash
   // the screen with a red box, which is worse than a friendly message.
@@ -295,7 +315,9 @@ export default function WorkoutDetail() {
     <SafeAreaView style={styles.container}>
       <Animated.View style={styles.header}>
         <TouchableOpacity
-          onPress={() => setQuitModalVisible(true)}
+          onPress={() =>
+            isFinishing ? exitToWorkouts() : setQuitModalVisible(true)
+          }
           activeOpacity={0.8}
           style={styles.backButton}
         >

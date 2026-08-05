@@ -2,6 +2,13 @@ name = "push-daily-trainer"
 main = "worker.js"
 compatibility_date = "2024-09-23"
 
+# All schedules are free on the Workers plan. scheduled() routes on event.cron.
+#   10 3  UTC → generate the day's quiz          (08:40 IST)
+#    0 4  UTC → push-up event broadcast, morning (09:30 IST)
+#   30 13 UTC → push-up event broadcast, evening (19:00 IST)
+[triggers]
+crons = ["10 3 * * *", "0 4 * * *", "30 13 * * *"]
+
 # Secrets are NOT stored here. Set them with:
 #   wrangler secret put GEMINI_KEY
 #   wrangler secret put APP_TOKEN

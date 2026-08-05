@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Alert,
@@ -9,6 +9,7 @@ import {
   Easing,
   FlatList,
   KeyboardAvoidingView,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -29,6 +30,7 @@ import {
   grantRewardQuestions,
 } from "../../constants/trainerAI";
 import {
+  matchQuestions,
   QUICK_QUESTIONS,
   TRAINER_GREETING,
   TRAINER_NAME,
@@ -43,6 +45,80 @@ import {
 import WorkoutLevelModal from "../workouts/Componenets/WorkoutLevelModal";
 
 const ANALYSIS_AD_COUNT = 1; // rewarded ads required to unlock the analysis
+
+// Messages that should trigger the "analyse my week → pick a body part" flow
+// instead of going to the AI.
+const PLAN_INTENT =
+  /(plan|suggest|recommend|what)[^?]*\b(workout|train|training|exercise|session)\b|\bweekly plan\b|\bthis week\b|\bwhat should i (train|do)\b|\btoday'?s (workout|plan|session)\b/i;
+
+// ─── In-app workout recommendations ──────────────────────────────────────────
+// When a question is about a goal or body part, we follow Jack's explanation
+// with a real workout from the app instead of leaving it as theory.
+// `id` is the workoutId used by the existing level → workoutlisting flow.
+const WORKOUT_RECS = [
+  {
+    id: 7,
+    bodyPart: "HIIT",
+    icon: "flame",
+    match: /belly|tummy|love handles?|\b(lose|losing|reduce|reducing|shed|cut)\b[^.?!]{0,20}\b(weight|fat)\b|weight loss|fat loss|burn fat|get lean|slim down|\bcardio\b/i,
+    why: "HIIT burns a lot of calories in little time — perfect alongside a calorie deficit.",
+  },
+  {
+    id: 4,
+    bodyPart: "Chest",
+    icon: "body",
+    match: /\bchest\b|\bpecs?\b|push[- ]?ups?\b|\bbench press\b/i,
+    why: "Build your chest with these push-up based sessions.",
+  },
+  {
+    id: 5,
+    bodyPart: "Abs",
+    icon: "ellipse",
+    match: /\babs\b|\bcore\b|six[- ]?pack|\bplanks?\b|\bcrunch(es)?\b/i,
+    why: "Strengthen the core that reveals itself once body fat drops.",
+  },
+  {
+    id: 3,
+    bodyPart: "Arms",
+    icon: "barbell",
+    match: /\barms?\b|bicep|tricep|forearm/i,
+    why: "Target biceps and triceps with these arm sessions.",
+  },
+  {
+    id: 2,
+    bodyPart: "Back",
+    icon: "man",
+    match: /\bback\b|\bposture\b|\blats?\b|pull[- ]?ups?\b|\brows?\b/i,
+    why: "A strong back fixes posture and balances your pushing work.",
+  },
+  {
+    id: 1,
+    bodyPart: "Shoulder",
+    icon: "fitness",
+    match: /\bshoulders?\b|\bdelts?\b|\boverhead\b|\bpike\b/i,
+    why: "Build rounder, more stable shoulders.",
+  },
+  {
+    id: 6,
+    bodyPart: "Legs",
+    icon: "walk",
+    match: /\blegs?\b|squat|quad|hamstring|glute|thigh|calf|calves|lower body/i,
+    why: "Legs are half your body — training them boosts strength and metabolism.",
+  },
+  {
+    id: 9,
+    bodyPart: "Full Body",
+    icon: "accessibility",
+    match: /full body|whole body|beginner workout|get fit|start(ing)? out/i,
+    why: "A balanced full-body session is the best place to start.",
+  },
+];
+
+/** First workout whose keywords appear in the user's question (or null). */
+const recommendWorkout = (text) => {
+  const t = String(text || "");
+  return WORKOUT_RECS.find((r) => r.match.test(t)) || null;
+};
 
 // Push/Pull/Legs split used to suggest today's focus.
 const PPL_GROUPS = {
@@ -157,7 +233,9 @@ function TypingDots() {
 }
 
 // ─── A single chat bubble (entrance animation on mount) ─────────────────────
-function Bubble({ message, streamingText }) {
+// memo'd: during streaming the parent re-renders every ~45ms, and re-parsing
+// Markdown for every bubble each tick is what made the chat lag.
+const Bubble = memo(function Bubble({ message, streamingText }) {
   const isUser = message.role === "user";
   const anim = useRef(new Animated.Value(0)).current;
 
@@ -222,16 +300,25 @@ function Bubble({ message, streamingText }) {
           isUser ? styles.bubbleUser : styles.bubbleTrainer,
         ]}
       >
-        <Markdown
-          style={{
-            body: isUser ? styles.bubbleTextUser : styles.bubbleTextTrainer,
-            strong: {
-              fontFamily: "OpenSans_700Bold",
-            },
-          }}
-        >
-          {text + (message.streaming ? " ▍" : "")}
-        </Markdown>
+        {message.streaming ? (
+          // Plain Text while typing — parsing Markdown on every tick is slow.
+          <Text
+            style={isUser ? styles.bubbleTextUser : styles.bubbleTextTrainer}
+          >
+            {text}
+            <Text style={styles.caret}>▍</Text>
+          </Text>
+        ) : (
+          <Markdown
+            style={{
+              body: isUser ? styles.bubbleTextUser : styles.bubbleTextTrainer,
+              strong: { fontFamily: "OpenSans_700Bold" },
+            }}
+          >
+            {text}
+          </Markdown>
+        )}
+
         {!message.streaming && (
           <Text style={isUser ? styles.timeUser : styles.timeTrainer}>
             {message.time}
@@ -240,7 +327,7 @@ function Bubble({ message, streamingText }) {
       </TouchableOpacity>
     </Animated.View>
   );
-}
+});
 
 export default function TrainerChat() {
   const router = useRouter();
@@ -262,17 +349,21 @@ export default function TrainerChat() {
   const [analyzing, setAnalyzing] = useState(false); // workout-analysis flow
   const [hasWorkouts, setHasWorkouts] = useState(false); // gate the analyze button
   const [analysisDone, setAnalysisDone] = useState(false); // hide analyze after use
-  const [planDone, setPlanDone] = useState(false); // hide plan after use
-  const [showBodyPicker, setShowBodyPicker] = useState(false); // plan-today picker
-  const [suggestedGroup, setSuggestedGroup] = useState("Push");
   const [levelModalVisible, setLevelModalVisible] = useState(false);
   const [selectedBodyPart, setSelectedBodyPart] = useState(null);
   const streamTimer = useRef(null);
   const idRef = useRef(0);
   const { t } = useTranslation();
 
+  // Globally-unique id (time-prefixed) so restored ids never collide with new
+  // ones created after reload.
+  const newId = (role) => `${role}-${Date.now().toString(36)}-${++idRef.current}`;
+
   const busy = thinking || analyzing || !!streamTimer.current;
-  const showQuickQuestions = !messages.some((m) => m.role === "user");
+  // Always offer the chips — including on a revisit with saved history.
+  const showQuickQuestions = !busy;
+  // Live "as you type" suggestions.
+  const typeSuggestions = matchQuestions(input);
 
   useEffect(() => {
     return () => clearInterval(streamTimer.current);
@@ -295,9 +386,9 @@ export default function TrainerChat() {
     })();
   }, []);
 
-  const streamReply = (fullText) => {
+  const streamReply = (fullText, onDone) => {
     const words = fullText.split(" ");
-    const msgId = `t-${++idRef.current}`;
+    const msgId = newId("t");
     let i = 0;
 
     setStreamingText("");
@@ -319,14 +410,16 @@ export default function TrainerChat() {
         clearInterval(streamTimer.current);
         streamTimer.current = null;
         setStreamingText("");
+        const finalTime = timeNow();
         // Finalize the bubble with the full text.
         setMessages((prev) =>
           prev.map((m) =>
             m.id === msgId
-              ? { ...m, text: fullText, streaming: false, time: timeNow() }
+              ? { ...m, text: fullText, streaming: false, time: finalTime }
               : m,
           ),
         );
+        onDone?.();
       }
     }, 45);
   };
@@ -335,11 +428,17 @@ export default function TrainerChat() {
     const text = String(raw ?? input).trim();
     if (!text || busy) return;
 
+    // "Plan my workout / what should I train?" → analyse this week's logs and
+    // show body-part chips instead of asking the AI.
+    if (PLAN_INTENT.test(text)) {
+      setInput("");
+      runPlanToday(text);
+      return;
+    }
+
     setInput("");
-    setMessages((prev) => [
-      { id: `u-${++idRef.current}`, role: "user", text, time: timeNow() },
-      ...prev,
-    ]);
+    const userMsg = { id: newId("u"), role: "user", text, time: timeNow() };
+    setMessages((prev) => [userMsg, ...prev]);
 
     trackEvent("Trainer Message Sent", {
       message: text,
@@ -352,37 +451,18 @@ export default function TrainerChat() {
 
     let result = await askTrainer(text, user);
 
-    // Free AI answers used up → offer a rewarded ad to unlock more.
-    // (Keep `thinking` true so the input stays disabled while the dialog is up.)
+    // Free AI answers used up → show the rewarded ad directly (no confirm popup).
     if (result?.status === "need_reward") {
-      const watch = await new Promise((resolve) => {
-        Alert.alert(
-          "Unlock more AI answers",
-          "You've used your free AI answers for today. Watch a short ad to ask 3 more questions?",
-          [
-            { text: "Not now", style: "cancel", onPress: () => resolve(false) },
-            { text: "Watch ad", onPress: () => resolve(true) },
-          ],
-          { cancelable: true, onDismiss: () => resolve(false) },
-        );
-      });
-
-      if (watch) {
-        const mgr = RewardedAdManager.getInstance();
-        const ready = await waitForAd(mgr); // wait for the first load
-        const { earned } = ready ? await mgr.show() : { earned: false };
-        if (earned) {
-          await grantRewardQuestions();
-          trackEvent("Trainer Ad Reward", { message: text });
-          result = await askTrainer(text, user);
-        } else {
-          result = {
-            text: "Couldn't load an ad just now — please try again in a moment. 💪",
-          };
-        }
+      const mgr = RewardedAdManager.getInstance();
+      const ready = await waitForAd(mgr); // wait for the first load
+      const { earned } = ready ? await mgr.show() : { earned: false };
+      if (earned) {
+        await grantRewardQuestions();
+        trackEvent("Trainer Ad Reward", { message: text });
+        result = await askTrainer(text, user);
       } else {
         result = {
-          text: "No worries! Come back tomorrow for more free questions, or watch a quick ad to continue now. 💪",
+          text: "Couldn't load an ad just now — please try again in a moment, or come back tomorrow for free questions. 💪",
         };
       }
     }
@@ -397,10 +477,29 @@ export default function TrainerChat() {
       source: result?.source || "unknown", // "ai" | "rule" | "error" | ...
     });
 
+    // If the question was about a goal or body part, follow the explanation
+    // with a real workout from the app (only when the AI actually answered).
+    const rec = result?.source === "ai" ? recommendWorkout(text) : null;
+
     const thinkMs = 500 + Math.random() * 500;
     setTimeout(() => {
       setThinking(false);
-      streamReply(reply);
+      streamReply(
+        reply,
+        rec
+          ? () =>
+              setMessages((prev) => [
+                {
+                  id: newId("rec"),
+                  role: "trainer",
+                  kind: "rec",
+                  rec,
+                  time: timeNow(),
+                },
+                ...prev,
+              ])
+          : undefined,
+      );
     }, thinkMs);
   };
 
@@ -515,13 +614,14 @@ export default function TrainerChat() {
     }
 
     // All ads watched → gather stats and ask Jack to analyze.
+    const analyzeMsg = {
+      id: newId("u"),
+      role: "user",
+      text: "📊 Analyze my workout stats till date",
+      time: timeNow(),
+    };
     setMessages((prev) => [
-      {
-        id: `u-${++idRef.current}`,
-        role: "user",
-        text: "📊 Analyze my workout stats till date",
-        time: timeNow(),
-      },
+      analyzeMsg,
       ...prev,
     ]);
     setThinking(true);
@@ -549,7 +649,7 @@ export default function TrainerChat() {
   };
 
   // ─── Plan today's workout (FREE — no ad, no quota) ────────────────────────
-  const runPlanToday = async () => {
+  const runPlanToday = async (userText) => {
     if (busy) return;
 
     let all = [];
@@ -560,32 +660,39 @@ export default function TrainerChat() {
       Logger.log("[Plan] load failed:", String(e));
     }
 
-    setMessages((prev) => [
-      {
-        id: `u-${++idRef.current}`,
-        role: "user",
-        text: "📋 Plan today's workout",
-        time: timeNow(),
-      },
-      ...prev,
-    ]);
+    const planMsg = {
+      id: newId("u"),
+      role: "user",
+      text: userText || "📋 Plan today's workout",
+      time: timeNow(),
+    };
+    setMessages((prev) => [planMsg, ...prev]);
     setThinking(true);
 
     const group = suggestTodayGroup(all);
-    setSuggestedGroup(group);
     const msg = buildPlanMessage(all, group);
 
     setTimeout(() => {
       setThinking(false);
-      streamReply(msg);
-      setShowBodyPicker(true);
-      setPlanDone(true); // hide the plan button now that it's been used
+      // Once the plan finishes streaming, drop the body-part picker INTO the
+      // conversation so it reads in order instead of floating above the chat.
+      streamReply(msg, () => {
+        setMessages((prev) => [
+          {
+            id: newId("picker"),
+            role: "trainer",
+            kind: "picker",
+            group,
+            time: timeNow(),
+          },
+          ...prev,
+        ]);
+      });
     }, 700);
   };
 
   // Tapping a body-part chip starts the WorkoutScreen flow (level → workout).
   const onPickBodyPart = (bp) => {
-    setShowBodyPicker(false);
     setSelectedBodyPart(bp);
     setLevelModalVisible(true);
   };
@@ -630,86 +737,28 @@ export default function TrainerChat() {
         </View>
       </View>
 
-      {/* ─── Top actions: Plan / Analyze (each hides once used) + picker ─── */}
-      {(!planDone || (hasWorkouts && !analysisDone) || showBodyPicker) && (
+      {/* ─── Top action: Analyze (hides once used) ─── */}
+      {hasWorkouts && !analysisDone && (
         <View style={styles.topActions}>
-          {!planDone && (
-            <TouchableOpacity
-              style={[styles.planBar, busy && styles.analyzeBarDisabled]}
-              onPress={runPlanToday}
-              activeOpacity={0.9}
-              disabled={busy}
-            >
-              <Ionicons name="sparkles" size={ms(16)} color="#FFFFFF" />
-              <Text style={styles.planText}>Plan today's workout</Text>
-              <View style={styles.freeBadge}>
-                <Text style={styles.freeBadgeText}>FREE</Text>
-              </View>
-            </TouchableOpacity>
-          )}
-
-          {hasWorkouts && !analysisDone && (
-            <TouchableOpacity
-              style={[styles.analyzeBar, busy && styles.analyzeBarDisabled]}
-              onPress={runAnalysis}
-              activeOpacity={0.9}
-              disabled={busy}
-            >
-              <Ionicons
-                name="stats-chart"
-                size={ms(16)}
-                color={colors.primary}
-              />
-              <Text style={styles.analyzeText}>
-                {analyzing
-                  ? "Unlocking your analysis…"
-                  : "Analyze my workout stats"}
+          <TouchableOpacity
+            style={[styles.analyzeBar, busy && styles.analyzeBarDisabled]}
+            onPress={runAnalysis}
+            activeOpacity={0.9}
+            disabled={busy}
+          >
+            <Ionicons name="stats-chart" size={ms(16)} color={colors.primary} />
+            <Text style={styles.analyzeText}>
+              {analyzing
+                ? "Unlocking your analysis…"
+                : "Analyze my workout stats"}
+            </Text>
+            <View style={styles.analyzeBadge}>
+              <Ionicons name="play" size={ms(8)} color="#FFFFFF" />
+              <Text style={styles.analyzeBadgeText}>
+                {ANALYSIS_AD_COUNT} ad{ANALYSIS_AD_COUNT > 1 ? "s" : ""}
               </Text>
-              <View style={styles.analyzeBadge}>
-                <Ionicons name="play" size={ms(8)} color="#FFFFFF" />
-                <Text style={styles.analyzeBadgeText}>
-                  {ANALYSIS_AD_COUNT} ad{ANALYSIS_AD_COUNT > 1 ? "s" : ""}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          )}
-
-          {showBodyPicker && (
-            <View style={styles.pickerWrap}>
-              <Text style={styles.pickerTitle}>
-                Pick a body part to start{" "}
-                <Text style={styles.pickerHint}>(⭐ = today's pick)</Text>
-              </Text>
-              <View style={styles.pickerChips}>
-                {bodyParts.map((bp) => {
-                  const inGroup = (PPL_GROUPS[suggestedGroup] || []).includes(
-                    bp.bodyPart,
-                  );
-                  return (
-                    <TouchableOpacity
-                      key={bp.id}
-                      style={[
-                        styles.pickerChip,
-                        inGroup && styles.pickerChipSuggested,
-                      ]}
-                      onPress={() => onPickBodyPart(bp)}
-                      activeOpacity={0.85}
-                    >
-                      <Text
-                        style={[
-                          styles.pickerChipText,
-                          inGroup && styles.pickerChipTextSuggested,
-                        ]}
-                      >
-                        {bp.bodyPart}
-                        {inGroup ? " ⭐" : ""}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
             </View>
-          )}
+          </TouchableOpacity>
         </View>
       )}
 
@@ -721,9 +770,117 @@ export default function TrainerChat() {
           inverted
           data={messages}
           keyExtractor={(m) => m.id}
-          renderItem={({ item }) => (
-            <Bubble message={item} streamingText={streamingText} />
-          )}
+          renderItem={({ item }) =>
+            item.kind === "rec" ? (
+              <View style={[styles.bubbleRow, styles.bubbleRowTrainer]}>
+                <Image
+                  source={TRAINER_AVATAR}
+                  style={styles.trainerAvatarSmall}
+                  contentFit="cover"
+                />
+                <View
+                  style={[
+                    styles.bubble,
+                    styles.bubbleTrainer,
+                    styles.recBubble,
+                  ]}
+                >
+                  <View style={styles.recHead}>
+                    <View style={styles.recIcon}>
+                      <Ionicons
+                        name={item.rec.icon}
+                        size={ms(16)}
+                        color={colors.primary}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.recEyebrow}>RECOMMENDED WORKOUT</Text>
+                      <Text style={styles.recTitle}>
+                        {item.rec.bodyPart} workout
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Text style={styles.recWhy}>{item.rec.why}</Text>
+
+                  <TouchableOpacity
+                    style={styles.recBtn}
+                    activeOpacity={0.9}
+                    onPress={() => {
+                      trackEvent("Chat Workout Recommendation", {
+                        bodyPart: item.rec.bodyPart,
+                      });
+                      onPickBodyPart({
+                        id: item.rec.id,
+                        bodyPart: item.rec.bodyPart,
+                      });
+                    }}
+                  >
+                    <Ionicons name="play" size={ms(15)} color="#FFFFFF" />
+                    <Text style={styles.recBtnText}>Start workout</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : item.kind === "picker" ? (
+              <View style={[styles.bubbleRow, styles.bubbleRowTrainer]}>
+                <Image
+                  source={TRAINER_AVATAR}
+                  style={styles.trainerAvatarSmall}
+                  contentFit="cover"
+                />
+                <View
+                  style={[
+                    styles.bubble,
+                    styles.bubbleTrainer,
+                    styles.pickerBubble,
+                  ]}
+                >
+                  <Text style={styles.pickerTitle}>
+                    Pick a body part to start{" "}
+                    <Text style={styles.pickerHint}>
+                      (⭐ = today&apos;s pick)
+                    </Text>
+                  </Text>
+
+                  <View style={styles.pickerChips}>
+                    {bodyParts.map((bp) => {
+                      const inGroup = (
+                        PPL_GROUPS[item.group] || []
+                      ).includes(bp.bodyPart);
+                      return (
+                        <TouchableOpacity
+                          key={bp.id}
+                          style={[
+                            styles.pickerChip,
+                            inGroup && styles.pickerChipSuggested,
+                          ]}
+                          onPress={() => onPickBodyPart(bp)}
+                          activeOpacity={0.85}
+                        >
+                          <Text
+                            style={[
+                              styles.pickerChipText,
+                              inGroup && styles.pickerChipTextSuggested,
+                            ]}
+                          >
+                            {bp.bodyPart}
+                            {inGroup ? " ⭐" : ""}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              </View>
+            ) : (
+              // Only the streaming bubble gets the live text; every other
+              // bubble keeps identical props so memo skips re-rendering it.
+              <Bubble
+                message={item}
+                streamingText={item.streaming ? streamingText : null}
+              />
+            )
+          }
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -744,9 +901,59 @@ export default function TrainerChat() {
           }
         />
 
-        {/* ─── Quick questions (until the first user message) ─── */}
-        {showQuickQuestions && (
-          <View style={styles.chipsWrap}>
+        {/* ─── Live suggestions while typing ─── */}
+        {typeSuggestions.length > 0 && (
+          <View style={styles.suggestBox}>
+            {typeSuggestions.map((s) => (
+              <TouchableOpacity
+                key={s}
+                style={styles.suggestRow}
+                activeOpacity={0.7}
+                onPress={() => sendMessage(s)}
+                disabled={busy}
+              >
+                <Ionicons
+                  name="search"
+                  size={ms(13)}
+                  color={colors.textLight}
+                />
+                <Text style={styles.suggestText} numberOfLines={1}>
+                  {s}
+                </Text>
+                <Ionicons
+                  name="arrow-up-circle"
+                  size={ms(15)}
+                  color={colors.primary}
+                />
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* ─── Quick questions (also shown on a revisit with history) ─── */}
+        {showQuickQuestions && typeSuggestions.length === 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            // Without flexGrow:0 the ScrollView stretches to fill the column
+            // and squashes the chips, which clipped the text.
+            style={styles.chipsScroll}
+            contentContainerStyle={styles.chipsWrap}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Analyses this week's data, then body part → level → start. */}
+            <TouchableOpacity
+              style={[styles.chip, styles.chipPlan]}
+              onPress={() => runPlanToday()}
+              activeOpacity={0.85}
+              disabled={busy}
+            >
+              <Ionicons name="sparkles" size={ms(12)} color="#FFFFFF" />
+              <Text style={[styles.chipText, styles.chipPlanText]}>
+                Plan today&apos;s workout
+              </Text>
+            </TouchableOpacity>
+
             {QUICK_QUESTIONS.map((q) => (
               <TouchableOpacity
                 key={q}
@@ -758,7 +965,7 @@ export default function TrainerChat() {
                 <Text style={styles.chipText}>{q}</Text>
               </TouchableOpacity>
             ))}
-          </View>
+          </ScrollView>
         )}
 
         {/* ─── Input bar ─── */}
@@ -931,6 +1138,7 @@ const styles = StyleSheet.create({
     marginTop: ms(4),
     marginBottom: ms(4),
   },
+  caret: { color: colors.primary },
   timeTrainer: {
     fontFamily: "OpenSans_500Medium",
     fontSize: ms(9.5),
@@ -956,25 +1164,77 @@ const styles = StyleSheet.create({
   },
 
   // ── Quick question chips ──
+  // Horizontally scrolling row of suggestion chips
+  chipsScroll: {
+    flexGrow: 0,
+    flexShrink: 0,
+  },
   chipsWrap: {
     flexDirection: "row",
-    flexWrap: "wrap",
+    alignItems: "center",
     gap: ms(8),
     paddingHorizontal: ms(14),
-    paddingBottom: ms(10),
+    paddingTop: ms(4),
+    paddingBottom: ms(12),
   },
   chip: {
+    justifyContent: "center",
     backgroundColor: "#FFFFFF",
     borderRadius: ms(999),
-    paddingHorizontal: ms(13),
-    paddingVertical: ms(8),
+    paddingHorizontal: ms(14),
+    paddingVertical: ms(10),
     borderWidth: 1.5,
     borderColor: colors.primary + "55",
   },
   chipText: {
     fontFamily: "OpenSans_600SemiBold",
     fontSize: ms(11.5),
+    // Explicit lineHeight + vertical padding — without them the custom font's
+    // descenders (y, g, p) get clipped inside the pill on Android.
+    lineHeight: ms(18),
+    paddingVertical: ms(2),
     color: colors.primary,
+  },
+  chipPlan: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: ms(5),
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  // Live suggestion list shown above the input while typing
+  suggestBox: {
+    marginHorizontal: ms(14),
+    marginBottom: ms(8),
+    backgroundColor: "#FFFFFF",
+    borderRadius: ms(14),
+    borderWidth: 1,
+    borderColor: "#EEF0F4",
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  suggestRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: ms(9),
+    paddingHorizontal: ms(12),
+    paddingVertical: ms(11),
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#EEF0F4",
+  },
+  suggestText: {
+    flex: 1,
+    fontFamily: "OpenSans_600SemiBold",
+    fontSize: ms(12.5),
+    color: colors.text,
+  },
+  chipPlanText: {
+    color: "#FFFFFF",
+    fontFamily: "OpenSans_800ExtraBold",
   },
 
   // ── Analyze my workouts bar ──
@@ -1022,50 +1282,67 @@ const styles = StyleSheet.create({
   },
 
   // ── Plan today's workout (FREE) ──
-  planBar: {
+  // ── Body-part picker ──
+  // ── Recommended workout card (rendered as a trainer bubble) ──
+  recBubble: {
+    maxWidth: "88%",
+    paddingHorizontal: ms(12),
+    paddingVertical: ms(12),
+  },
+  recHead: {
     flexDirection: "row",
     alignItems: "center",
-    gap: ms(8),
-    marginHorizontal: ms(14),
-    marginBottom: ms(8),
-    paddingHorizontal: ms(14),
-    paddingVertical: ms(12),
-    borderRadius: ms(14),
+    gap: ms(10),
+  },
+  recIcon: {
+    width: ms(34),
+    height: ms(34),
+    borderRadius: ms(11),
+    backgroundColor: colors.primary + "14",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  recEyebrow: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: ms(8.5),
+    letterSpacing: 1,
+    color: colors.textLight,
+  },
+  recTitle: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: ms(14),
+    color: colors.text,
+    marginTop: ms(1),
+  },
+  recWhy: {
+    fontFamily: "OpenSans_500Medium",
+    fontSize: ms(12),
+    color: colors.textLight,
+    lineHeight: ms(18),
+    marginTop: ms(8),
+  },
+  recBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: ms(7),
+    marginTop: ms(12),
+    height: ms(42),
+    borderRadius: ms(13),
     backgroundColor: colors.primary,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.28,
-    shadowRadius: 12,
-    elevation: 5,
   },
-  planText: {
-    flex: 1,
+  recBtnText: {
     fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(13.5),
+    fontSize: ms(13),
     color: "#FFFFFF",
-  },
-  freeBadge: {
-    backgroundColor: "rgba(255,255,255,0.25)",
-    borderRadius: ms(999),
-    paddingHorizontal: ms(9),
-    paddingVertical: ms(3),
-  },
-  freeBadgeText: {
-    fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(10),
-    color: "#FFFFFF",
-    letterSpacing: 0.5,
   },
 
-  // ── Body-part picker ──
-  pickerWrap: {
-    marginHorizontal: ms(14),
-    marginBottom: ms(8),
-    padding: ms(12),
-    borderRadius: ms(14),
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#EEF0F4",
+  // The picker renders as a trainer bubble inside the conversation, so it
+  // needs a little more width than a normal text bubble.
+  pickerBubble: {
+    maxWidth: "88%",
+    paddingHorizontal: ms(12),
+    paddingVertical: ms(12),
   },
   pickerTitle: {
     fontFamily: "OpenSans_700Bold",

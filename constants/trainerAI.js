@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { APP_TOKEN, WORKER_URL } from "./api";
 import { Logger } from "./Logger";
 
 // Honest status messages shown when Gemini can't answer — we no longer fall
@@ -13,15 +14,8 @@ export const MSG_DAILY_LIMIT =
   "You've used today's free questions. Watch a quick ad to ask more, or come back tomorrow! 💪";
 
 // ── Config ──────────────────────────────────────────────────────────────────
-// Your deployed Cloudflare Worker URL (see server/trainer-worker/README.md).
-// LEAVE EMPTY to stay 100% on the offline rule-based Jack — the chat works
-// exactly as before until you set this.
-// Fallback literals so release builds work without the (gitignored) .env.
-const WORKER_URL =
-  process.env.EXPO_PUBLIC_TRAINER_WORKER_URL ||
-  "https://push-daily-trainer.pushdaily.workers.dev";
-const APP_TOKEN =
-  process.env.EXPO_PUBLIC_TRAINER_APP_TOKEN || "pushdaily-7h3k9x2";
+// Single source of truth for the endpoint lives in constants/api.js. No LLM or
+// database keys exist in the app — the Worker holds them all server-side.
 
 // Tunables (could later be driven by Firebase Remote Config without an update).
 const FREE_AI_PER_DAY = 2; // free Gemini answers before the rewarded-ad gate

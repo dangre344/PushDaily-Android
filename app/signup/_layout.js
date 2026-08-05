@@ -392,6 +392,12 @@ export default function Signup() {
   // Navigate right away and schedule the 14 reminders in the background, so the
   // UI never freezes waiting on the sequential scheduleNotificationAsync calls.
   const finishAndNavigate = (granted) => {
+    // Track whether the user accepted or declined notifications.
+    trackEvent("Notification Permission", {
+      accepted: !!granted,
+      context: isEditMode ? "edit" : "signup",
+    });
+
     if (granted) {
       scheduleNotification(form.getValues("time")).catch((e) =>
         Logger.log("Failed to schedule notification:", e),
@@ -512,6 +518,13 @@ export default function Signup() {
           inputType="text"
           placeholder="Enter your full name"
           rootContainer={styles.inputMargin}
+          // Surface the keyboard's name suggestions (autofill) when available.
+          autoComplete="name"
+          textContentType="name"
+          autoCapitalize="words"
+          autoCorrect
+          importantForAutofill="yes"
+          keyboardType="default"
         />
 
         <SliderSelector

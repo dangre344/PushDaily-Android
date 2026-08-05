@@ -39,6 +39,7 @@ import {
   subscribeToBroadcastTopic,
 } from "../constants/pushNotifications";
 import { initRemoteConfig } from "../constants/remoteConfig";
+import { switchToTab } from "../constants/tabNavigation";
 import { useRouteTracking } from "../constants/useScreenTracking";
 import UserProvider from "../constants/UserContext";
 import {
@@ -174,6 +175,23 @@ export default function RootLayout() {
             Logger.log("[Water] notification log failed:", String(e));
           }
           dismiss();
+          return;
+        }
+
+        // Daily quiz reminder → open Home, then switch to the Quiz tab.
+        if (data?.type === "quiz") {
+          dismiss();
+          router.replace("/home");
+          setTimeout(() => switchToTab("Quiz"), 450);
+          return;
+        }
+
+        // Push-up leaderboard broadcast (sent from the Worker cron) → open the
+        // Event tab, which is what the notification is inviting them to.
+        if (data?.type === "pushup_event") {
+          dismiss();
+          router.replace("/home");
+          setTimeout(() => switchToTab("Event"), 450);
           return;
         }
 

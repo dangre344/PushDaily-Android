@@ -17,6 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Toast } from "toastify-react-native";
 import { colors } from "../../constants/colors";
 import {
+  addPushupTotal,
   getDeviceCountry,
   incrementTodaySession,
   savePushupBest,
@@ -529,17 +530,24 @@ export default function PushupScreen() {
   const finish = async () => {
     Speech.stop();
     const best = await savePushupBest(count);
+    const lifetime = await addPushupTotal(count); // all-time reps
     const sessionsToday = await incrementTodaySession();
     // Upload the best score to the global leaderboard (best-effort, non-blocking).
+    // The row is stamped in UTC so every country shares the same challenge day.
     saveScore(user?._id, user?.name, best, getDeviceCountry()).catch(() => {});
     trackEvent("Pushup Event", {
       count,
       best,
+      lifetime,
       sessionsToday,
       userId: user?._id || "",
       name: user?.name || "",
     });
-    setUserProperties({ "Best Pushups": best, "Last Pushup Count": count });
+    setUserProperties({
+      "Best Pushups": best,
+      "Last Pushup Count": count,
+      "Total Pushups": lifetime,
+    });
     Toast.success(`Great! ${count} push-ups uploaded 🎉`, "top");
     router.back();
   };

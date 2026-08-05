@@ -116,13 +116,14 @@ function MeasurementCard({
           style={styles.slider}
           minimumValue={min}
           maximumValue={max}
-          step={step}
+          step={0} // continuous drag = smooth; we round the value on change
           value={value}
           minimumTrackTintColor={colors.primary}
           maximumTrackTintColor="#E5E7EB"
           thumbTintColor={colors.primary}
+          tapToSeek
           onValueChange={(nextValue) => {
-            onChange(roundToOne(nextValue));
+            onChange(Math.round(nextValue));
           }}
         />
 
@@ -415,7 +416,8 @@ const styles = StyleSheet.create({
 
   slider: {
     flex: 1,
-    height: 44,
+    height: 56,
+    marginHorizontal: 4,
   },
 
   stepperButton: {

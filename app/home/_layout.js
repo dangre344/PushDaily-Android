@@ -17,11 +17,12 @@ import TabTourOverlay, {
 } from "../../components/ui/TabTourOverlay.js";
 import { colors } from "../../constants/colors.js";
 import { trackScreen } from "../../constants/mixpanel.js";
+import { registerTabNavigation } from "../../constants/tabNavigation.js";
 import { scaling } from "../../constants/useScaling";
 import EventScreen from "../event/EventScreen.js";
 import ProfileScreen from "../profile/ProfileScreen.js";
 import ProgressScreen from "../progress/ProgressScreen.js";
-import StatsScreen from "../stats/_layout.js";
+import QuizScreen from "../quiz/QuizScreen.js";
 import WorkoutScreen from "../workouts/workoutscreen.js";
 
 const { scaleHeight, scaleWidth, moderateScale } = scaling();
@@ -31,7 +32,7 @@ const ms = (n) => scaling().moderateScale(n);
 const { width } = Dimensions.get("window");
 
 const TABS = [
-  { name: "Stats", icon: "accessibility", activeIcon: "accessibility" },
+  { name: "Quiz", icon: "help-circle-outline", activeIcon: "help-circle" },
 
   {
     name: "Attendance",
@@ -168,6 +169,9 @@ const CustomTabBar = ({ state, navigation }) => {
   const slideAnim = useRef(new Animated.Value(60)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
+  // Expose the tab navigation so notification taps can jump to a tab.
+  registerTabNavigation(navigation);
+
   // Entrance animation on mount
   useEffect(() => {
     Animated.parallel([
@@ -247,7 +251,7 @@ export default function AppLayout() {
           focus: () => trackScreen(route.name),
         })}
       >
-        <Tab.Screen name="Stats" component={StatsScreen} />
+        <Tab.Screen name="Quiz" component={QuizScreen} />
 
         <Tab.Screen name="Attendance" component={ProgressScreen} />
 

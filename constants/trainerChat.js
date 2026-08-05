@@ -8,7 +8,7 @@ export const TRAINER_NAME = "Jack";
 export const TRAINER_GREETING =
   "Hi, I am Jack, your personal trainer 💪\n\nAsk me anything about workouts or diet — I will assist you!";
 
-// Shown as tappable chips before the first user message.
+// Shown as tappable chips above the input.
 export const QUICK_QUESTIONS = [
   "How do I lose belly fat?",
   "What is a calorie deficit?",
@@ -17,3 +17,39 @@ export const QUICK_QUESTIONS = [
   "How much sleep do I need?",
   "What should I eat after a workout?",
 ];
+
+// Larger pool used for the live "as you type" suggestion list.
+export const SUGGESTED_QUESTIONS = [
+  ...QUICK_QUESTIONS,
+  "Plan my workout for today",
+  "What should I train today?",
+  "Analyse my week and suggest a workout",
+  "How many rest days per week?",
+  "Best chest workout at home?",
+  "Best exercises for abs?",
+  "How do I build muscle at home?",
+  "How much water should I drink daily?",
+  "What should I eat before a workout?",
+  "Is fasted cardio better for fat loss?",
+  "How do I fix my posture?",
+  "Best way to warm up before training?",
+  "How do I get stronger legs?",
+  "Which vitamins matter most for fitness?",
+  "How do I stay motivated to work out?",
+  "Is creatine safe to take?",
+  "How do I avoid muscle soreness?",
+  "How many calories should I eat to lose weight?",
+];
+
+/** Questions matching what the user is typing (max `limit`). */
+export const matchQuestions = (text, limit = 4) => {
+  const q = String(text || "").trim().toLowerCase();
+  if (q.length < 2) return [];
+  const words = q.split(/\s+/).filter((w) => w.length > 2);
+
+  return SUGGESTED_QUESTIONS.filter((s) => {
+    const l = s.toLowerCase();
+    if (l === q) return false; // already typed exactly
+    return l.includes(q) || words.some((w) => l.includes(w));
+  }).slice(0, limit);
+};

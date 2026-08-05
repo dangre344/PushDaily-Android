@@ -367,37 +367,33 @@ export default function WorkoutScreen() {
               <View style={styles.avatarCircle}>{renderGenderIcon()}</View>
 
               <View style={styles.headerTextBlock}>
-                <Text style={styles.greetingText}>
+                <Text style={styles.greetingText} numberOfLines={1}>
                   {t("welcome", { name: user?.name || "" })}
                 </Text>
 
-                <Text style={styles.subTitle}>
+                <Text style={styles.subTitle} numberOfLines={1}>
                   Sore today, strong tomorrow.
                 </Text>
               </View>
             </View>
 
-            <View style={styles.statsRow}>
-              <TouchableOpacity onPress={() => setOpenBadgeModal(true)}>
-                <View style={styles.badgeContainer}>
-                  {userBadge?.image ? (
-                    <Image source={userBadge.image} style={styles.badgeImage} />
-                  ) : (
-                    <View style={styles.badgeEmojiWrap}>
-                      <Text style={styles.badgeEmoji}>
-                        {userBadge?.emoji || "🏅"}
-                      </Text>
-                    </View>
-                  )}
-                  <View style={{ marginStart: 10 }}>
-                    <Text style={styles.badgeTitle}>{userBadge.title}</Text>
-                    <Text style={styles.badgeSubtitle}>
-                      {userBadge.subtitle}
-                    </Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            </View>
+            {/* Compact badge pill — tap for the full badge breakdown */}
+            <TouchableOpacity
+              style={styles.badgePill}
+              activeOpacity={0.85}
+              onPress={() => setOpenBadgeModal(true)}
+            >
+              {userBadge?.image ? (
+                <Image source={userBadge.image} style={styles.badgePillImage} />
+              ) : (
+                <Text style={styles.badgePillEmoji}>
+                  {userBadge?.emoji || "🏅"}
+                </Text>
+              )}
+              <Text style={styles.badgePillText} numberOfLines={1}>
+                {userBadge?.title || "Badge"}
+              </Text>
+            </TouchableOpacity>
           </View>
 
           {/* HERO CARD — hidden entirely until the user has workout records */}
@@ -704,10 +700,11 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     paddingHorizontal: moderateScale(20),
-    paddingTop: moderateScale(14),
-    paddingBottom: moderateScale(12),
+    paddingTop: moderateScale(16),
+    paddingBottom: moderateScale(16),
     alignItems: "center",
     justifyContent: "space-between",
+    gap: moderateScale(14),
     backgroundColor: colors.white,
   },
 
@@ -719,9 +716,9 @@ const styles = StyleSheet.create({
   },
 
   avatarCircle: {
-    width: moderateScale(52),
-    height: moderateScale(52),
-    borderRadius: moderateScale(26),
+    width: moderateScale(42),
+    height: moderateScale(42),
+    borderRadius: moderateScale(21),
     backgroundColor: colors.primary + "12",
     alignItems: "center",
     justifyContent: "center",
@@ -732,16 +729,46 @@ const styles = StyleSheet.create({
   },
 
   greetingText: {
-    fontSize: moderateScale(14),
+    fontSize: moderateScale(13),
     fontFamily: "OpenSans_800ExtraBold",
     color: colors.text,
   },
 
   subTitle: {
-    fontSize: moderateScale(11),
+    fontSize: moderateScale(10.5),
     fontFamily: "OpenSans_500Medium",
     color: colors.textLight,
     marginTop: moderateScale(3),
+  },
+
+  // Compact badge pill — replaces the wide badge card that crowded the header.
+  badgePill: {
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: moderateScale(62),
+    paddingHorizontal: moderateScale(9),
+    paddingVertical: moderateScale(6),
+    borderRadius: moderateScale(14),
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#EEF0F4",
+  },
+
+  badgePillImage: {
+    width: moderateScale(24),
+    height: moderateScale(24),
+    resizeMode: "contain",
+  },
+
+  badgePillEmoji: {
+    fontSize: moderateScale(19),
+  },
+
+  badgePillText: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: moderateScale(9.5),
+    color: colors.primary,
+    marginTop: moderateScale(2),
   },
 
   calorieContainer: {
@@ -756,14 +783,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  statsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 10,
-    gap: 12,
-  },
-
   calorieContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -771,36 +790,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 14,
-  },
-
-  badgeContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F7FAFC",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 14,
-    // flex: 1,
-    marginStart: 10,
-  },
-
-  badgeImage: {
-    width: scaleWidth(38),
-    height: scaleHeight(42),
-    resizeMode: "contain",
-  },
-
-  badgeTitle: {
-    fontFamily: "OpenSans_700Bold",
-    fontSize: 14,
-    color: colors.text,
-  },
-
-  badgeSubtitle: {
-    fontFamily: "OpenSans_400Regular",
-    fontSize: 11,
-    color: "#64748B",
-    marginTop: 2,
   },
 
   streakTitle: {

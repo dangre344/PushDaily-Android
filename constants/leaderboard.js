@@ -1,31 +1,38 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { callBackend } from "./api";
 
-// ─── Push-up leaderboard (Supabase) ───────────────────────────────────────────
-// IMPORTANT: only the PUBLISHABLE (anon) key may live in the app — it ships in
-// the APK. The secret key grants full DB access and must NEVER be embedded.
-// The publishable key requires Row Level Security policies on the `scores`
-// table that allow public SELECT and INSERT/UPSERT.
-// Fallback to the literal publishable values so RELEASE builds work even when
-// the .env isn't bundled (it's gitignored, so EAS builds don't upload it).
-// These are the PUBLISHABLE (anon) values — safe to ship; never the secret key.
-const SUPABASE_URL =
-  process.env.EXPO_PUBLIC_SUPABASE_URL ||
-  "https://ndtwywoaakuucrpmxkkt.supabase.co";
-const SUPABASE_KEY =
-  process.env.EXPO_PUBLIC_SUPABASE_KEY ||
-  "sb_publishable_9SpIsAJ4K1uF7ubZncX9KQ_GLe36eza";
-
-const REST = `${SUPABASE_URL}/rest/v1/scores`;
-const baseHeaders = {
-  apikey: SUPABASE_KEY,
-  Authorization: `Bearer ${SUPABASE_KEY}`,
-  "Content-Type": "application/json",
-};
+// ─── Push-up leaderboard ──────────────────────────────────────────────────────
+// NO database keys live in the app. Every read/write goes through our
+// Cloudflare Worker, which holds the Supabase service key server-side — the
+// same pattern the trainer chat uses for the LLM keys.
 
 const K_BEST = "pushup_best";
 const K_SESSIONS = "pushup_sessions"; // { date: "YYYY-MM-DD", count }
+const K_TOTAL = "pushup_total"; // lifetime reps
 
-const todayKey = () => new Date().toISOString().slice(0, 10);
+// ─── TIMEZONE: the challenge day is UTC everywhere ───────────────────────────
+// The leaderboard is global, so the "day" MUST be the same instant for every
+// user — otherwise a player in India and one in the US would be compared across
+// different windows and the board would mismatch. We therefore use UTC for the
+// day key, the Supabase range filter and the stored timestamp.
+// ⚠️ Do NOT switch these to local time (getFullYear/getMonth/getDate).
+export const utcDayKey = (d = new Date()) => d.toISOString().slice(0, 10);
+const todayKey = () => utcDayKey();
+
+/** Milliseconds until the global (UTC) leaderboard reset. */
+export const msUntilUtcReset = () => {
+  const now = new Date();
+  const next = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate() + 1,
+    0,
+    0,
+    0,
+    0,
+  );
+  return Math.max(0, next - now.getTime());
+};
 
 // ── Daily session gate (first free, rest need a rewarded ad) ──
 export const getTodaySessionCount = async () => {
@@ -61,6 +68,20 @@ export const getPushupBest = async () => {
   }
 };
 
+// ── Lifetime push-ups (never resets) ──
+export const getPushupTotal = async () => {
+  const v = parseInt((await AsyncStorage.getItem(K_TOTAL)) || "0", 10);
+  return Number.isFinite(v) ? v : 0;
+};
+
+/** Adds this session's reps to the all-time total. Returns the new total. */
+export const addPushupTotal = async (count) => {
+  const n = Math.max(0, Number(count) || 0);
+  const total = (await getPushupTotal()) + n;
+  await AsyncStorage.setItem(K_TOTAL, String(total));
+  return total;
+};
+
 export const savePushupBest = async (count) => {
   const best = await getPushupBest(); // today's best (0 on a new day)
   if (count > best) {
@@ -90,79 +111,37 @@ const flagOf = (cc) =>
       )
     : "🌍";
 
-// PostgREST filter for "date within today (UTC)". Shared by fetch + rank so the
-// board and the user's rank are always scoped to the current day.
-const todayRangeQuery = () => {
-  const n = new Date();
-  const start = new Date(
-    Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate(), 0, 0, 0, 0),
-  ).toISOString();
-  const end = new Date(
-    Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate(), 23, 59, 59, 999),
-  ).toISOString();
-  return `&date=gte.${start}&date=lte.${end}`;
-};
-
-// ── Supabase: upsert this user's best score (stamped with today's date) ──
+// ── Upload this user's best score (via the Worker) ──
+// The Worker stamps the row in UTC, so the challenge day is global.
 export const saveScore = async (id, name, count, country) => {
   if (!id) return false;
-  try {
-    const res = await fetch(REST, {
-      method: "POST",
-      headers: { ...baseHeaders, Prefer: "resolution=merge-duplicates" }, // upsert
-      body: JSON.stringify({
-        id: String(id),
-        name: name || "Anonymous",
-        pushup_count: count,
-        country: country || null,
-        date: new Date().toISOString(), // refresh so the row counts for today
-      }),
-    });
-    return res.ok;
-  } catch {
-    return false; // best-effort; local best is still saved
-  }
-};
-
-// Top scores for TODAY only.
-const fetchTop = async (limit = 10) => {
-  try {
-    const res = await fetch(
-      `${REST}?select=id,name,pushup_count,country&order=pushup_count.desc&limit=${limit}` +
-        todayRangeQuery(),
-      { headers: baseHeaders },
-    );
-    if (!res.ok) return [];
-    return await res.json();
-  } catch {
-    return [];
-  }
-};
-
-// How many athletes scored higher than `best` TODAY (for the user's rank).
-const countAbove = async (best) => {
-  try {
-    const res = await fetch(
-      `${REST}?select=id&pushup_count=gt.${best}` + todayRangeQuery(),
-      { method: "HEAD", headers: { ...baseHeaders, Prefer: "count=exact" } },
-    );
-    const cr = res.headers.get("content-range"); // "*/N"
-    const total = cr ? parseInt(cr.split("/")[1], 10) : 0;
-    return Number.isFinite(total) ? total : 0;
-  } catch {
-    return 0;
-  }
+  const res = await callBackend("submit-score", {
+    id: String(id),
+    name: name || "Anonymous",
+    count,
+    country: country || null,
+  });
+  return !!res?.ok;
 };
 
 /**
- * Live top-10 from Supabase + the user's own best/rank.
- * { top: [{rank, name, pushups, flag, isUser}], me: { rank, best } }
- * `top` is empty when nobody has logged a score yet.
+ * Live top-10 + the user's own best/rank, fetched through the Worker.
+ * { top: [{rank, name, pushups, flag, isUser}], me: { rank, best, lifetime } }
+ * `top` is empty when nobody has logged a score yet (or we're offline).
  */
 export const getLeaderboard = async (userId, userName) => {
-  const best = await getPushupBest();
-  const rows = await fetchTop(10);
+  const [best, lifetime] = await Promise.all([
+    getPushupBest(),
+    getPushupTotal(),
+  ]);
 
+  const res = await callBackend("leaderboard", {
+    userId: userId ? String(userId) : "",
+    best,
+    limit: 10,
+  });
+
+  const rows = Array.isArray(res?.rows) ? res.rows : [];
   const top = rows.map((r, i) => ({
     rank: i + 1,
     name: r.name || "Anonymous",
@@ -171,10 +150,5 @@ export const getLeaderboard = async (userId, userName) => {
     isUser: !!userId && String(r.id) === String(userId),
   }));
 
-  let rank = 0;
-  const mine = top.find((t) => t.isUser);
-  if (mine) rank = mine.rank;
-  else if (best > 0) rank = (await countAbove(best)) + 1;
-
-  return { top, me: { rank, best } };
+  return { top, me: { rank: res?.rank || 0, best, lifetime } };
 };

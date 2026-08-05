@@ -44,6 +44,53 @@ App  ──POST /chat──►  Worker (key as secret)  ──►  Gemini free t
    ```
    Until `WORKER_URL` is set, the chat shows an honest "couldn't reach" message.
 
+## Daily AI-generated quiz (cron)
+
+A Cloudflare **Cron Trigger** (`10 3 * * *` — 03:10 UTC daily, free) makes the
+Worker generate 10 fresh quiz questions with Gemini (Groq as fallback),
+**validate** them, and upsert them into Supabase. The app reads the set once a
+day and caches it. No manual work, no paid services.
+
+### One-time setup
+
+1. **Create the table** (Supabase → SQL editor):
+   ```sql
+   create table daily_quiz (
+     date date primary key,
+     questions jsonb not null,
+     provider text,
+     created_at timestamptz default now()
+   );
+   alter table daily_quiz enable row level security;
+   create policy "public read" on daily_quiz for select using (true);
+   ```
+   The app reads with the publishable key; the Worker writes with the
+   service key (which bypasses RLS), so only a read policy is needed.
+
+2. **Add the write credentials** as Worker secrets (server-side only — the
+   service key must NEVER go in the app):
+   ```bash
+   wrangler secret put SUPABASE_URL           # https://<project>.supabase.co
+   wrangler secret put SUPABASE_SERVICE_KEY   # service_role key
+   wrangler deploy
+   ```
+
+3. **Test it now** instead of waiting for the cron:
+   ```bash
+   curl -X POST https://push-daily-trainer.<you>.workers.dev \
+     -H "Content-Type: application/json" \
+     -H "X-App-Token: <APP_TOKEN>" \
+     -d '{"mode":"generate-quiz","force":true}'
+   ```
+   Returns `{"result":"stored:gemini","date":"..."}`. Watch live logs with
+   `wrangler tail`.
+
+### Safety net
+Generated questions are strictly validated (exactly 10, 4 unique options,
+in-range answer index, non-empty tip, answers not all at the same index). If
+validation or the network fails, **nothing is stored** and the app falls back to
+its bundled deterministic question bank — so the quiz always works.
+
 ## Test from a terminal
 
 ```bash

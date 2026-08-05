@@ -20,12 +20,12 @@ const { width: SCREEN_W } = Dimensions.get("window");
 
 const K_SEEN = "tab_tour_seen_v1";
 
-// One step per bottom tab, in tab order: Stats, Attendance, Workouts, Event, Profile.
+// One step per bottom tab, in tab order: Quiz, Attendance, Workouts, Event, Profile.
 const STEPS = [
   {
-    emoji: "📊",
-    title: "Stats",
-    text: "Calories, favourite body parts and progress charts — all in one place.",
+    emoji: "🧠",
+    title: "Quiz",
+    text: "Test your fitness knowledge, earn XP and climb the ranks — 10 quizzes a day.",
   },
   {
     emoji: "📅",

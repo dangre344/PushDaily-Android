@@ -33,6 +33,7 @@ import {
 } from "../../offlinedb/workoutdb";
 import WorkoutBadgeInfo from "../home/WorkoutBadgeInfo";
 import MilestonesModal from "./MilestonesModal";
+import StatsModal from "./StatsModal";
 import { AboutModal } from "./privacy/AboutModal";
 import { PrivacyPolicyModal } from "./privacy/PrivacyPolicyModal";
 import WaterReminderModal from "./WaterReminderModal";
@@ -138,6 +139,14 @@ const MENU_SECTIONS = [
         icon: "notifications-outline",
         color: colors.lightRed,
         key: "badge",
+      },
+
+      {
+        label: "Stats",
+        subtitle: "Calories, body-part focus & progress charts",
+        icon: "stats-chart-outline",
+        color: "#7C3AED",
+        key: "stats",
       },
 
       {
@@ -271,6 +280,7 @@ const MenuRow = ({
   setAboutVisible,
   setOpenBadgeModal,
   setMilestonesVisible,
+  setStatsVisible,
   setWaterVisible,
   setNotificationDialog,
 }) => {
@@ -391,6 +401,8 @@ const MenuRow = ({
             setOpenBadgeModal(true);
           } else if (item.key === "milestones") {
             setMilestonesVisible(true);
+          } else if (item.key === "stats") {
+            setStatsVisible(true);
           } else if (item.key === "water") {
             setWaterVisible(true);
           } else if (item.key === "notifs") {
@@ -476,6 +488,7 @@ export default function ProfileScreen() {
   const [aboutVisible, setAboutVisible] = useState(false);
   const [openBadgeModal, setOpenBadgeModal] = useState(false);
   const [milestonesVisible, setMilestonesVisible] = useState(false);
+  const [statsVisible, setStatsVisible] = useState(false);
   const [waterVisible, setWaterVisible] = useState(false);
 
   const [storedBadge, setStoredBadge] = useState(null);
@@ -725,6 +738,7 @@ export default function ProfileScreen() {
                   setAboutVisible={setAboutVisible}
                   setOpenBadgeModal={setOpenBadgeModal}
                   setMilestonesVisible={setMilestonesVisible}
+                  setStatsVisible={setStatsVisible}
                   setWaterVisible={setWaterVisible}
                   setNotificationDialog={setNotificationDialog}
                 />
@@ -789,6 +803,10 @@ export default function ProfileScreen() {
           visible={milestonesVisible}
           setVisible={setMilestonesVisible}
         />
+      ) : null}
+
+      {statsVisible ? (
+        <StatsModal visible={statsVisible} setVisible={setStatsVisible} />
       ) : null}
 
       {waterVisible ? (
