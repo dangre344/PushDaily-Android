@@ -41,6 +41,11 @@ import {
 import { initRemoteConfig } from "../constants/remoteConfig";
 import { switchToTab } from "../constants/tabNavigation";
 import { useRouteTracking } from "../constants/useScreenTracking";
+import {
+  markBackgrounded,
+  markResumed,
+  reportPreviousSessionEnd,
+} from "../constants/appLifecycle";
 import UserProvider from "../constants/UserContext";
 import {
   getGoalGlasses,
@@ -102,6 +107,26 @@ export default function RootLayout() {
     };
 
     initializeAds();
+  }, []);
+
+  // ─── "Where did the user quit?" ───────────────────────────────────────────
+  // A kill gives us no callback, so we report the PREVIOUS session's last
+  // screen on this cold start, then track foreground/background transitions
+  // so the next report knows how the app went away.
+  useEffect(() => {
+    reportPreviousSessionEnd();
+
+    const sub = AppState.addEventListener("change", (next: AppStateStatus) => {
+      const prev = appState.current;
+      appState.current = next;
+      if (prev === "active" && next.match(/inactive|background/)) {
+        markBackgrounded();
+      } else if (prev.match(/inactive|background/) && next === "active") {
+        markResumed();
+      }
+    });
+
+    return () => sub.remove();
   }, []);
 
   // Remote push (FCM): subscribe to the broadcast topic and listen.

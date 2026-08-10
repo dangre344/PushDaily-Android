@@ -15,6 +15,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Toast } from "toastify-react-native";
+import { InterstitialAdManager } from "../../ads/Admobmanager";
 import { colors } from "../../constants/colors";
 import {
   successHaptic,
@@ -66,6 +68,7 @@ export default function QuizScreen() {
   const [loadError, setLoadError] = useState(false);
 
   const advanceTimer = useRef(null);
+  const adTimer = useRef(null);
   const advancingRef = useRef(false);
   // The quiz opens straight into the questions — no "Start Quiz" tap. This
   // guards against re-firing when the user taps "Home" from the result screen
@@ -133,7 +136,14 @@ export default function QuizScreen() {
     StatusBar.setBarStyle(phase === "home" ? "light-content" : "dark-content");
   }, [phase]);
 
-  useEffect(() => () => clearTimeout(advanceTimer.current), []);
+  // Never let a pending interstitial fire after the user has left the screen.
+  useEffect(
+    () => () => {
+      clearTimeout(advanceTimer.current);
+      clearTimeout(adTimer.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!summary) return;
@@ -362,6 +372,24 @@ export default function QuizScreen() {
     if (total > 0 && correct / total >= 0.6) {
       successHaptic();
       setTimeout(() => confetti.current?.play(), 250);
+    }
+
+    // ── Day complete: congratulate first, monetise second ──
+    // The toast lands on the result screen; the interstitial waits until the
+    // score animation and confetti have had their moment, so the reward never
+    // feels interrupted by the ad.
+    if (res.remaining <= 0) {
+      Toast.success("All quizzes done for today! 🎉 See you tomorrow", "top");
+
+      adTimer.current = setTimeout(() => {
+        const mgr = InterstitialAdManager.getInstance();
+        if (mgr.isLoaded()) {
+          trackEvent("Quiz Interstitial Shown", { todayCount: res.todayCount });
+          mgr.show();
+        } else {
+          mgr.load(); // warm it for tomorrow rather than blocking today
+        }
+      }, 3200);
     }
   };
 

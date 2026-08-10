@@ -1,5 +1,6 @@
 import { usePathname } from "expo-router";
 import { useEffect } from "react";
+import { setCurrentScreen } from "./appLifecycle";
 import { trackScreen } from "./mixpanel";
 
 /**
@@ -16,6 +17,9 @@ export const useRouteTracking = () => {
 
   useEffect(() => {
     if (pathname) {
+      // Always remembered, even when the Remote Config flag is off — the
+      // "App Killed" report needs it and it costs one AsyncStorage write.
+      setCurrentScreen(pathname);
       // Normalize "/home" → "Home", "/workouts/workoutlisting" → readable name
       trackScreen(pathname);
     }

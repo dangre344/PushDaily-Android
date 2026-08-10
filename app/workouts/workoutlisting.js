@@ -1,7 +1,7 @@
 import { Ionicons, Octicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Animated,
@@ -28,6 +28,18 @@ import { scaling } from "../../constants/useScaling.js";
 
 const { scaleHeight, scaleWidth, moderateScale } = scaling();
 
+// Rotating nudges above the Start button — the last push past procrastination.
+const MOTIVATIONS = [
+  "Let's go — your body is ready 💪",
+  "There's no tomorrow. Start today! 🔥",
+  "Come on, let's defeat procrastination 🚀",
+  "One session now beats a perfect plan later ⚡",
+  "Future you is already saying thank you 🙌",
+  "The hardest part is pressing Start 👇",
+];
+
+const MOTIVATION_MS = 2800; // time each line stays on screen
+
 export default function WorkoutListingScreen({ route }) {
   const navigation = useNavigation();
   const router = useRouter();
@@ -40,6 +52,79 @@ export default function WorkoutListingScreen({ route }) {
   const imagePreviewScale = useRef(new Animated.Value(0.85)).current;
 
   const scrollY = useRef(new Animated.Value(0)).current;
+
+  // ── Rotating motivation line above Start ──
+  const [motivationIndex, setMotivationIndex] = useState(0);
+  const motivationOpacity = useRef(new Animated.Value(0)).current;
+  const motivationY = useRef(new Animated.Value(8)).current;
+  const startPulse = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const showNext = () => {
+      // Fade + slide the current line in, hold, then take it back out.
+      Animated.parallel([
+        Animated.timing(motivationOpacity, {
+          toValue: 1,
+          duration: 380,
+          useNativeDriver: true,
+        }),
+        Animated.timing(motivationY, {
+          toValue: 0,
+          duration: 380,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setTimeout(() => {
+          if (cancelled) return;
+          Animated.parallel([
+            Animated.timing(motivationOpacity, {
+              toValue: 0,
+              duration: 300,
+              useNativeDriver: true,
+            }),
+            Animated.timing(motivationY, {
+              toValue: -8,
+              duration: 300,
+              useNativeDriver: true,
+            }),
+          ]).start(() => {
+            if (cancelled) return;
+            motivationY.setValue(8);
+            setMotivationIndex((i) => (i + 1) % MOTIVATIONS.length);
+            showNext();
+          });
+        }, MOTIVATION_MS);
+      });
+    };
+
+    showNext();
+
+    // Gentle breathing pulse on the button so it reads as "tap me".
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(startPulse, {
+          toValue: 1.035,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+        Animated.timing(startPulse, {
+          toValue: 1,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    pulse.start();
+
+    return () => {
+      cancelled = true;
+      pulse.stop();
+      motivationOpacity.stopAnimation();
+      motivationY.stopAnimation();
+    };
+  }, []);
 
   const { selectedBodyPart } = useLocalSearchParams();
   const bodyPartObj = selectedBodyPart ? JSON.parse(selectedBodyPart) : null;
@@ -416,11 +501,26 @@ export default function WorkoutListingScreen({ route }) {
       />
 
       <View style={styles.bottomBar}>
-        <Button
-          title={t("start")}
-          style={styles.startButton}
-          onPress={handleStartWorkout}
-        />
+        <Animated.Text
+          style={[
+            styles.motivationText,
+            {
+              opacity: motivationOpacity,
+              transform: [{ translateY: motivationY }],
+            },
+          ]}
+          numberOfLines={1}
+        >
+          {MOTIVATIONS[motivationIndex]}
+        </Animated.Text>
+
+        <Animated.View style={{ transform: [{ scale: startPulse }] }}>
+          <Button
+            title={t("start")}
+            style={styles.startButton}
+            onPress={handleStartWorkout}
+          />
+        </Animated.View>
 
         <View style={styles.bannerContainer}>
           <BannerAd
@@ -1015,6 +1115,17 @@ const styles = StyleSheet.create({
     paddingVertical: moderateScale(17),
     borderRadius: moderateScale(16),
     marginBottom: moderateScale(8),
+  },
+
+  motivationText: {
+    fontFamily: "OpenSans_700Bold",
+    fontSize: moderateScale(13),
+    color: colors.primary,
+    textAlign: "center",
+    marginBottom: moderateScale(8),
+    // Fixed height keeps the Start button from shifting as lines swap.
+    height: moderateScale(19),
+    lineHeight: moderateScale(19),
   },
 
   bannerContainer: {

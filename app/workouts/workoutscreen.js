@@ -1,6 +1,5 @@
 import { Logger } from "@/constants/Logger";
-import { Entypo, Ionicons, Octicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -26,17 +25,13 @@ import { maybeAskForReview } from "../../constants/appReview";
 import { colors } from "../../constants/colors";
 import {
   bodyParts,
-  DAY_LABELS,
-  useWeeklyWorkouts,
   workoutListGlobal,
 } from "../../constants/Constants";
 import { useUser } from "../../constants/UserContext";
 import { scaling } from "../../constants/useScaling";
-import { getShortBodyPartName } from "../../constants/utils";
 import {
   getAllWorkouts,
   getProfileStats,
-  getWorkoutsForCurrentWeek,
   initDB,
 } from "../../offlinedb/workoutdb";
 import BadgeLevelUpModal from "../home/BadgeLevelUpModal";
@@ -52,6 +47,7 @@ import {
 } from "../../constants/waterReminder";
 import HIITCard from "./Componenets/HIITCard";
 import WaterPromptModal from "./Componenets/WaterPromptModal";
+import TrainTodayCard from "./Componenets/TrainTodayCard";
 import WorkoutLevelModal from "./Componenets/WorkoutLevelModal";
 
 const { width } = Dimensions.get("window");
@@ -68,7 +64,6 @@ export default function WorkoutScreen() {
   const { t } = useTranslation();
   const { user } = useUser();
   const router = useRouter();
-  const navigation = useNavigation(); // bottom-tab navigator (Attendance etc.)
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(22)).current;
@@ -107,7 +102,6 @@ export default function WorkoutScreen() {
   });
   const [selectedBodyPart, setSelectedBodyPart] = useState(null);
   const [allWorkouts, setAllHistoryWorkouts] = useState([]);
-  const [weekWorkouts, setWeekWorkouts] = useState([]);
 
   const [stats, setStats] = useState({
     totalWorkouts: 0,
@@ -119,16 +113,11 @@ export default function WorkoutScreen() {
     try {
       await initDB();
 
-      const [week, data] = await Promise.all([
-        getWorkoutsForCurrentWeek(),
-        getProfileStats(),
-      ]);
+      const data = await getProfileStats();
 
       Logger.log("Profile stats--->", data);
-      Logger.log("Current week workouts--->", week);
 
       setStats(data);
-      setWeekWorkouts(week);
 
       // Nudge for a Play Store in-app review once the habit is forming
       // (uses the count we just fetched — no extra query).
@@ -206,12 +195,6 @@ export default function WorkoutScreen() {
     };
   }, []);
 
-  const { weeklyWorkouts, attendedDays } = useWeeklyWorkouts(weekWorkouts);
-
-  const weeklyProgress =
-    weeklyWorkouts.length > 0 ? attendedDays / weeklyWorkouts.length : 0;
-
-  const weeklyProgressPercent = Math.round(weeklyProgress * 100);
 
   const { hiitWorkouts } = useMemo(() => {
     const targetMuscles = ["Upper Body", "Full Body", "Lower Body"];
@@ -267,30 +250,6 @@ export default function WorkoutScreen() {
         height={scaleHeight(42)}
         color={colors.primary}
       />
-    );
-  };
-
-  const renderWeeklyIcon = (item) => {
-    if (item.isWorkout === true) {
-      return (
-        <View style={[styles.weekIconCircle, styles.weekDoneCircle]}>
-          <Octicons name="check" size={14} color="#FFFFFF" />
-        </View>
-      );
-    }
-
-    if (item.isWorkout === false) {
-      return (
-        <View style={[styles.weekIconCircle, styles.weekMissedCircle]}>
-          <Entypo name="cross" size={15} color="#FFFFFF" />
-        </View>
-      );
-    }
-
-    return (
-      <View style={[styles.weekIconCircle, styles.weekPendingCircle]}>
-        <Entypo name="circle" size={12} color={colors.textLight} />
-      </View>
     );
   };
 
@@ -499,60 +458,10 @@ export default function WorkoutScreen() {
             </View>
           </View>
 
-          <TouchableOpacity
-            style={styles.sectionCard}
-            activeOpacity={0.85}
-            onPress={() => navigation.navigate("Attendance")}
-          >
-            <View style={styles.sectionHeader}>
-              <View>
-                <Text style={styles.sectionTitle}>{t("weeklyAttendance")}</Text>
-                <Text style={styles.sectionSubtitle}>
-                  {weeklyProgressPercent}% completed this week
-                </Text>
-              </View>
-
-              <View style={styles.attendedPill}>
-                <Octicons
-                  name="dot-fill"
-                  size={scaleHeight(18)}
-                  color={colors.green}
-                />
-                <Text style={styles.attendedPillText}>
-                  {attendedDays} Day{attendedDays !== 1 ? "s" : ""}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.progressTrack}>
-              <View
-                style={[
-                  styles.progressFill,
-                  {
-                    width: `${weeklyProgressPercent}%`,
-                  },
-                ]}
-              />
-            </View>
-
-            <View style={styles.weekContainer}>
-              {weeklyWorkouts.map((item) => (
-                <View style={styles.weekItem} key={item.day}>
-                  <Text style={styles.weekTitle}>{DAY_LABELS[item.day]}</Text>
-
-                  {renderWeeklyIcon(item)}
-
-                  <Text style={styles.workoutNameSub} numberOfLines={1}>
-                    {item.isWorkout
-                      ? getShortBodyPartName(item.bodyPart)
-                      : item.isWorkout === null
-                        ? "Up next"
-                        : "-"}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </TouchableOpacity>
+          {/* Replaces the weekly attendance card — the same week data, but
+              turned into an action instead of a report. Attendance itself
+              still lives on its own tab. */}
+          <TrainTodayCard history={allWorkouts} onStart={openWorkoutLevelModal} />
 
           {/* POPULAR WORKOUTS */}
           <View style={styles.popularHeader}>

@@ -125,8 +125,11 @@ function validateQuiz(raw) {
   return out;
 }
 
+// Quiz content is GEMINI ONLY — its JSON mode is far more reliable here, and a
+// single author keeps the daily set consistent in tone and difficulty.
+// (Groq remains the fallback for chat and analysis, where prose is fine.)
+// A failed night writes nothing, so yesterday's valid set stays live.
 async function generateQuiz(env) {
-  // Gemini first (JSON mode), then Groq as the free fallback.
   const gem = await callGemini(
     env,
     "You are a certified strength & nutrition coach writing quiz content. Output strict JSON only.",
@@ -134,20 +137,11 @@ async function generateQuiz(env) {
     2600,
     true,
   );
-  let parsed = safeParseArray(gem.status === "ok" ? gem.text : null);
-  let quiz = validateQuiz(parsed);
+  const parsed = safeParseArray(gem.status === "ok" ? gem.text : null);
+  const quiz = validateQuiz(parsed);
   if (quiz) return { quiz, provider: "gemini" };
 
-  const groq = await callGroq(
-    env,
-    "You are a certified strength & nutrition coach writing quiz content. Output strict JSON only — a raw array, no markdown fences.",
-    QUIZ_PROMPT,
-    2600,
-  );
-  parsed = safeParseArray(groq.status === "ok" ? groq.text : null);
-  quiz = validateQuiz(parsed);
-  if (quiz) return { quiz, provider: "groq" };
-
+  console.log(`[quiz] gemini failed (status=${gem.status}) — nothing stored`);
   return { quiz: null, provider: null };
 }
 

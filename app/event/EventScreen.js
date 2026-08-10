@@ -3,6 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   Easing,
@@ -113,6 +114,8 @@ export default function EventScreen() {
     me: { rank: 0, best: 0, lifetime: 0 },
   });
   const [refreshing, setRefreshing] = useState(false);
+  // Only true for the very first fetch — pull-to-refresh has its own spinner.
+  const [loadingBoard, setLoadingBoard] = useState(true);
   const [resetIn, setResetIn] = useState(msUntilUtcReset());
 
   // The board is global, so it rolls over at UTC midnight for everyone.
@@ -148,7 +151,12 @@ export default function EventScreen() {
 
       trackScreen("Event");
       let active = true;
-      getLeaderboard(user?._id, user?.name).then((b) => active && setBoard(b));
+      getLeaderboard(user?._id, user?.name)
+        .then((b) => {
+          if (!active) return;
+          setBoard(b);
+        })
+        .finally(() => active && setLoadingBoard(false));
       // Warm up the rewarded ad for extra-session unlocks.
       try {
         RewardedAdManager.getInstance().load();
@@ -354,7 +362,16 @@ export default function EventScreen() {
 
         {/* ── Bar chart (top 5, #1 centered, no horizontal scroll) ── */}
         <View style={styles.chartCard}>
-          {podium.length === 0 ? (
+          {loadingBoard ? (
+            // Contained in the chart card only — the hero and Start button stay
+            // usable while the board loads.
+            <View style={styles.chartLoading}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={styles.chartLoadingText}>
+                Loading today&apos;s leaderboard…
+              </Text>
+            </View>
+          ) : podium.length === 0 ? (
             <View style={styles.emptyChart}>
               <Text style={styles.emptyEmoji}>🥇</Text>
               <Text style={styles.emptyTitle}>Become the first champion!</Text>
@@ -553,6 +570,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: ms(24),
     paddingHorizontal: ms(16),
+  },
+  // Same footprint as the chart so the card doesn't jump when data lands.
+  chartLoading: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: ms(10),
+    paddingVertical: ms(44),
+  },
+  chartLoadingText: {
+    fontFamily: "OpenSans_600SemiBold",
+    fontSize: ms(11.5),
+    color: colors.textLight,
   },
   emptyEmoji: { fontSize: ms(40), marginBottom: ms(8) },
   emptyTitle: {
