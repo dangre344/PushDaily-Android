@@ -21,6 +21,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { AD_UNIT_IDS } from "../../ads/Admobmanager.js";
 import { Button } from "../../components/ui/Button.js";
 import IconWithText from "../../components/ui/IconWithText";
+import { sayFromJack } from "../../constants/bubbleMessage";
 import { colors } from "../../constants/colors";
 import { workoutListGlobal } from "../../constants/Constants.js";
 import { Logger } from "../../constants/Logger.js";
@@ -101,6 +102,12 @@ export default function WorkoutListingScreen({ route }) {
 
     showNext();
 
+    // Jack nudges from the floating bubble once the list has settled.
+    const hello = setTimeout(
+      () => sayFromJack("Let's go — time to start this workout 💪", 7000),
+      900,
+    );
+
     // Gentle breathing pulse on the button so it reads as "tap me".
     const pulse = Animated.loop(
       Animated.sequence([
@@ -120,6 +127,7 @@ export default function WorkoutListingScreen({ route }) {
 
     return () => {
       cancelled = true;
+      clearTimeout(hello);
       pulse.stop();
       motivationOpacity.stopAnimation();
       motivationY.stopAnimation();

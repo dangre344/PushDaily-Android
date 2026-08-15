@@ -17,6 +17,8 @@ import {
 } from "react-native";
 import { Toast } from "toastify-react-native";
 import { InterstitialAdManager } from "../../ads/Admobmanager";
+import QuizFeedback from "./QuizFeedback";
+import { praiseQuiz, sayFromJack } from "../../constants/bubbleMessage";
 import { colors } from "../../constants/colors";
 import {
   successHaptic,
@@ -43,6 +45,9 @@ const { width: SCREEN_W } = Dimensions.get("window");
 const LETTERS = ["A", "B", "C", "D"];
 const SKIPPED = -1;
 
+// Bonus XP per correct answer once a 3-in-a-row combo is running.
+const COMBO_BONUS_XP = 5;
+
 const MOTIVATION = [
   "Consistency beats intensity — you showed up today. 💪",
   "Knowledge is the cheapest performance upgrade there is. 🧠",
@@ -63,9 +68,16 @@ export default function QuizScreen() {
   const [selected, setSelected] = useState([]); // index | SKIPPED | undefined
   const [tipOpen, setTipOpen] = useState(false);
   const [streak, setStreak] = useState(0);
+  const [lastBonus, setLastBonus] = useState(0);
+  // Live mirrors — choose() runs from a callback and must not read stale state.
+  const streakRef = useRef(0);
+  const comboRef = useRef(0);
   const [gainedXp, setGainedXp] = useState(0);
   const [loadingSet, setLoadingSet] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  // Feedback is asked at most once per app session, never repeatedly.
+  const [feedbackDone, setFeedbackDone] = useState(false);
+  const [feedbackVisible, setFeedbackVisible] = useState(false);
 
   const advanceTimer = useRef(null);
   const adTimer = useRef(null);
@@ -199,6 +211,9 @@ export default function QuizScreen() {
     setSelected([]);
     setTipOpen(false);
     setStreak(0);
+    streakRef.current = 0;
+    comboRef.current = 0;
+    setLastBonus(0);
     setGainedXp(0);
     barAnim.setValue(0);
     cardX.setValue(0);
@@ -260,7 +275,16 @@ export default function QuizScreen() {
 
     if (right) {
       successHaptic();
-      setStreak((s) => s + 1);
+      // Combo: every correct answer from the 3rd in a row onward earns bonus
+      // XP, so a clean run is worth noticeably more than the same score with
+      // misses scattered through it.
+      const newStreak = streakRef.current + 1;
+      streakRef.current = newStreak;
+      setStreak(newStreak);
+
+      const bonus = newStreak >= 3 ? COMBO_BONUS_XP : 0;
+      if (bonus) comboRef.current += bonus;
+      setLastBonus(bonus);
 
       streakPulse.setValue(0.6);
       Animated.spring(streakPulse, {
@@ -283,7 +307,9 @@ export default function QuizScreen() {
       advanceTimer.current = setTimeout(() => goNext(i), 1400);
     } else {
       warningHaptic();
+      streakRef.current = 0;
       setStreak(0);
+      setLastBonus(0);
       setTipOpen(true); // surface the hint so they can learn from the miss
 
       Animated.sequence([
@@ -316,7 +342,12 @@ export default function QuizScreen() {
     );
     const skipped = picks.filter((v) => v === SKIPPED).length;
 
-    const res = await submitQuizResult({ correct, total, skipped });
+    const res = await submitQuizResult({
+      correct,
+      total,
+      skipped,
+      comboBonus: comboRef.current,
+    });
     setGainedXp(res.gainedXp);
     setSummary(res);
 
@@ -380,15 +411,20 @@ export default function QuizScreen() {
     // feels interrupted by the ad.
     if (res.remaining <= 0) {
       Toast.success("All quizzes done for today! 🎉 See you tomorrow", "top");
+      // Jack reacts from the floating bubble a beat later.
+      setTimeout(() => sayFromJack(praiseQuiz(user?.name), 12000), 1200);
 
-      adTimer.current = setTimeout(() => {
+      adTimer.current = setTimeout(async () => {
         const mgr = InterstitialAdManager.getInstance();
         if (mgr.isLoaded()) {
           trackEvent("Quiz Interstitial Shown", { todayCount: res.todayCount });
-          mgr.show();
+          // Resolves when the ad is closed, so the dialog lands as the user
+          // returns to the screen rather than fighting the ad for attention.
+          await mgr.show();
         } else {
           mgr.load(); // warm it for tomorrow rather than blocking today
         }
+        if (!feedbackDone) setFeedbackVisible(true);
       }, 3200);
     }
   };
@@ -426,9 +462,20 @@ export default function QuizScreen() {
                 {QUESTIONS_PER_QUIZ} cards · +{XP_PER_CORRECT} XP per correct
               </Text>
             </View>
-            <View style={styles.rankBadge}>
-              <Text style={styles.rankEmoji}>{rank.emoji}</Text>
-              <Text style={styles.rankTitle}>{rank.title}</Text>
+            <View style={styles.heroRight}>
+              {summary?.dayStreak > 0 ? (
+                <View style={styles.dayStreakPill}>
+                  <Text style={styles.dayStreakEmoji}>🔥</Text>
+                  <Text style={styles.dayStreakText}>
+                    {summary.dayStreak} day
+                    {summary.dayStreak === 1 ? "" : "s"}
+                  </Text>
+                </View>
+              ) : null}
+              <View style={styles.rankBadge}>
+                <Text style={styles.rankEmoji}>{rank.emoji}</Text>
+                <Text style={styles.rankTitle}>{rank.title}</Text>
+              </View>
             </View>
           </View>
 
@@ -501,6 +548,7 @@ export default function QuizScreen() {
               <Text style={styles.motivation}>{motivation}</Text>
             </View>
           ) : null}
+
         </ScrollView>
 
         {/* Only shown when there is nothing to play: a load failure to retry,
@@ -675,7 +723,7 @@ export default function QuizScreen() {
             />
             <Text style={styles.againText}>
               {(summary?.remaining ?? 0) > 0
-                ? "Play again"
+                ? "Answer more questions"
                 : "New questions tomorrow"}
             </Text>
           </TouchableOpacity>
@@ -691,6 +739,30 @@ export default function QuizScreen() {
             <Text style={styles.homeText}>Back to Quiz home</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Asked once the interstitial closes — the user is on this screen by
+            then. "Maybe later" dismisses without sending. */}
+        <QuizFeedback
+          visible={feedbackVisible}
+          dayStats={{
+            quizzesToday: summary?.todayCount ?? 0,
+            correctToday: summary?.todayCorrect ?? 0,
+            wrongToday: summary?.todayWrong ?? 0,
+            accuracyToday:
+              (summary?.todayCorrect ?? 0) + (summary?.todayWrong ?? 0) > 0
+                ? Math.round(
+                    ((summary?.todayCorrect ?? 0) /
+                      ((summary?.todayCorrect ?? 0) +
+                        (summary?.todayWrong ?? 0))) *
+                      100,
+                  )
+                : 0,
+          }}
+          onClose={() => {
+            setFeedbackVisible(false);
+            setFeedbackDone(true); // never ask twice in one session
+          }}
+        />
       </View>
     );
   }
@@ -704,46 +776,44 @@ export default function QuizScreen() {
 
   return (
     <View style={styles.screen}>
-      {/* Same hero as the home screen — it stays put while the cards play out
-          underneath it, so the quiz never feels like a separate screen. */}
+      {/* One compact bar instead of hero + status row, so the whole question
+          card fits on screen without scrolling. */}
       <LinearGradient
         colors={[colors.primary, "#7C3AED"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.playHero}
       >
-        <View style={styles.heroTop}>
+        <View style={styles.playHeroRow}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.heroTitle}>Fitness Quiz 🧠</Text>
-            <Text style={styles.heroSub}>
-              {QUESTIONS_PER_QUIZ} cards · +{XP_PER_CORRECT} XP per correct
+            <Text style={styles.playHeroTitle}>
+              Card {qIndex + 1} of {questions.length}
+            </Text>
+            <Text style={styles.playHeroSub}>
+              {sessionXp} XP this round
             </Text>
           </View>
-          <View style={styles.rankBadge}>
-            <Text style={styles.rankEmoji}>{rank.emoji}</Text>
-            <Text style={styles.rankTitle}>{rank.title}</Text>
-          </View>
+
+          {summary?.dayStreak > 0 ? (
+            <View style={styles.playDayPill}>
+              <Text style={styles.playDayEmoji}>🔥</Text>
+              <Text style={styles.playDayText}>{summary.dayStreak}d</Text>
+            </View>
+          ) : null}
+
+          <Animated.View
+            style={[
+              styles.streakPill,
+              streak >= 3 && styles.streakPillHot,
+              { transform: [{ scale: streakPulse }] },
+            ]}
+          >
+            <Ionicons name="flame" size={ms(13)} color="#F97316" />
+            <Text style={styles.streakText}>{streak}</Text>
+            {streak >= 3 ? <Text style={styles.comboTag}>COMBO</Text> : null}
+          </Animated.View>
         </View>
       </LinearGradient>
-
-      <View style={styles.playTop}>
-        <View style={styles.playCenter}>
-          <Text style={styles.playCount}>
-            Card {qIndex + 1} of {questions.length}
-          </Text>
-          <View style={styles.sessionXpPill}>
-            <Ionicons name="flash" size={ms(11)} color="#B45309" />
-            <Text style={styles.sessionXpText}>{sessionXp} XP</Text>
-          </View>
-        </View>
-
-        <Animated.View
-          style={[styles.streakPill, { transform: [{ scale: streakPulse }] }]}
-        >
-          <Ionicons name="flame" size={ms(13)} color="#F97316" />
-          <Text style={styles.streakText}>{streak}</Text>
-        </Animated.View>
-      </View>
 
       <View style={styles.playTrack}>
         <Animated.View
@@ -782,10 +852,7 @@ export default function QuizScreen() {
             </View>
           </View>
 
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.qScroll}
-          >
+          <View style={styles.qScroll}>
             <Text style={styles.qEmoji}>{q?.emoji}</Text>
             <Text style={styles.qText}>{q?.question}</Text>
 
@@ -880,34 +947,42 @@ export default function QuizScreen() {
                   </TouchableOpacity>
                 )}
               </View>
-            ) : (
-              <TouchableOpacity
-                style={styles.tipBtn}
-                activeOpacity={0.85}
-                onPress={() => {
-                  tapHaptic();
-                  setTipOpen(true);
-                }}
-              >
-                <Ionicons name="bulb-outline" size={ms(15)} color="#B45309" />
-                <Text style={styles.tipBtnText}>Show hint</Text>
-              </TouchableOpacity>
-            )}
+            ) : null}
 
-            {/* ── Skip / Next, also inside the card ── */}
+            {/* Hint + Skip share one row so the card never needs scrolling. */}
             {!answered ? (
-              <TouchableOpacity
-                style={styles.skipBtn}
-                activeOpacity={0.85}
-                onPress={skipQuestion}
-              >
-                <Text style={styles.skipText}>Skip question</Text>
-                <Ionicons
-                  name="play-skip-forward"
-                  size={ms(14)}
-                  color={colors.textLight}
-                />
-              </TouchableOpacity>
+              <View style={styles.actionRow}>
+                {!tipOpen ? (
+                  <TouchableOpacity
+                    style={[styles.tipBtn, styles.rowBtn]}
+                    activeOpacity={0.85}
+                    onPress={() => {
+                      tapHaptic();
+                      setTipOpen(true);
+                    }}
+                  >
+                    <Ionicons
+                      name="bulb-outline"
+                      size={ms(14)}
+                      color="#B45309"
+                    />
+                    <Text style={styles.tipBtnText}>Hint</Text>
+                  </TouchableOpacity>
+                ) : null}
+
+                <TouchableOpacity
+                  style={[styles.skipBtn, styles.rowBtn]}
+                  activeOpacity={0.85}
+                  onPress={skipQuestion}
+                >
+                  <Text style={styles.skipText}>Skip</Text>
+                  <Ionicons
+                    name="play-skip-forward"
+                    size={ms(13)}
+                    color={colors.textLight}
+                  />
+                </TouchableOpacity>
+              </View>
             ) : (
               <TouchableOpacity
                 style={styles.nextBtn}
@@ -924,7 +999,7 @@ export default function QuizScreen() {
                 />
               </TouchableOpacity>
             )}
-          </ScrollView>
+          </View>
         </Animated.View>
       </View>
 
@@ -956,7 +1031,9 @@ export default function QuizScreen() {
           ]}
         >
           <Ionicons name="flash" size={ms(16)} color="#FFFFFF" />
-          <Text style={styles.xpPopText}>+{XP_PER_CORRECT} XP</Text>
+          <Text style={styles.xpPopText}>
+            +{XP_PER_CORRECT + lastBonus} XP{lastBonus ? "  🔥COMBO" : ""}
+          </Text>
         </Animated.View>
       )}
     </View>
@@ -979,11 +1056,37 @@ const styles = StyleSheet.create({
   },
   // Same hero, trimmed of the XP card so the question card gets the height.
   playHero: {
-    paddingTop: ms(16),
-    paddingHorizontal: ms(18),
-    paddingBottom: ms(14),
-    borderBottomLeftRadius: ms(22),
-    borderBottomRightRadius: ms(22),
+    paddingTop: ms(12),
+    paddingHorizontal: ms(16),
+    paddingBottom: ms(12),
+    borderBottomLeftRadius: ms(18),
+    borderBottomRightRadius: ms(18),
+  },
+  playHeroRow: { flexDirection: "row", alignItems: "center", gap: ms(8) },
+  playHeroTitle: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: ms(14),
+    color: "#FFFFFF",
+  },
+  playHeroSub: {
+    fontFamily: "OpenSans_500Medium",
+    fontSize: ms(10.5),
+    color: "rgba(255,255,255,0.85)",
+  },
+  playDayPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: ms(3),
+    backgroundColor: "rgba(255,255,255,0.22)",
+    borderRadius: 999,
+    paddingHorizontal: ms(8),
+    paddingVertical: ms(4),
+  },
+  playDayEmoji: { fontSize: ms(10) },
+  playDayText: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: ms(10),
+    color: "#FFFFFF",
   },
   heroTop: {
     flexDirection: "row",
@@ -1212,25 +1315,56 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#FED7AA",
   },
+  streakPillHot: { backgroundColor: "#FFEDD5", borderColor: "#FB923C" },
+  heroRight: { alignItems: "flex-end", gap: ms(6) },
+  dayStreakPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: ms(4),
+    backgroundColor: "rgba(255,255,255,0.22)",
+    borderRadius: 999,
+    paddingHorizontal: ms(9),
+    paddingVertical: ms(4),
+  },
+  dayStreakEmoji: { fontSize: ms(11) },
+  dayStreakText: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: ms(10),
+    color: "#FFFFFF",
+  },
+  comboTag: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: ms(8),
+    letterSpacing: 0.6,
+    color: "#C2410C",
+  },
   streakText: {
     fontFamily: "OpenSans_800ExtraBold",
     fontSize: ms(12),
     color: "#EA580C",
   },
-  playTrack: { height: ms(5), backgroundColor: "#EEF1F5", overflow: "hidden" },
+  playTrack: {
+    marginHorizontal: ms(18),
+    marginTop: ms(12),
+    height: ms(5),
+    borderRadius: 999,
+    backgroundColor: "#EEF1F5",
+    overflow: "hidden",
+  },
   playFill: { height: "100%", backgroundColor: colors.primary },
 
   deckWrap: {
     flex: 1,
-    paddingHorizontal: ms(16),
-    paddingTop: ms(14),
-    paddingBottom: ms(84), // clears the floating tab bar
+    justifyContent: "center", // card hugs its content and sits centred
+    paddingHorizontal: ms(18),
+    paddingTop: ms(12),
+    paddingBottom: ms(88), // clears the floating tab bar
   },
   qCard: {
-    flex: 1,
     backgroundColor: "#FFFFFF",
     borderRadius: ms(22),
-    padding: ms(16),
+    paddingHorizontal: ms(16),
+    paddingVertical: ms(18),
     borderWidth: 1,
     borderColor: "#EEF0F4",
     shadowColor: "#000",
@@ -1244,7 +1378,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: ms(6),
+    marginBottom: ms(10),
   },
   catChip: {
     flexDirection: "row",
@@ -1267,25 +1401,27 @@ const styles = StyleSheet.create({
     color: colors.textLight,
     textTransform: "capitalize",
   },
-  qEmoji: { fontSize: ms(32), textAlign: "center", marginTop: ms(6) },
+  qEmoji: { fontSize: ms(28), textAlign: "center", marginTop: ms(4) },
   qText: {
     fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(15),
+    fontSize: ms(14.5),
     color: colors.text,
     textAlign: "center",
-    lineHeight: ms(21),
-    marginTop: ms(8),
+    lineHeight: ms(20),
+    marginTop: ms(6),
   },
 
   options: { marginTop: ms(14), gap: ms(9) },
+  actionRow: { flexDirection: "row", gap: ms(10), marginTop: ms(14) },
+  rowBtn: { flex: 1, marginTop: 0 },
   option: {
     flexDirection: "row",
     alignItems: "center",
     gap: ms(11),
     backgroundColor: "#FBFCFD",
-    borderRadius: ms(15),
-    paddingHorizontal: ms(12),
-    paddingVertical: ms(12),
+    borderRadius: ms(14),
+    paddingHorizontal: ms(11),
+    paddingVertical: ms(9),
     borderWidth: 1.5,
     borderColor: "#E6EAF0",
   },
@@ -1293,8 +1429,8 @@ const styles = StyleSheet.create({
   optionWrong: { borderColor: "#DC2626", backgroundColor: "#FEF2F2" },
   optionDim: { opacity: 0.5 },
   optionLetter: {
-    width: ms(28),
-    height: ms(28),
+    width: ms(25),
+    height: ms(25),
     borderRadius: ms(9),
     backgroundColor: "#EEF1F5",
     alignItems: "center",
@@ -1321,9 +1457,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: ms(7),
-    marginTop: ms(12),
-    paddingVertical: ms(10),
+    gap: ms(6),
+    marginTop: ms(10),
+    height: ms(42),
     borderRadius: ms(13),
     backgroundColor: "#FFFBEB",
     borderWidth: 1.5,
@@ -1375,10 +1511,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: ms(7),
-    marginTop: ms(12),
-    height: ms(46),
-    borderRadius: ms(14),
+    gap: ms(6),
+    marginTop: ms(10),
+    height: ms(42),
+    borderRadius: ms(13),
     backgroundColor: "#F8FAFC",
     borderWidth: 1.5,
     borderColor: "#E2E8F0",
@@ -1393,8 +1529,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: ms(8),
-    marginTop: ms(12),
-    height: ms(48),
+    marginTop: ms(10),
+    height: ms(46),
     borderRadius: ms(14),
     backgroundColor: colors.primary,
   },

@@ -20,8 +20,10 @@ import {
   BannerAdSize,
   InterstitialAdManager,
 } from "../../../ads/Admobmanager";
+import { praiseWorkout, sayFromJack } from "../../../constants/bubbleMessage";
 import { maybeAskForReview } from "../../../constants/appReview";
 import { colors } from "../../../constants/colors";
+import { useUser } from "../../../constants/UserContext";
 import { Logger } from "../../../constants/Logger";
 import { trackEvent } from "../../../constants/mixpanel";
 import { scaling } from "../../../constants/useScaling";
@@ -42,6 +44,7 @@ const CongratsScreen = ({
   userId,
   startTime,
 }) => {
+  const { user } = useUser();
   const confettiAnim = useRef(null);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -123,6 +126,11 @@ const CongratsScreen = ({
     });
 
     InterstitialAdManager.getInstance().show();
+
+    // Jack reacts from the floating bubble once the interstitial is out of the
+    // way, so the praise isn't buried under an ad.
+    const t = setTimeout(() => sayFromJack(praiseWorkout(user?.name)), 2600);
+    return () => clearTimeout(t);
   }, []);
 
   // ─── Entry animations ───────────────────────────────────────────────────

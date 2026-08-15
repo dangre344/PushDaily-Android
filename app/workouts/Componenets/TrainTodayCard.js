@@ -31,15 +31,10 @@ const { moderateScale: ms } = scaling();
 export default function TrainTodayCard({ history = [], onStart }) {
   const [result, setResult] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [free, setFree] = useState(true);
 
   const fade = useRef(new Animated.Value(0)).current;
   const slide = useRef(new Animated.Value(14)).current;
   const pulse = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    isRecommendationFree().then(setFree);
-  }, []);
 
   // Breathing pulse on the CTA until it has been used.
   useEffect(() => {
@@ -106,7 +101,6 @@ export default function TrainTodayCard({ history = [], onStart }) {
     setTimeout(async () => {
       const rec = recommendToday(history);
       await markRecommendationUsed();
-      setFree(false);
       setResult(rec);
       setBusy(false);
       reveal();
@@ -215,17 +209,6 @@ export default function TrainTodayCard({ history = [], onStart }) {
           )}
         </TouchableOpacity>
       </Animated.View>
-
-      <View style={styles.footRow}>
-        <Ionicons
-          name={free ? "gift-outline" : "play-circle-outline"}
-          size={ms(12)}
-          color={colors.textLight}
-        />
-        <Text style={styles.footText}>
-          {free ? "Free once a day" : "Watch a short ad to plan again"}
-        </Text>
-      </View>
     </View>
   );
 }
@@ -235,6 +218,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderRadius: ms(18),
     padding: ms(16),
+    // Matches the Quick / Popular Workouts headers on this screen (ms 20).
+    marginHorizontal: ms(20),
+    marginTop: ms(4),
     marginBottom: ms(16),
     borderWidth: 1,
     borderColor: "#EEF0F4",
@@ -320,16 +306,4 @@ const styles = StyleSheet.create({
     color: colors.textLight,
   },
 
-  footRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: ms(5),
-    marginTop: ms(10),
-  },
-  footText: {
-    fontFamily: "OpenSans_500Medium",
-    fontSize: ms(10.5),
-    color: colors.textLight,
-  },
 });

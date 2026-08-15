@@ -1,7 +1,9 @@
 import { Audio } from "expo-av";
+import { useFocusEffect } from "expo-router";
 import * as Speech from "expo-speech";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  AppState,
   Animated,
   Easing,
   Image,
@@ -63,6 +65,9 @@ export default function CurrentWorkout({
   });
 
   const [isTimerActive, setIsTimerActive] = useState(false);
+  // Set when a blur paused the timer / interrupted the voice.
+  const pausedByBlurRef = useRef(false);
+  const wasSpeakingRef = useRef(false);
   const [showStepsModal, setShowStepsModal] = useState(false);
   const [isVoiceMuted, setIsVoiceMuted] = useState(false);
 
@@ -414,14 +419,50 @@ export default function CurrentWorkout({
     }
   }, [workout, getWorkoutSeconds]);
 
-  useEffect(() => {
-    const handleAppStateChange = (nextAppState) => {
-      if (nextAppState !== "active" && isActive.current) {
-        Speech.stop();
+  // ── Leaving the screen (e.g. tapping Jack to open the chat) ──────────────
+  // Silence the coach and freeze the countdown, then pick both back up on
+  // return. expo-speech has no working pause() on Android, so the cue is
+  // re-spoken rather than resumed mid-sentence.
+  useFocusEffect(
+    useCallback(() => {
+      isActive.current = true;
+      // Re-announce where we are so the user isn't dropped back into silence.
+      if (!isVoiceMuted && wasSpeakingRef.current) {
+        wasSpeakingRef.current = false;
+        Speech.speak(`Resuming. ${workout?.name || "Keep going"}.`, {
+          language: "en-US",
+        });
       }
-    };
+      if (pausedByBlurRef.current) {
+        pausedByBlurRef.current = false;
+        startTimer();
+      }
 
-    return () => {};
+      return () => {
+        // Blur: stop the voice and stop the clock.
+        Speech.isSpeakingAsync()
+          .then((speaking) => {
+            wasSpeakingRef.current = speaking;
+          })
+          .catch(() => {});
+        Speech.stop();
+
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+          pausedByBlurRef.current = true;
+          setIsTimerActive(false);
+        }
+      };
+    }, [isVoiceMuted, workout?.name, startTimer]),
+  );
+
+  // Backgrounding the whole app should silence it too.
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (next) => {
+      if (next !== "active") Speech.stop();
+    });
+    return () => sub.remove();
   }, []);
 
   useEffect(() => {

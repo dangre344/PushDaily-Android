@@ -40,6 +40,7 @@ import {
 } from "../constants/pushNotifications";
 import { initRemoteConfig } from "../constants/remoteConfig";
 import { switchToTab } from "../constants/tabNavigation";
+import TrainerBubble from "../components/TrainerBubble";
 import { useRouteTracking } from "../constants/useScreenTracking";
 import {
   markBackgrounded,
@@ -264,6 +265,10 @@ export default function RootLayout() {
         </Stack>
 
         <StatusBar style="auto" />
+
+        {/* Draggable chat bubble, above every screen (hides itself on the
+            chat, signup and camera routes). */}
+        <TrainerBubble />
       </ThemeProvider>
 
       <ToastManager useModal={false} />

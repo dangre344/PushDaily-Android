@@ -48,7 +48,7 @@ const barColorFor = (row) =>
           : "#C7D2DA";
 
 // A single animated vertical bar (grows from the bottom on first load).
-function ChartBar({ row, max, index, userName }) {
+function ChartBar({ row, max, index, userName, onShowName }) {
   const anim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -95,13 +95,20 @@ function ChartBar({ row, max, index, userName }) {
       </View>
 
       <Text style={styles.barRank}>{MEDALS[row.rank] || `#${row.rank}`}</Text>
-      <Text style={styles.barFlag}>{row.flag}</Text>
-      <Text
-        style={[styles.barName, row.isUser && styles.barNameUser]}
-        numberOfLines={1}
+
+      {/* Bars are narrow, so long names get clipped — tap to see the full one. */}
+      <TouchableOpacity
+        activeOpacity={0.6}
+        onPress={() => rawName && onShowName?.(rawName)}
+        hitSlop={{ top: 4, bottom: 8, left: 6, right: 6 }}
       >
-        {firstName}
-      </Text>
+        <Text
+          style={[styles.barName, row.isUser && styles.barNameUser]}
+          numberOfLines={1}
+        >
+          {firstName}
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -116,6 +123,8 @@ export default function EventScreen() {
   const [refreshing, setRefreshing] = useState(false);
   // Only true for the very first fetch — pull-to-refresh has its own spinner.
   const [loadingBoard, setLoadingBoard] = useState(true);
+  // Full name shown when a clipped leaderboard name is tapped.
+  const [nameTip, setNameTip] = useState(null);
   const [resetIn, setResetIn] = useState(msUntilUtcReset());
 
   // The board is global, so it rolls over at UTC midnight for everyone.
@@ -138,6 +147,30 @@ export default function EventScreen() {
     } catch {}
     setRefreshing(false);
   };
+
+  // The tooltip fades itself out — no dismiss tap needed for a name.
+  const tipAnim = useRef(new Animated.Value(0)).current;
+  const tipTimer = useRef(null);
+
+  const showNameTip = (name) => {
+    clearTimeout(tipTimer.current);
+    setNameTip(name);
+    tipAnim.setValue(0);
+    Animated.timing(tipAnim, {
+      toValue: 1,
+      duration: 180,
+      useNativeDriver: true,
+    }).start();
+    tipTimer.current = setTimeout(() => {
+      Animated.timing(tipAnim, {
+        toValue: 0,
+        duration: 220,
+        useNativeDriver: true,
+      }).start(() => setNameTip(null));
+    }, 2200);
+  };
+
+  useEffect(() => () => clearTimeout(tipTimer.current), []);
 
   const enter = useRef(new Animated.Value(0)).current;
   const didEnter = useRef(false);
@@ -389,12 +422,38 @@ export default function EventScreen() {
                   max={maxPushups}
                   index={i}
                   userName={user?.name}
+                  onShowName={showNameTip}
                 />
               ))}
             </View>
           )}
         </View>
       </ScrollView>
+
+      {/* Full name for a clipped leaderboard entry — fades out on its own. */}
+      {nameTip ? (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.nameTip,
+            {
+              opacity: tipAnim,
+              transform: [
+                {
+                  translateY: tipAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [8, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <Text style={styles.nameTipText} numberOfLines={2}>
+            {nameTip}
+          </Text>
+        </Animated.View>
+      ) : null}
 
       {/* Start button pinned above the tab bar */}
       <Animated.View
@@ -571,6 +630,23 @@ const styles = StyleSheet.create({
     paddingVertical: ms(24),
     paddingHorizontal: ms(16),
   },
+  nameTip: {
+    position: "absolute",
+    left: ms(28),
+    right: ms(28),
+    bottom: ms(150),
+    backgroundColor: "rgba(17,24,39,0.94)",
+    borderRadius: ms(12),
+    paddingVertical: ms(10),
+    paddingHorizontal: ms(14),
+  },
+  nameTipText: {
+    fontFamily: "OpenSans_700Bold",
+    fontSize: ms(12.5),
+    color: "#FFFFFF",
+    textAlign: "center",
+  },
+
   // Same footprint as the chart so the card doesn't jump when data lands.
   chartLoading: {
     alignItems: "center",
@@ -626,7 +702,6 @@ const styles = StyleSheet.create({
     color: colors.textLight,
     marginTop: ms(8),
   },
-  barFlag: { fontSize: ms(16), marginTop: ms(2) },
   barName: {
     fontFamily: "OpenSans_600SemiBold",
     fontSize: ms(10.5),

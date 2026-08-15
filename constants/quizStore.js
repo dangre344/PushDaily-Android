@@ -21,6 +21,21 @@ const EMPTY = {
   totalAnswered: 0,
   bestScore: 0,
   quizzesPlayed: 0,
+  // Consecutive CALENDAR days with at least one quiz — the retention hook.
+  dayStreak: 0,
+  bestDayStreak: 0,
+  lastPlayedDate: "",
+};
+
+const yesterdayKey = () =>
+  new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+
+/** Rolls the day streak forward: +1 if yesterday, reset to 1 if a day was missed. */
+const nextDayStreak = (state) => {
+  const today = todayKey();
+  if (state.lastPlayedDate === today) return state.dayStreak; // already counted
+  if (state.lastPlayedDate === yesterdayKey()) return state.dayStreak + 1;
+  return 1;
 };
 
 export const getQuizState = async () => {
@@ -87,12 +102,21 @@ export const markDayReported = async () => {
  * Records a finished quiz: adds XP, updates accuracy totals + best score and
  * increments today's counter. Returns the fresh summary.
  */
-export const submitQuizResult = async ({ correct, total, skipped = 0 }) => {
+export const submitQuizResult = async ({
+  correct,
+  total,
+  skipped = 0,
+  comboBonus = 0,
+}) => {
   const state = await getQuizState();
-  const gainedXp = correct * XP_PER_CORRECT;
+  const baseXp = correct * XP_PER_CORRECT;
+  const gainedXp = baseXp + comboBonus;
   const wrong = Math.max(0, total - correct - skipped);
   // Skipped questions don't count toward lifetime accuracy.
   const attempted = correct + wrong;
+
+  const dayStreak = nextDayStreak(state);
+  const streakExtended = dayStreak !== state.dayStreak;
 
   const next = {
     totalXp: state.totalXp + gainedXp,
@@ -100,6 +124,9 @@ export const submitQuizResult = async ({ correct, total, skipped = 0 }) => {
     totalAnswered: state.totalAnswered + attempted,
     bestScore: Math.max(state.bestScore, correct),
     quizzesPlayed: state.quizzesPlayed + 1,
+    dayStreak,
+    bestDayStreak: Math.max(state.bestDayStreak || 0, dayStreak),
+    lastPlayedDate: todayKey(),
   };
   await AsyncStorage.setItem(K_STATE, JSON.stringify(next));
 
@@ -116,7 +143,15 @@ export const submitQuizResult = async ({ correct, total, skipped = 0 }) => {
     }),
   );
 
-  return { gainedXp, wrong, ...(await getQuizSummary()) };
+  return {
+    gainedXp,
+    baseXp,
+    comboBonus,
+    wrong,
+    dayStreak,
+    streakExtended,
+    ...(await getQuizSummary()),
+  };
 };
 
 // ── Rank tiers driven by lifetime XP (gamification) ──

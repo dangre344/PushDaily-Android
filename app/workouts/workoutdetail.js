@@ -26,6 +26,10 @@ import {
   initDB,
   insertMultipleWorkouts,
 } from "../../offlinedb/workoutdb";
+import {
+  exercisePrefill,
+  setChatContext,
+} from "../../constants/chatContext";
 import CongratsScreen from "./Componenets/CongratsScreen";
 import CurrentWorkout from "./Componenets/CurrentWorkout";
 import NextWorkoutInfo from "./Componenets/NextWorkoutInfo";
@@ -83,6 +87,20 @@ export default function WorkoutDetail() {
   const [index, setIndex] = useState(0);
   const [completedIndices, setCompletedIndices] = useState(new Set());
   const [loadingPage, setLoadingPage] = useState("play_workout");
+
+  // Tell the floating trainer bubble which exercise is on screen, so tapping
+  // Jack opens the chat with a "how do I perform this?" question ready to send.
+  const currentExerciseName = workouts?.workoutList?.[index]?.name;
+  useEffect(() => {
+    if (currentExerciseName) {
+      setChatContext({
+        kind: "exercise",
+        title: currentExerciseName,
+        prefill: exercisePrefill(currentExerciseName),
+      });
+    }
+    return () => setChatContext(null); // plain chat everywhere else
+  }, [currentExerciseName]);
 
   // When the user entered the workout — used to report total time on completion.
   const startTimeRef = useRef(Date.now());

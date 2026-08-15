@@ -14,6 +14,8 @@
 
 const GEMINI_MODEL = "gemini-2.5-flash"; // free-tier flash model
 const GROQ_MODEL = "llama-3.3-70b-versatile"; // Groq free-tier model
+// Vision fallback for label reading — separate quota from Gemini.
+const GROQ_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
 const MAX_QUESTION_CHARS = 600;
 
 const SYSTEM_PROMPT = `You are Jack, an experienced, certified personal fitness trainer inside the "Push Daily" home-workout app.
@@ -455,6 +457,258 @@ async function runEventBroadcast(env) {
   return result;
 }
 
+
+// ═════════════════════════ Food label reading (vision) ══════════════════════
+// The model ONLY transcribes what it can see into structured JSON. The healthy
+// / unhealthy decision is made by fixed rules in the app, so the same label
+// always yields the same verdict and we can show the arithmetic.
+const LABEL_PROMPT = `You are reading a photo of a packaged food label.
+
+Return STRICT JSON only, no prose, matching exactly:
+{
+  "name": "product name if visible, else empty string",
+  "basis": "per_100g" or "per_serving",
+  "serving_size_g": number or null,
+  "nutrition": {
+    "energy_kcal": number|null, "sugars_g": number|null, "fat_g": number|null,
+    "saturates_g": number|null, "salt_g": number|null,
+    "fibre_g": number|null, "protein_g": number|null
+  },
+  "ingredients_text": "the full ingredients list exactly as printed, or empty string",
+  "declared_allergens": ["names from any Contains: line"]
+}
+
+Rules:
+- Copy numbers EXACTLY as printed. Never estimate, infer or round.
+- "basis" must reflect which column you read. If the table shows both, use per_100g.
+- If sodium is given instead of salt, convert: salt_g = sodium_g * 2.5.
+- Use null for anything not legible. Do NOT guess.
+- Transcribe ingredients verbatim - allergen detection depends on it.
+- Output nothing except the JSON object.`;
+
+async function readLabel(env, base64) {
+  if (!env.GEMINI_KEY) {
+    console.log("[label] GEMINI_KEY secret is not set");
+    return { reason: "server" };
+  }
+
+  const t0 = Date.now();
+  console.log(
+    `[label] start — ${Math.round((base64.length * 3) / 4 / 1024)}KB image, model ${GEMINI_MODEL}`,
+  );
+
+  const url =
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${env.GEMINI_KEY}`;
+
+  let res;
+  try {
+    res = await fetchWithTimeout(
+      url,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: LABEL_PROMPT }] },
+          contents: [
+            {
+              role: "user",
+              parts: [
+                { inline_data: { mime_type: "image/jpeg", data: base64 } },
+                { text: "Read this label." },
+              ],
+            },
+          ],
+          generationConfig: {
+            temperature: 0,
+            // Trimmed: the schema is small, and fewer tokens = faster reply.
+            maxOutputTokens: 900,
+            thinkingConfig: { thinkingBudget: 0 },
+            responseMimeType: "application/json",
+          },
+        }),
+      },
+      55000, // vision round-trips regularly exceed 30s on the free tier
+    );
+  } catch (e) {
+    // Almost always the 28s timeout — a big image on a slow uplink.
+    console.log(`[label] fetch threw after ${Date.now() - t0}ms: ${String(e)}`);
+    return { reason: "server" };
+  }
+
+  if (!res.ok) {
+    const body = (await res.text()).slice(0, 400);
+    console.log(`[label] gemini HTTP ${res.status} after ${Date.now() - t0}ms: ${body}`);
+    // 429 = free-tier quota gone for the day; worth its own message.
+    return { reason: res.status === 429 ? "quota" : "server" };
+  }
+
+  console.log(`[label] gemini 200 in ${Date.now() - t0}ms`);
+
+  const data = await res.json();
+  const cand = data?.candidates?.[0];
+  const text = cand?.content?.parts?.[0]?.text;
+  if (!text) {
+    // finishReason tells us whether it was a safety block, a token cutoff,
+    // or genuinely nothing readable in the photo.
+    console.log(
+      `[label] no text. finishReason=${cand?.finishReason} ` +
+        `promptFeedback=${JSON.stringify(data?.promptFeedback || null)}`,
+    );
+    return { reason: "unreadable" };
+  }
+  console.log(`[label] parsed ${text.length} chars of JSON`);
+
+  let parsed;
+  try {
+    parsed = JSON.parse(String(text).replace(/^```json\s*/i, "").replace(/```$/, ""));
+  } catch {
+    console.log(`[label] unparseable JSON: ${String(text).slice(0, 160)}`);
+    return { reason: "unreadable" };
+  }
+  return validateLabel(parsed);
+}
+
+/** Rejects anything we cannot safely act on, and says which check failed. */
+function validateLabel(p) {
+  if (!p || typeof p !== "object") return { reason: "unreadable" };
+
+  const n = p.nutrition;
+  if (!n || typeof n !== "object") return { reason: "unreadable" };
+
+  const numOrNull = (v) =>
+    typeof v === "number" && Number.isFinite(v) && v >= 0 && v < 10000 ? v : null;
+
+  const nutrition = {
+    energy_kcal: numOrNull(n.energy_kcal),
+    sugars_g: numOrNull(n.sugars_g),
+    fat_g: numOrNull(n.fat_g),
+    saturates_g: numOrNull(n.saturates_g),
+    salt_g: numOrNull(n.salt_g),
+    fibre_g: numOrNull(n.fibre_g),
+    protein_g: numOrNull(n.protein_g),
+  };
+
+  // Need at least two of the four scored nutrients or the verdict is meaningless.
+  const scored = ["sugars_g", "fat_g", "saturates_g", "salt_g"].filter(
+    (k) => nutrition[k] !== null,
+  );
+  if (scored.length < 2) {
+    console.log(`[label] only ${scored.length} scored nutrient(s) legible`);
+    return { reason: "too_few" };
+  }
+
+  const basis = p.basis === "per_serving" ? "per_serving" : "per_100g";
+  const serving = numOrNull(p.serving_size_g);
+  // A per-serving basis without a serving size cannot be rescaled - refuse it
+  // rather than scoring numbers that flatter the manufacturer.
+  if (basis === "per_serving" && !serving) {
+    console.log("[label] per-serving basis with no serving size");
+    return { reason: "no_serving" };
+  }
+
+  return {
+    product: {
+    name: String(p.name || "").slice(0, 120),
+    basis,
+    serving_size_g: serving,
+    nutrition,
+    ingredients_text: String(p.ingredients_text || "").slice(0, 1500),
+    declared_allergens: Array.isArray(p.declared_allergens)
+      ? p.declared_allergens.map((a) => String(a).slice(0, 40)).slice(0, 20)
+      : [],
+    },
+  };
+}
+
+
+/**
+ * Second reader: Groq's free-tier vision model. Separate quota from Gemini, so
+ * a Gemini 429 doesn't take label reading down with it.
+ */
+async function readLabelGroq(env, base64) {
+  if (!env.GROQ_API_KEY) return { reason: "server" };
+
+  const t0 = Date.now();
+  console.log("[label] falling back to groq vision");
+
+  let res;
+  try {
+    res = await fetchWithTimeout(
+      "https://api.groq.com/openai/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${env.GROQ_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: GROQ_VISION_MODEL,
+          temperature: 0,
+          max_tokens: 900,
+          response_format: { type: "json_object" },
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "text", text: LABEL_PROMPT },
+                {
+                  type: "image_url",
+                  image_url: { url: `data:image/jpeg;base64,${base64}` },
+                },
+              ],
+            },
+          ],
+        }),
+      },
+      45000,
+    );
+  } catch (e) {
+    console.log(`[label] groq threw after ${Date.now() - t0}ms: ${String(e)}`);
+    return { reason: "server" };
+  }
+
+  if (!res.ok) {
+    const body = (await res.text()).slice(0, 300);
+    console.log(`[label] groq HTTP ${res.status}: ${body}`);
+    return { reason: res.status === 429 ? "quota" : "server" };
+  }
+
+  const data = await res.json();
+  const text = data?.choices?.[0]?.message?.content;
+  if (!text) return { reason: "unreadable" };
+
+  try {
+    return validateLabel(
+      JSON.parse(String(text).replace(/^```json\s*/i, "").replace(/```$/, "")),
+    );
+  } catch {
+    console.log("[label] groq returned unparseable JSON");
+    return { reason: "unreadable" };
+  }
+}
+
+/**
+ * Reader chain: Gemini → Groq. Both are free tiers with independent quotas,
+ * so exhausting one still leaves a working path.
+ */
+async function readLabelChain(env, base64) {
+  const first = await readLabel(env, base64);
+  if (first?.product) return first;
+
+  // Only worth a second attempt when the FIRST failed for a reason another
+  // provider might not share — quota or an outage, not an illegible photo.
+  if (first?.reason === "quota" || first?.reason === "server") {
+    const second = await readLabelGroq(env, base64);
+    if (second?.product) return second;
+    // Both out of credit reads better than a generic error.
+    if (first.reason === "quota" && second?.reason === "quota") {
+      return { reason: "quota" };
+    }
+    return second;
+  }
+  return first;
+}
+
 /** Generates + stores tomorrow-safe today's set. Returns a status string. */
 async function runDailyQuizJob(env, { force = false } = {}) {
   const date = utcDateKey();
@@ -549,6 +803,21 @@ export default {
         date: new Date().toISOString(),
       });
       return json({ ok });
+    }
+
+    // Reads a photographed food label into structured JSON. The verdict is
+    // computed client-side from fixed rules — this only transcribes.
+    if (body?.mode === "analyze-label") {
+      const image = String(body.image || "");
+      if (!image || image.length > 4000000) {
+        return json({ error: "bad_image" }, 400);
+      }
+      console.log(`[label] request received, ${image.length} chars`);
+      const out = await readLabelChain(env, image);
+      console.log(`[label] result: ${out?.product ? "product" : out?.reason}`);
+      return out?.product
+        ? json({ product: out.product })
+        : json({ product: null, reason: out?.reason || "unreadable" });
     }
 
     // Manual trigger for the event broadcast (same code both crons run) —

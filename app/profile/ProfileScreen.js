@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
+  Easing,
   Linking,
   Platform,
   Share,
@@ -18,6 +19,7 @@ import {
 import { BannerAd } from "react-native-google-mobile-ads";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AD_UNIT_IDS, BannerAdSize } from "../../ads/Admobmanager";
+import { Image } from "expo-image";
 import { FemaleIcon, ManIconSVG } from "../../assets/AllSvgs";
 import NotificationDialog from "../../components/ui/NotificationDialog";
 import { maybeAskForReview } from "../../constants/appReview";
@@ -25,13 +27,14 @@ import { colors } from "../../constants/colors";
 import { Logger } from "../../constants/Logger";
 import { useUser } from "../../constants/UserContext";
 import { scaling } from "../../constants/useScaling";
-import { getStoredUserBadge } from "../../constants/utils";
+import { saveUserBadge } from "../../constants/utils";
 import {
+  getAllWorkouts,
   getCurrentStreak,
   getProfileStats,
   initDB,
 } from "../../offlinedb/workoutdb";
-import WorkoutBadgeInfo from "../home/WorkoutBadgeInfo";
+import WorkoutBadgeInfo, { getUserBadge } from "../home/WorkoutBadgeInfo";
 import MilestonesModal from "./MilestonesModal";
 import StatsModal from "./StatsModal";
 import { AboutModal } from "./privacy/AboutModal";
@@ -132,13 +135,6 @@ const MENU_SECTIONS = [
         icon: "person-outline",
         color: colors.primary,
         key: "edit",
-      },
-
-      {
-        label: "Levels & Badges",
-        icon: "notifications-outline",
-        color: colors.lightRed,
-        key: "badge",
       },
 
       {
@@ -397,8 +393,8 @@ const MenuRow = ({
                 from: "edit",
               },
             });
-          } else if (item.key === "badge") {
-            setOpenBadgeModal(true);
+          } else if (item.key === "scanfood") {
+            router.push("/scan/food");
           } else if (item.key === "milestones") {
             setMilestonesVisible(true);
           } else if (item.key === "stats") {
@@ -475,6 +471,7 @@ export default function ProfileScreen() {
       };
 
       loadStats();
+      loadStoredBadgeRef.current?.(); // refresh the level after each workout
     }, []),
   );
 
@@ -492,6 +489,8 @@ export default function ProfileScreen() {
   const [waterVisible, setWaterVisible] = useState(false);
 
   const [storedBadge, setStoredBadge] = useState(null);
+  // Pulse + shimmer on the level badge so users notice it's tappable.
+  const badgePulse = useRef(new Animated.Value(0)).current;
 
   const [notificationDialog, setNotificationDialog] = useState({
     visible: false,
@@ -503,10 +502,50 @@ export default function ProfileScreen() {
     onPrimaryPress: null,
   });
 
+  // Gentle attention loop — runs only while a badge exists.
+  useEffect(() => {
+    if (!storedBadge) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(badgePulse, {
+          toValue: 1,
+          duration: 1100,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(badgePulse, {
+          toValue: 0,
+          duration: 1100,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.delay(1400), // pause so it never feels frantic
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [storedBadge, badgePulse]);
+
+  // The cached "userBadge" key was never actually written by anything, so
+  // getStoredUserBadge() always returned null and the badge stayed hidden.
+  // Derive it from workout history instead — getUserBadge([]) still returns
+  // the first tier, so there is always something to show — and persist it so
+  // the stored copy is finally real.
+  const loadStoredBadgeRef = useRef(null);
+
   const loadStoredBadge = async () => {
-    const badge = await getStoredUserBadge();
-    setStoredBadge(badge);
+    try {
+      await initDB();
+      const workouts = await getAllWorkouts();
+      const badge = getUserBadge(workouts || []);
+      setStoredBadge(badge);
+      saveUserBadge(badge);
+    } catch (e) {
+      Logger.log("[Profile] badge load failed:", String(e));
+      setStoredBadge(getUserBadge([])); // never leave the header empty
+    }
   };
+  loadStoredBadgeRef.current = loadStoredBadge;
 
   useEffect(() => {
     Animated.parallel([
@@ -530,7 +569,6 @@ export default function ProfileScreen() {
       }),
     ]).start();
 
-    loadStoredBadge();
   }, []);
 
   const getBMI = (weightKg, heightCm) => {
@@ -594,6 +632,80 @@ export default function ProfileScreen() {
         )}
         scrollEventThrottle={16}
       >
+        <View style={styles.levelRow}>
+        {/* Level badge — sits in the scroll content (not pinned), so it moves
+              up with the page like any other element. */}
+        {storedBadge ? (
+          <TouchableOpacity
+            style={styles.levelBadge}
+            activeOpacity={0.85}
+            onPress={() => setOpenBadgeModal(true)}
+          >
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.levelHalo,
+                {
+                  opacity: badgePulse.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 0.5],
+                  }),
+                  transform: [
+                    {
+                      scale: badgePulse.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.9, 1.5],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            />
+
+            <Animated.View
+              style={[
+                styles.levelPill,
+                {
+                  transform: [
+                    {
+                      scale: badgePulse.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [1, 1.07],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              {storedBadge?.image ? (
+                <Image source={storedBadge.image} style={styles.levelPillImage} />
+              ) : (
+                <Text style={styles.levelPillEmoji}>
+                  {storedBadge?.emoji || "🏅"}
+                </Text>
+              )}
+              <Text style={styles.levelPillText} numberOfLines={1}>
+                {storedBadge?.title || "Badge"}
+              </Text>
+            </Animated.View>
+
+            {/* Small nudge dot so the pill reads as "there is more here". */}
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.levelDot,
+                {
+                  opacity: badgePulse.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.35, 1],
+                  }),
+                },
+              ]}
+            />
+          </TouchableOpacity>
+        ) : null}
+        </View>
+
         <Animated.View
           style={[
             styles.profileHeader,
@@ -879,6 +991,59 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: colors.primary,
     opacity: 0.07,
+  },
+
+  levelRow: {
+    alignItems: "flex-end",
+    paddingRight: scaling().scaleWidth(14),
+    paddingTop: scaling().scaleHeight(6),
+  },
+  levelBadge: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  levelHalo: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    borderRadius: scaling().moderateScale(16),
+    backgroundColor: colors.primary,
+  },
+  levelPill: {
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: scaling().moderateScale(62),
+    paddingHorizontal: scaling().moderateScale(9),
+    paddingVertical: scaling().moderateScale(6),
+    borderRadius: scaling().moderateScale(14),
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#EEF0F4",
+  },
+  levelPillImage: {
+    width: scaling().moderateScale(24),
+    height: scaling().moderateScale(24),
+    resizeMode: "contain",
+  },
+  levelPillEmoji: { fontSize: scaling().moderateScale(19) },
+  levelPillText: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: scaling().moderateScale(9.5),
+    color: colors.primary,
+    marginTop: scaling().moderateScale(2),
+  },
+  levelDot: {
+    position: "absolute",
+    top: -scaling().moderateScale(2),
+    right: -scaling().moderateScale(2),
+    width: scaling().moderateScale(9),
+    height: scaling().moderateScale(9),
+    borderRadius: scaling().moderateScale(5),
+    backgroundColor: colors.primary,
+    borderWidth: 1.5,
+    borderColor: "#FFFFFF",
   },
 
   glowLeft: {

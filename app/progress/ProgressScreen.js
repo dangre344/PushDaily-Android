@@ -448,12 +448,7 @@ export default function ProgressScreen() {
 
         <View style={styles.calendarCard}>
           <View style={styles.calendarHeaderRow}>
-            <View>
-              <Text style={styles.cardTitle}>Workout calendar</Text>
-              <Text style={styles.cardSubtitle}>
-                Green dates have completed workouts
-              </Text>
-            </View>
+            <Text style={styles.cardTitle}>Workout calendar</Text>
 
             <View style={styles.legendPill}>
               <View style={styles.legendDot} />
@@ -495,10 +490,21 @@ export default function ProgressScreen() {
               calendarBackground: "#FFFFFF",
               monthTextColor: colors.text,
               textMonthFontFamily: "OpenSans_700Bold",
-              textMonthFontSize: scaleWidth(15),
+              textMonthFontSize: scaleWidth(14),
               dayTextColor: colors.text,
               textDayFontFamily: "OpenSans_600SemiBold",
-              textDayFontSize: scaleWidth(13),
+              textDayFontSize: scaleWidth(12),
+              // Default week rows carry 7dp of margin top AND bottom. Over six
+              // rows that is ~60dp of dead space, which pushed the workout
+              // list below the fold.
+              "stylesheet.calendar.main": {
+                week: {
+                  marginTop: 1,
+                  marginBottom: 1,
+                  flexDirection: "row",
+                  justifyContent: "space-around",
+                },
+              },
               todayTextColor: colors.primary,
               selectedDayBackgroundColor: colors.primary,
               selectedDayTextColor: "#FFFFFF",
@@ -515,30 +521,28 @@ export default function ProgressScreen() {
           />
         </View>
 
-        <View style={styles.daySummary}>
-          <View>
-            <Text style={styles.dateLabel}>
-              {hasWorkoutOnSelectedDate
-                ? "Completed workouts"
-                : "No workout found"}
-            </Text>
+        {/* Only worth showing once the day actually has something in it — an
+            empty summary above an empty list is just noise. */}
+        {hasWorkoutOnSelectedDate ? (
+          <View style={styles.daySummary}>
+            <View>
+              <Text style={styles.dateLabel}>Completed workouts</Text>
 
-            <Text style={styles.workoutCount}>
-              {hasWorkoutOnSelectedDate
-                ? `${allWorkouts.length} exercise${
-                    allWorkouts.length !== 1 ? "s" : ""
-                  } on ${displayDate}`
-                : `No completed workout on ${displayDate}`}
-            </Text>
-          </View>
-
-          {dayCalories > 0 ? (
-            <View style={styles.dayCalBadge}>
-              <AntDesign name="fire" size={12} color={colors.primary} />
-              <Text style={styles.dayCalText}>{dayCalories} kcal</Text>
+              <Text style={styles.workoutCount}>
+                {`${allWorkouts.length} exercise${
+                  allWorkouts.length !== 1 ? "s" : ""
+                } on ${displayDate}`}
+              </Text>
             </View>
-          ) : null}
-        </View>
+
+            {dayCalories > 0 ? (
+              <View style={styles.dayCalBadge}>
+                <AntDesign name="fire" size={12} color={colors.primary} />
+                <Text style={styles.dayCalText}>{dayCalories} kcal</Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
 
         {loading ? (
           <View style={styles.loadingBox}>
@@ -774,8 +778,8 @@ const styles = StyleSheet.create({
 
   calendarCard: {
     backgroundColor: "#FFFFFF",
-    borderRadius: scaleWidth(22),
-    padding: scaleWidth(12),
+    borderRadius: scaleWidth(20),
+    padding: scaleWidth(10),
     borderWidth: 1,
     borderColor: "#EEF0F4",
     shadowColor: "#000",
@@ -790,7 +794,7 @@ const styles = StyleSheet.create({
 
   calendarHeaderRow: {
     paddingHorizontal: scaleWidth(4),
-    paddingBottom: scaleHeight(8),
+    paddingBottom: scaleHeight(6),
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -802,12 +806,6 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
 
-  cardSubtitle: {
-    fontFamily: "OpenSans_500Medium",
-    fontSize: scaleWidth(11),
-    color: colors.textLight,
-    marginTop: scaleHeight(2),
-  },
 
   legendPill: {
     flexDirection: "row",
@@ -856,24 +854,25 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: scaleHeight(16),
-    marginBottom: scaleHeight(12),
+    marginTop: scaleHeight(10),
+    marginBottom: scaleHeight(10),
     backgroundColor: "#FFFFFF",
-    borderRadius: scaleWidth(18),
-    padding: scaleWidth(14),
+    borderRadius: scaleWidth(16),
+    paddingVertical: scaleHeight(10),
+    paddingHorizontal: scaleWidth(12),
     borderWidth: 1,
     borderColor: "#EEF0F4",
   },
 
   dateLabel: {
     fontFamily: "OpenSans_800ExtraBold",
-    fontSize: scaleWidth(15),
+    fontSize: scaleWidth(13),
     color: colors.text,
   },
 
   workoutCount: {
     fontFamily: "OpenSans_500Medium",
-    fontSize: scaleWidth(12),
+    fontSize: scaleWidth(11),
     color: colors.textLight,
     marginTop: scaleHeight(3),
     maxWidth: scaleWidth(220),

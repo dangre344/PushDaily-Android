@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import {
   Animated,
   Dimensions,
+  Easing,
   FlatList,
   Pressable,
   ScrollView,
@@ -18,7 +19,6 @@ import {
 } from "react-native";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Image } from "expo-image";
 import { FemaleIcon, ManIconSVG } from "../../assets/AllSvgs";
 import CircularImage from "../../components/ui/CircularImage";
 import { maybeAskForReview } from "../../constants/appReview";
@@ -35,7 +35,7 @@ import {
   initDB,
 } from "../../offlinedb/workoutdb";
 import BadgeLevelUpModal from "../home/BadgeLevelUpModal";
-import WorkoutBadgeInfo, {
+import {
   BADGE_DETAILS,
   BADGE_ORDER,
   getUserBadge,
@@ -47,52 +47,67 @@ import {
 } from "../../constants/waterReminder";
 import HIITCard from "./Componenets/HIITCard";
 import WaterPromptModal from "./Componenets/WaterPromptModal";
+import { SESSION_QUOTE } from "../../constants/quotes";
+import ScanButton from "./Componenets/ScanButton";
 import TrainTodayCard from "./Componenets/TrainTodayCard";
 import WorkoutLevelModal from "./Componenets/WorkoutLevelModal";
 
 const { width } = Dimensions.get("window");
 const { scaleHeight, scaleWidth, moderateScale } = scaling();
 
-// Rotating prompts shown next to the chat icon on the trainer FAB.
-const FAB_TEXTS = [
-  "Chat with trainer",
-  "Ask diet queries 🥗",
-  "Plan your workout 💪",
-];
+// Remembers whether the "Your progress" card is expanded.
+const HERO_OPEN_KEY = "workouts_hero_open";
 
 export default function WorkoutScreen() {
   const { t } = useTranslation();
   const { user } = useUser();
   const router = useRouter();
 
+  // ── "Your progress" hero: collapsed by default, choice remembered ──
+  const [heroOpen, setHeroOpen] = useState(false);
+  const [heroBodyH, setHeroBodyH] = useState(0);
+  const heroReveal = useRef(new Animated.Value(0)).current; // 0 closed → 1 open
+  const heroChevron = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    let alive = true;
+    AsyncStorage.getItem(HERO_OPEN_KEY)
+      .then((v) => {
+        if (!alive || v !== "true") return;
+        setHeroOpen(true);
+        heroReveal.setValue(1);
+        heroChevron.setValue(1);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [heroReveal, heroChevron]);
+
+  const toggleHero = () => {
+    const next = !heroOpen;
+    setHeroOpen(next);
+    Animated.parallel([
+      Animated.timing(heroReveal, {
+        toValue: next ? 1 : 0,
+        duration: 280,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false, // animates height
+      }),
+      Animated.timing(heroChevron, {
+        toValue: next ? 1 : 0,
+        duration: 280,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    AsyncStorage.setItem(HERO_OPEN_KEY, String(next)).catch(() => {});
+  };
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(22)).current;
   const scaleAnim = useRef(new Animated.Value(0.96)).current;
 
-  // Cross-fade for the rotating FAB label next to the chat icon.
-  const fabTextAnim = useRef(new Animated.Value(1)).current;
-  const [fabTextIndex, setFabTextIndex] = useState(0);
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      Animated.timing(fabTextAnim, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }).start(() => {
-        setFabTextIndex((i) => (i + 1) % FAB_TEXTS.length);
-        Animated.timing(fabTextAnim, {
-          toValue: 1,
-          duration: 250,
-          useNativeDriver: true,
-        }).start();
-      });
-    }, 3000);
-    return () => clearInterval(id);
-  }, []);
-
   const [openModal, setOpenModal] = useState(false);
-  const [openBadgeModal, setOpenBadgeModal] = useState(false);
   const [badgeLevelUpVisible, setBadgeLevelUpVisible] = useState(false);
   const [waterPromptVisible, setWaterPromptVisible] = useState(false);
 
@@ -330,32 +345,19 @@ export default function WorkoutScreen() {
                   {t("welcome", { name: user?.name || "" })}
                 </Text>
 
-                <Text style={styles.subTitle} numberOfLines={1}>
-                  Sore today, strong tomorrow.
+                <Text style={styles.subTitle} numberOfLines={2}>
+                  {SESSION_QUOTE}
                 </Text>
               </View>
             </View>
 
-            {/* Compact badge pill — tap for the full badge breakdown */}
-            <TouchableOpacity
-              style={styles.badgePill}
-              activeOpacity={0.85}
-              onPress={() => setOpenBadgeModal(true)}
-            >
-              {userBadge?.image ? (
-                <Image source={userBadge.image} style={styles.badgePillImage} />
-              ) : (
-                <Text style={styles.badgePillEmoji}>
-                  {userBadge?.emoji || "🏅"}
-                </Text>
-              )}
-              <Text style={styles.badgePillText} numberOfLines={1}>
-                {userBadge?.title || "Badge"}
-              </Text>
-            </TouchableOpacity>
+            {/* Food-label scanner — top-right entry point */}
+            <ScanButton />
           </View>
 
-          {/* HERO CARD — hidden entirely until the user has workout records */}
+          {/* HERO CARD — hidden entirely until the user has workout records.
+              Collapsed by default so it never eats the top of the screen; the
+              header row stays tappable and the choice is remembered. */}
           {stats.totalWorkouts > 0 && (
             <LinearGradient
               colors={[colors.primary, "#7C3AED"]}
@@ -363,46 +365,107 @@ export default function WorkoutScreen() {
               end={{ x: 1, y: 1 }}
               style={styles.heroCard}
             >
-              <View style={styles.heroTopRow}>
-                <View>
+              <TouchableOpacity
+                style={styles.heroTopRow}
+                activeOpacity={0.85}
+                onPress={toggleHero}
+              >
+                <View style={{ flex: 1 }}>
                   <Text style={styles.heroSmallText}>Your progress</Text>
                   <Text style={styles.heroTitle}>Keep the streak alive</Text>
                 </View>
 
-                <View style={styles.heroIconCircle}>
-                  <Ionicons name="barbell-outline" size={24} color="#FFFFFF" />
+                {/* Collapsed peek: the headline number stays visible so the
+                    card still says something at a glance. */}
+                {!heroOpen ? (
+                  <View style={styles.heroPeek}>
+                    <Text style={styles.heroPeekValue}>
+                      {stats.totalWorkouts || 0}
+                    </Text>
+                    <Text style={styles.heroPeekLabel}>done</Text>
+                  </View>
+                ) : null}
+
+                <Animated.View
+                  style={{
+                    transform: [
+                      {
+                        rotate: heroChevron.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: ["0deg", "180deg"],
+                        }),
+                      },
+                    ],
+                  }}
+                >
+                  <Ionicons
+                    name="chevron-down"
+                    size={moderateScale(20)}
+                    color="#FFFFFF"
+                  />
+                </Animated.View>
+              </TouchableOpacity>
+
+              <Animated.View
+                style={{
+                  height: heroReveal.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, heroBodyH],
+                  }),
+                  opacity: heroReveal,
+                  overflow: "hidden",
+                }}
+              >
+                <View
+                  style={styles.heroBodyMeasure}
+                  onLayout={(e) => {
+                    const h = Math.round(e.nativeEvent.layout.height);
+                    if (h && h !== heroBodyH) setHeroBodyH(h);
+                  }}
+                >
+                  <View style={styles.heroStatsRow}>
+                    <View style={styles.heroStatItem}>
+                      <Ionicons
+                        name="barbell-outline"
+                        size={moderateScale(15)}
+                        color="#FFFFFF"
+                      />
+                      <Text style={styles.heroStatValue}>
+                        {stats.totalWorkouts || 0}
+                      </Text>
+                      <Text style={styles.heroStatLabel}>Completed</Text>
+                    </View>
+
+                    <View style={styles.heroDivider} />
+
+                    <View style={styles.heroStatItem}>
+                      <Ionicons
+                        name="flame-outline"
+                        size={moderateScale(15)}
+                        color="#FFFFFF"
+                      />
+                      <Text style={styles.heroStatValue}>
+                        {stats.totalCalories || 0}
+                      </Text>
+                      <Text style={styles.heroStatLabel}>Kcal Burned</Text>
+                    </View>
+
+                    <View style={styles.heroDivider} />
+
+                    <View style={styles.heroStatItem}>
+                      <Ionicons
+                        name="calendar-outline"
+                        size={moderateScale(15)}
+                        color="#FFFFFF"
+                      />
+                      <Text style={styles.heroStatValue}>
+                        {stats.activeDays || 0}
+                      </Text>
+                      <Text style={styles.heroStatLabel}>Active Days</Text>
+                    </View>
+                  </View>
                 </View>
-              </View>
-
-              <View style={styles.heroStatsRow}>
-                <View style={styles.heroStatItem}>
-                  <Ionicons name="barbell-outline" size={18} color="#FFFFFF" />
-                  <Text style={styles.heroStatValue}>
-                    {stats.totalWorkouts || 0}
-                  </Text>
-                  <Text style={styles.heroStatLabel}>Completed</Text>
-                </View>
-
-                <View style={styles.heroDivider} />
-
-                <View style={styles.heroStatItem}>
-                  <Ionicons name="flame-outline" size={18} color="#FFFFFF" />
-                  <Text style={styles.heroStatValue}>
-                    {stats.totalCalories || 0}
-                  </Text>
-                  <Text style={styles.heroStatLabel}>Kcal Burned</Text>
-                </View>
-
-                <View style={styles.heroDivider} />
-
-                <View style={styles.heroStatItem}>
-                  <Ionicons name="calendar-outline" size={18} color="#FFFFFF" />
-                  <Text style={styles.heroStatValue}>
-                    {stats.activeDays || 0}
-                  </Text>
-                  <Text style={styles.heroStatLabel}>Active Days</Text>
-                </View>
-              </View>
+              </Animated.View>
             </LinearGradient>
           )}
 
@@ -506,39 +569,12 @@ export default function WorkoutScreen() {
         </ScrollView>
       </Animated.View>
 
-      {/* Floating trainer chat button — icon + rotating label */}
-      <TouchableOpacity
-        style={styles.trainerFab}
-        activeOpacity={0.85}
-        onPress={() => router.push("/trainer/chat")}
-      >
-        <Ionicons
-          name="chatbubble-ellipses"
-          size={moderateScale(20)}
-          color="#FFFFFF"
-        />
-        <Animated.Text
-          style={[styles.trainerFabText, { opacity: fabTextAnim }]}
-          numberOfLines={1}
-        >
-          {FAB_TEXTS[fabTextIndex]}
-        </Animated.Text>
-      </TouchableOpacity>
-
       {openModal ? (
         <WorkoutLevelModal
           visible={openModal}
           selectedBodyPart={selectedBodyPart}
           setOpenModal={setOpenModal}
           t={t}
-        />
-      ) : null}
-
-      {openBadgeModal ? (
-        <WorkoutBadgeInfo
-          userBadge={userBadge}
-          visible={openBadgeModal}
-          setVisible={setOpenBadgeModal}
         />
       ) : null}
 
@@ -573,31 +609,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#F7F8FA",
   },
 
-  trainerFab: {
-    position: "absolute",
-    right: moderateScale(16),
-    // The custom bottom tab bar is absolutely positioned (~70 high, elevation
-    // 20), so the FAB must sit above it or it gets covered.
-    bottom: moderateScale(84),
-    flexDirection: "row",
-    alignItems: "center",
-    gap: moderateScale(8),
-    borderRadius: moderateScale(999),
-    paddingVertical: moderateScale(11),
-    paddingHorizontal: moderateScale(16),
-    backgroundColor: colors.primary,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 14,
-    elevation: 8,
-  },
-  trainerFabText: {
-    fontFamily: "OpenSans_800ExtraBold",
-    fontSize: moderateScale(13),
-    color: "#FFFFFF",
-  },
-
   animatedContainer: {
     flex: 1,
   },
@@ -609,11 +620,11 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     paddingHorizontal: moderateScale(20),
-    paddingTop: moderateScale(16),
-    paddingBottom: moderateScale(16),
+    paddingTop: moderateScale(10),
+    paddingBottom: moderateScale(10),
     alignItems: "center",
     justifyContent: "space-between",
-    gap: moderateScale(14),
+    gap: moderateScale(10),
     backgroundColor: colors.white,
   },
 
@@ -651,34 +662,9 @@ const styles = StyleSheet.create({
   },
 
   // Compact badge pill — replaces the wide badge card that crowded the header.
-  badgePill: {
-    alignItems: "center",
-    justifyContent: "center",
-    minWidth: moderateScale(62),
-    paddingHorizontal: moderateScale(9),
-    paddingVertical: moderateScale(6),
-    borderRadius: moderateScale(14),
-    backgroundColor: "#F8FAFC",
-    borderWidth: 1,
-    borderColor: "#EEF0F4",
-  },
 
-  badgePillImage: {
-    width: moderateScale(24),
-    height: moderateScale(24),
-    resizeMode: "contain",
-  },
 
-  badgePillEmoji: {
-    fontSize: moderateScale(19),
-  },
 
-  badgePillText: {
-    fontFamily: "OpenSans_800ExtraBold",
-    fontSize: moderateScale(9.5),
-    color: colors.primary,
-    marginTop: moderateScale(2),
-  },
 
   calorieContainer: {
     gap: moderateScale(5),
@@ -710,8 +696,8 @@ const styles = StyleSheet.create({
   heroCard: {
     marginHorizontal: moderateScale(20),
     marginTop: moderateScale(10),
-    borderRadius: moderateScale(24),
-    padding: moderateScale(18),
+    borderRadius: moderateScale(20),
+    padding: moderateScale(14),
     shadowColor: colors.primary,
     shadowOpacity: 0.24,
     shadowRadius: 18,
@@ -729,13 +715,13 @@ const styles = StyleSheet.create({
   },
 
   heroSmallText: {
-    fontSize: moderateScale(12),
+    fontSize: moderateScale(10.5),
     fontFamily: "OpenSans_600SemiBold",
     color: "rgba(255,255,255,0.76)",
   },
 
   heroTitle: {
-    fontSize: moderateScale(20),
+    fontSize: moderateScale(15),
     fontFamily: "OpenSans_800ExtraBold",
     color: "#FFFFFF",
     marginTop: moderateScale(2),
@@ -759,10 +745,22 @@ const styles = StyleSheet.create({
     maxWidth: "92%",
   },
 
+  heroBodyMeasure: { position: "absolute", left: 0, right: 0, top: 0 },
+  heroPeek: { alignItems: "center", marginRight: moderateScale(10) },
+  heroPeekValue: {
+    fontSize: moderateScale(17),
+    fontFamily: "OpenSans_800ExtraBold",
+    color: "#FFFFFF",
+  },
+  heroPeekLabel: {
+    fontSize: moderateScale(8.5),
+    fontFamily: "OpenSans_600SemiBold",
+    color: "rgba(255,255,255,0.78)",
+  },
   heroStatsRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: moderateScale(18),
+    marginTop: moderateScale(12),
     backgroundColor: "rgba(255,255,255,0.14)",
     borderRadius: moderateScale(18),
     paddingVertical: moderateScale(12),
@@ -774,13 +772,13 @@ const styles = StyleSheet.create({
   },
 
   heroStatValue: {
-    fontSize: moderateScale(18),
+    fontSize: moderateScale(15),
     fontFamily: "OpenSans_800ExtraBold",
     color: "#FFFFFF",
   },
 
   heroStatLabel: {
-    fontSize: moderateScale(10),
+    fontSize: moderateScale(9),
     fontFamily: "OpenSans_600SemiBold",
     color: "rgba(255,255,255,0.78)",
     marginTop: moderateScale(2),
@@ -788,7 +786,7 @@ const styles = StyleSheet.create({
 
   heroDivider: {
     width: 1,
-    height: moderateScale(32),
+    height: moderateScale(26),
     backgroundColor: "rgba(255,255,255,0.2)",
   },
 

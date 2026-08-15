@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { memo, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -343,7 +343,12 @@ export default function TrainerChat() {
       time: timeNow(),
     },
   ]);
-  const [input, setInput] = useState("");
+  // Opened from an exercise screen? Start with that question already typed so
+  // the user just hits send. Read once — editing it must not be overwritten.
+  const { prefill } = useLocalSearchParams();
+  const [input, setInput] = useState(
+    typeof prefill === "string" ? prefill : "",
+  );
   const [thinking, setThinking] = useState(false); // dots phase
   const [streamingText, setStreamingText] = useState(""); // token phase
   const [analyzing, setAnalyzing] = useState(false); // workout-analysis flow
