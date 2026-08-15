@@ -213,7 +213,7 @@ export const lookupBarcode = async (barcode, timeoutMs = 8000) => {
  */
 export const analyzePhoto = async (base64) => {
   const t0 = Date.now();
-  const res = await callBackend("analyze-label", { image: base64 }, 65000);
+  const res = await callBackend("analyze-label", { image: base64 }, 52000);
   const ms = Date.now() - t0;
 
   // callBackend returns null for ANY transport/HTTP failure — including a

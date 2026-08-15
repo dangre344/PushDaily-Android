@@ -19,7 +19,12 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { Image } from "expo-image";
+import {
+  attendanceNudge,
+  sayOncePerSession,
+} from "../../constants/bubbleMessage";
 import { colors } from "../../constants/colors";
+import { useUser } from "../../constants/UserContext";
 import { bodyParts } from "../../constants/Constants";
 import { Logger } from "../../constants/Logger";
 import { scaling } from "../../constants/useScaling";
@@ -199,6 +204,7 @@ const WorkoutCard = ({ item, index }) => {
 
 export default function ProgressScreen() {
   const { t } = useTranslation();
+  const { user } = useUser();
 
   const todayKey = toDateKey(new Date().toISOString());
 
@@ -330,6 +336,14 @@ export default function ProgressScreen() {
       setAllWorkoutHistory(history || []);
       setTotalCalories(cal || 0);
       setWorkoutDates(dates || []);
+
+      // Nudge only when today is genuinely empty, and only once per session.
+      if (!(dates || []).includes(toDateKey(new Date().toISOString()))) {
+        setTimeout(
+          () => sayOncePerSession("attendance", attendanceNudge(user?.name)),
+          800,
+        );
+      }
     } catch (error) {
       Logger.log("Error loading progress screen:", error);
     } finally {

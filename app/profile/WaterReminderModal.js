@@ -20,6 +20,10 @@ import { Toast } from "toastify-react-native";
 import { AD_UNIT_IDS } from "../../ads/Admobmanager";
 import { colors } from "../../constants/colors";
 import { Logger } from "../../constants/Logger";
+import {
+  sayOncePerSession,
+  waterNudge,
+} from "../../constants/bubbleMessage";
 import { useUser } from "../../constants/UserContext";
 import { scaling } from "../../constants/useScaling";
 import {
@@ -105,6 +109,13 @@ export default function WaterReminderModal({ visible, setVisible }) {
   const ratio = goal.glasses > 0 ? Math.min(consumed / goal.glasses, 1) : 0;
   const percent = Math.round(ratio * 100);
   const plant = getPlant(ratio);
+
+  // Explain why hydration matters — once per app session.
+  useEffect(() => {
+    if (!visible) return;
+    const t = setTimeout(() => sayOncePerSession("water", waterNudge()), 700);
+    return () => clearTimeout(t);
+  }, [visible]);
 
   useEffect(() => {
     if (!visible) return;

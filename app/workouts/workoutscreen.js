@@ -47,6 +47,7 @@ import {
 } from "../../constants/waterReminder";
 import HIITCard from "./Componenets/HIITCard";
 import WaterPromptModal from "./Componenets/WaterPromptModal";
+import { registerLevelPicker } from "../../constants/levelPicker";
 import { SESSION_QUOTE } from "../../constants/quotes";
 import ScanButton from "./Componenets/ScanButton";
 import TrainTodayCard from "./Componenets/TrainTodayCard";
@@ -247,6 +248,10 @@ export default function WorkoutScreen() {
     setSelectedBodyPart(item);
     setOpenModal(true);
   };
+
+  // Let other screens (Stats empty state) open this picker after navigating
+  // here — they unmount before they could route to it themselves.
+  useEffect(() => registerLevelPicker(openWorkoutLevelModal), []);
 
   const renderGenderIcon = () => {
     if (user?.gender === "Male") {

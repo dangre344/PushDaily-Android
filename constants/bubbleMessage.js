@@ -46,7 +46,29 @@ export const sayFromJack = (text, ms = 9000) => {
   listener?.(String(text), ms);
 };
 
-const firstName = (name) => String(name || "").trim().split(" ")[0];
+// Keys already spoken during THIS app session. Module scope, so it resets on
+// a cold start but survives every navigation — revisiting a screen stays quiet.
+const saidThisSession = new Set();
+
+/**
+ * Says something at most once per app session.
+ * @param key  stable id for the message ("attendance_nudge", …)
+ * @return true if it was spoken, false if it had already been said
+ */
+export const sayOncePerSession = (key, text, ms) => {
+  if (!key || saidThisSession.has(key)) return false;
+  saidThisSession.add(key);
+  sayFromJack(text, ms);
+  return true;
+};
+
+/** Test helper / manual reset — not used in normal flow. */
+export const resetSessionMessages = () => saidThisSession.clear();
+
+const firstName = (name) =>
+  String(name || "")
+    .trim()
+    .split(" ")[0];
 
 // ── Ready-made lines, so wording stays consistent across screens ────────────
 export const praiseWorkout = (name, count) =>
@@ -69,6 +91,18 @@ export const foodVerdictMessage = (verdict, alreadyHadUnhealthy) => {
     ? "You've already had junk today 😤 Please skip this one."
     : "I'd suggest skipping this one 🚫";
 };
+
+// ── Screen-entry nudges (all once per session) ──
+export const attendanceNudge = (name) =>
+  `No workout logged today${firstName(name) ? `, ${firstName(name)}` : ""} — consistency is what builds results.💪`;
+
+export const leaderboardNudge = (leaderName) =>
+  leaderName
+    ? `${leaderName} is top today — let's take that crown 😤`
+    : "Nobody has scored yet. Be the first on the board 🥇";
+
+export const waterNudge = () =>
+  "Water helps you train harder and recover faster 💧 Add Reminder now :)";
 
 export const praisePushups = (name, count) =>
   `${count} push-ups${firstName(name) ? `, ${firstName(name)}` : ""}! Strong work 🔥`;

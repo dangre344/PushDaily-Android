@@ -18,6 +18,10 @@ import {
 } from "react-native";
 import Share from "react-native-share";
 import { RewardedAdManager } from "../../ads/Admobmanager";
+import {
+  leaderboardNudge,
+  sayOncePerSession,
+} from "../../constants/bubbleMessage";
 import { colors } from "../../constants/colors";
 import {
   getLeaderboard,
@@ -188,6 +192,16 @@ export default function EventScreen() {
         .then((b) => {
           if (!active) return;
           setBoard(b);
+
+          // Once the real data is in, Jack reacts to who is actually leading.
+          const top = b?.top?.[0];
+          const lead = top?.isUser
+            ? null // don't tell someone to beat themselves
+            : (top?.name || "").trim().split(" ")[0];
+          setTimeout(
+            () => sayOncePerSession("leaderboard", leaderboardNudge(lead)),
+            900,
+          );
         })
         .finally(() => active && setLoadingBoard(false));
       // Warm up the rewarded ad for extra-session unlocks.

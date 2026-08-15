@@ -527,7 +527,7 @@ async function readLabel(env, base64) {
           },
         }),
       },
-      55000, // vision round-trips regularly exceed 30s on the free tier
+      22000, // leave budget for the Groq fallback below
     );
   } catch (e) {
     // Almost always the 28s timeout — a big image on a slow uplink.
@@ -660,7 +660,7 @@ async function readLabelGroq(env, base64) {
           ],
         }),
       },
-      45000,
+      22000,
     );
   } catch (e) {
     console.log(`[label] groq threw after ${Date.now() - t0}ms: ${String(e)}`);

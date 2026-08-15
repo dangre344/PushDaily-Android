@@ -107,6 +107,9 @@ export default function FoodScanScreen() {
   // `showIntro` so dismissing it returns you to the list rather than
   // re-running the first-run gate.
   const [helpOpen, setHelpOpen] = useState(false);
+  // Only the photo path shows the "reading…" dialog; a barcode lookup is fast
+  // and gets the small inline spinner instead.
+  const [reading, setReading] = useState(false);
   const openScannerRef = useRef(null);
   // Stops the barcode callback firing dozens of times per second.
   const handled = useRef(false);
@@ -158,7 +161,7 @@ export default function FoodScanScreen() {
 
   // Walk the progress copy while a read is in flight.
   useEffect(() => {
-    if (!busy) {
+    if (!reading) {
       setStep(0);
       return;
     }
@@ -167,7 +170,7 @@ export default function FoodScanScreen() {
       PROGRESS_MS,
     );
     return () => clearInterval(id);
-  }, [busy]);
+  }, [reading]);
 
   // Sweeping scan line inside the frame guide.
   useEffect(() => {
@@ -335,6 +338,7 @@ export default function FoodScanScreen() {
     if (busy) return;
     tapHaptic();
     setError(null);
+    setNotFound(false);
     setBusy(true);
     const t0 = Date.now();
     try {
@@ -374,8 +378,11 @@ export default function FoodScanScreen() {
         );
         return;
       }
+      // Photo is in hand — NOW show the reading dialog.
       Logger.log("[FoodScan] 3/5 sending to reader…");
+      setReading(true);
       const res = await analyzePhoto(shot.base64);
+      setReading(false);
       setBusy(false);
       Logger.log("[FoodScan] 4/5 reader replied", {
         ok: !res?.reason,
@@ -397,6 +404,7 @@ export default function FoodScanScreen() {
       }
       finish(res, "photo");
     } catch (e) {
+      setReading(false);
       setBusy(false);
       warningHaptic();
       setError("Something went wrong. Please try again.");
@@ -424,6 +432,10 @@ export default function FoodScanScreen() {
     setNotFound(false);
     handled.current = false;
   };
+
+  // Barcode reading is suspended while anything is in flight or on screen —
+  // the user has to acknowledge the outcome before another code is accepted.
+  const scanLocked = busy || reading || !!result || notFound || !!error;
 
   // Opened on demand from the Scanned tab.
   if (helpOpen) {
@@ -522,7 +534,10 @@ export default function FoodScanScreen() {
         // and blow out close-up labels.
         enableTorch={flash === "on"}
         barcodeScannerSettings={{ barcodeTypes: BARCODE_TYPES }}
-        onBarcodeScanned={result ? undefined : onBarcode}
+        // Detaching the handler is the only reliable lock — expo-camera fires
+        // this many times a second, so an in-function guard alone still lets a
+        // second code slip in before state settles.
+        onBarcodeScanned={scanLocked ? undefined : onBarcode}
       />
 
       <SafeAreaView style={styles.overlay} edges={["top", "bottom"]}>
@@ -670,12 +685,35 @@ export default function FoodScanScreen() {
                 <Text style={styles.missCta}>
                   Point at it and tap the shutter 👇
                 </Text>
+
+                <TouchableOpacity
+                  style={styles.missDismiss}
+                  activeOpacity={0.75}
+                  onPress={() => {
+                    tapHaptic();
+                    setNotFound(false);
+                    handled.current = false;
+                  }}
+                >
+                  <Text style={styles.missDismissText}>
+                    Scan a different barcode
+                  </Text>
+                </TouchableOpacity>
               </View>
             ) : error ? (
-              <View style={styles.errorPill}>
+              <TouchableOpacity
+                style={styles.errorPill}
+                activeOpacity={0.8}
+                onPress={() => {
+                  tapHaptic();
+                  setError(null);
+                  handled.current = false;
+                }}
+              >
                 <Ionicons name="alert-circle" size={ms(14)} color="#FCA5A5" />
                 <Text style={styles.errorText}>{error}</Text>
-              </View>
+                <Ionicons name="close" size={ms(13)} color="#FCA5A5" />
+              </TouchableOpacity>
             ) : null}
 
             <View style={{ flex: 1 }} />
@@ -713,7 +751,7 @@ export default function FoodScanScreen() {
         )}
 
         {/* Rendered last so it sits above every sibling. */}
-        {busy ? (
+        {reading ? (
           <View style={styles.working} pointerEvents="auto">
             <View style={styles.workingCard}>
               <ActivityIndicator size="large" color={colors.primary} />
@@ -988,6 +1026,13 @@ const styles = StyleSheet.create({
     marginTop: ms(4),
   },
   missMock: { alignSelf: "stretch", marginTop: ms(10) },
+  missDismiss: { marginTop: ms(10), paddingVertical: ms(4) },
+  missDismissText: {
+    fontFamily: "OpenSans_700Bold",
+    fontSize: ms(10.5),
+    color: colors.textLight,
+    textDecorationLine: "underline",
+  },
   missCta: {
     fontFamily: "OpenSans_800ExtraBold",
     fontSize: ms(11),

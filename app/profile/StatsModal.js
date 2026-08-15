@@ -4,6 +4,7 @@ import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "../../constants/colors";
 import { scaling } from "../../constants/useScaling";
+import { openLevelPicker } from "../../constants/levelPicker";
 import StatsScreen from "../stats/_layout";
 
 const ms = (n) => scaling().moderateScale(n);
@@ -15,11 +16,16 @@ const ms = (n) => scaling().moderateScale(n);
 export default function StatsModal({ visible, setVisible }) {
   const navigation = useNavigation();
 
-  // Empty state → close this sheet and send the user to the Workouts tab
-  // (pushing a route from inside a Modal would render behind it).
-  const goToWorkouts = () => {
+  // Empty state → close this sheet, then open the level picker for the body
+  // part that was tapped. Routing has to wait for the Modal to actually close,
+  // otherwise the next screen renders behind it.
+  const openBodyPart = (item) => {
     setVisible(false);
-    setTimeout(() => navigation.navigate("Workouts"), 0);
+    setTimeout(() => {
+      navigation.navigate("Workouts");
+      // A beat later so the tab is mounted before the picker opens.
+      setTimeout(() => openLevelPicker(item), 250);
+    }, 0);
   };
 
   return (
@@ -51,7 +57,7 @@ export default function StatsModal({ visible, setVisible }) {
         </View>
 
         <View style={{ flex: 1 }}>
-          <StatsScreen onPickBodyPart={goToWorkouts} />
+          <StatsScreen onPickBodyPart={openBodyPart} />
         </View>
       </SafeAreaView>
     </Modal>
