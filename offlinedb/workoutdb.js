@@ -274,6 +274,45 @@ export const getCurrentStreak = async () => {
   return streak;
 };
 
+/**
+ * Has the user logged anything today?
+ *
+ * Uses 'localtime' to match getCurrentStreak above. getAllWorkoutsBydate does
+ * not, so the two disagree either side of midnight — don't swap this for it.
+ */
+export const hasWorkoutToday = async () => {
+  const database = getDB();
+
+  const row = await database.getFirstAsync(
+    `SELECT COUNT(*) as total FROM workouts
+     WHERE strftime('%Y-%m-%d', dateTime, 'localtime')
+         = strftime('%Y-%m-%d', 'now', 'localtime')`,
+  );
+
+  return (row?.total ?? 0) > 0;
+};
+
+/**
+ * Whole days since the last logged workout, or null if there has never been
+ * one. 0 means today, 1 yesterday.
+ *
+ * The widget needs this to tell a rest day apart from a lapse — a zero streak
+ * alone cannot, and greeting someone with "we missed a day" on their planned
+ * rest day is exactly the nagging we're trying to avoid.
+ */
+export const getDaysSinceLastWorkout = async () => {
+  const database = getDB();
+
+  const row = await database.getFirstAsync(
+    `SELECT CAST(julianday(strftime('%Y-%m-%d', 'now', 'localtime'))
+              - julianday(MAX(strftime('%Y-%m-%d', dateTime, 'localtime')))
+            AS INTEGER) as days
+     FROM workouts`,
+  );
+
+  return row?.days ?? null;
+};
+
 // ─── Aggregate stats used by the Milestones screen ───────────────────────────
 // Returns everything the milestone definitions need in a single pass:
 //   totalWorkouts, totalCalories, activeDays, currentStreak, longestStreak,

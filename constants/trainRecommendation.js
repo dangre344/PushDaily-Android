@@ -37,7 +37,7 @@ const daysAgo = (dateTime) =>
 
 /**
  * @param  history  all completed workouts: [{ bodyPart, dateTime }]
- * @return { bodyPart, id, group, why[], weekSummary, restAdvised }
+ * @return { bodyPart, id, group, why[], weekSummary, restAdvised, forTomorrow }
  */
 export const recommendToday = (history = []) => {
   const week = history.filter((w) => w?.dateTime && daysAgo(w.dateTime) <= 7);
@@ -50,6 +50,18 @@ export const recommendToday = (history = []) => {
     week.map((w) => new Date(w.dateTime).toDateString()),
   ).size;
 
+  // What was already done TODAY — if anything, the plan is for tomorrow.
+  const todayStr = new Date().toDateString();
+  const trainedToday = [
+    ...new Set(
+      week
+        .filter((w) => new Date(w.dateTime).toDateString() === todayStr)
+        .map((w) => w.bodyPart)
+        .filter(Boolean),
+    ),
+  ];
+  const doneToday = trainedToday.length > 0;
+
   // ── Nobody has trained yet: start with Push, the most familiar entry point.
   if (week.length === 0) {
     return {
@@ -57,6 +69,8 @@ export const recommendToday = (history = []) => {
       id: BODY_PART_IDS.Chest,
       group: "Push",
       restAdvised: false,
+      forTomorrow: false,
+      trainedToday: [],
       weekSummary: "No sessions logged in the last 7 days.",
       why: [
         "You have a clean slate — every muscle is fully recovered.",
@@ -73,6 +87,8 @@ export const recommendToday = (history = []) => {
       id: BODY_PART_IDS.Abs,
       group: null,
       restAdvised: true,
+      forTomorrow: doneToday,
+      trainedToday,
       weekSummary: `${trainedDays} training days in the last week — that's a lot.`,
       why: [
         "Muscle is built while you recover, not while you train.",
@@ -115,28 +131,47 @@ export const recommendToday = (history = []) => {
   const restedFor = lastSeen[bodyPart];
 
   const why = [];
-  if (lastGroup) {
+
+  if (doneToday) {
+    // Already trained today — the honest coaching answer is "rest, here's
+    // tomorrow", not "here's a second session".
     why.push(
-      lastGroupDays === 0
-        ? `You trained ${lastGroup.toLowerCase()} muscles today, so they need recovery.`
-        : `Your last ${lastGroup.toLowerCase()} session was ${lastGroupDays} day${lastGroupDays === 1 ? "" : "s"} ago.`,
+      `You already trained ${trainedToday.join(" & ")} today — nice work.`,
+    );
+    why.push(
+      "Training the same day again adds fatigue, not muscle. Recovery is when you actually grow.",
+    );
+    why.push(
+      `Tomorrow, ${bodyPart} will be your freshest muscle — a ${nextGroup.toLowerCase()} day keeps the rotation balanced.`,
+    );
+  } else {
+    if (lastGroup) {
+      why.push(
+        lastGroupDays === 0
+          ? `You trained ${lastGroup.toLowerCase()} muscles today, so they need recovery.`
+          : `Your last ${lastGroup.toLowerCase()} session was ${lastGroupDays} day${lastGroupDays === 1 ? "" : "s"} ago.`,
+      );
+    }
+    why.push(
+      restedFor === Infinity
+        ? `${bodyPart} hasn't been trained at all this week — it's the freshest.`
+        : `${bodyPart} last trained ${restedFor} day${restedFor === 1 ? "" : "s"} ago, so it's recovered.`,
+    );
+    why.push(
+      `A ${nextGroup.toLowerCase()} day keeps your rotation balanced and avoids overworking one area.`,
     );
   }
-  why.push(
-    restedFor === Infinity
-      ? `${bodyPart} hasn't been trained at all this week — it's the freshest.`
-      : `${bodyPart} last trained ${restedFor} day${restedFor === 1 ? "" : "s"} ago, so it's recovered.`,
-  );
-  why.push(
-    `A ${nextGroup.toLowerCase()} day keeps your rotation balanced and avoids overworking one area.`,
-  );
 
   return {
     bodyPart,
     id: BODY_PART_IDS[bodyPart],
     group: nextGroup,
     restAdvised: false,
-    weekSummary: `${trainedDays} training day${trainedDays === 1 ? "" : "s"} this week · ${trainedParts.join(", ")}`,
+    forTomorrow: doneToday,
+    trainedToday,
+    weekSummary: doneToday
+      ? `Done today: ${trainedToday.join(", ")} · ${trainedDays} training day${trainedDays === 1 ? "" : "s"} this week`
+      : `${trainedDays} training day${trainedDays === 1 ? "" : "s"} this week · ${trainedParts.join(", ")}`,
     why,
   };
 };

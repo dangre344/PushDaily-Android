@@ -14,6 +14,7 @@ import {
   DefaultTheme,
   ThemeProvider,
 } from "@react-navigation/native";
+import * as ExpoLinking from "expo-linking";
 import * as Notifications from "expo-notifications";
 import { router, Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -108,6 +109,34 @@ export default function RootLayout() {
     };
 
     initializeAds();
+  }, []);
+
+  // ─── Deep links that name a bottom tab ────────────────────────────────────
+  // The home-screen widget opens pushdaily://home?tab=Workouts. expo-router
+  // handles the /home part; the tab itself lives inside a bottom-tab navigator
+  // that has no route of its own, so it is selected through the registry once
+  // the navigator has mounted — same 450ms pattern the notification handlers
+  // above use.
+  useEffect(() => {
+    const openTab = (url: string | null) => {
+      if (!url) return;
+      try {
+        const tab = ExpoLinking.parse(url).queryParams?.tab;
+        if (typeof tab !== "string" || !tab) return;
+
+        Logger.log("[DeepLink] switching to tab:", tab);
+        trackEvent("Deep Link Opened", { tab, source: "widget" });
+        setTimeout(() => switchToTab(tab), 450);
+      } catch (e) {
+        Logger.log("[DeepLink] could not parse url:", String(e));
+      }
+    };
+
+    // Cold start (widget tap launched the app) and warm (already running).
+    ExpoLinking.getInitialURL().then(openTab).catch(() => {});
+    const sub = ExpoLinking.addEventListener("url", ({ url }) => openTab(url));
+
+    return () => sub.remove();
   }, []);
 
   // ─── "Where did the user quit?" ───────────────────────────────────────────

@@ -127,18 +127,30 @@ export default function TrainTodayCard({ history = [], onStart }) {
           <View
             style={[
               styles.badge,
-              result.restAdvised && { backgroundColor: "#EEF2FF" },
+              (result.restAdvised || result.forTomorrow) && {
+                backgroundColor: "#EEF2FF",
+              },
             ]}
           >
             <Ionicons
-              name={result.restAdvised ? "moon" : "barbell"}
+              name={
+                result.forTomorrow
+                  ? "calendar"
+                  : result.restAdvised
+                    ? "moon"
+                    : "barbell"
+              }
               size={ms(16)}
               color={colors.primary}
             />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.eyebrow}>
-              {result.restAdvised ? "GO EASY TODAY" : "TODAY'S FOCUS"}
+              {result.forTomorrow
+                ? "TOMORROW'S FOCUS"
+                : result.restAdvised
+                  ? "GO EASY TODAY"
+                  : "TODAY'S FOCUS"}
             </Text>
             <Text style={styles.resultTitle}>{result.bodyPart}</Text>
           </View>
@@ -159,14 +171,42 @@ export default function TrainTodayCard({ history = [], onStart }) {
           ))}
         </View>
 
-        <TouchableOpacity
-          style={styles.cta}
-          activeOpacity={0.9}
-          onPress={() => onStart?.({ id: result.id, bodyPart: result.bodyPart })}
-        >
-          <Ionicons name="play" size={ms(15)} color="#FFFFFF" />
-          <Text style={styles.ctaText}>Start {result.bodyPart} workout</Text>
-        </TouchableOpacity>
+        {result.forTomorrow ? (
+          <>
+            <View style={styles.restNote}>
+              <Text style={styles.restEmoji}>🌙</Text>
+              <Text style={styles.restText}>
+                You&apos;ve done your session today. Rest up — this plan is
+                waiting for you tomorrow.
+              </Text>
+            </View>
+
+            {/* Advice, not a lock: they can still train if they want to. */}
+            <TouchableOpacity
+              style={styles.secondaryCta}
+              activeOpacity={0.9}
+              onPress={() =>
+                onStart?.({ id: result.id, bodyPart: result.bodyPart })
+              }
+            >
+              <Ionicons name="play" size={ms(14)} color={colors.primary} />
+              <Text style={styles.secondaryCtaText}>
+                Train {result.bodyPart} anyway
+              </Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <TouchableOpacity
+            style={styles.cta}
+            activeOpacity={0.9}
+            onPress={() =>
+              onStart?.({ id: result.id, bodyPart: result.bodyPart })
+            }
+          >
+            <Ionicons name="play" size={ms(15)} color="#FFFFFF" />
+            <Text style={styles.ctaText}>Start {result.bodyPart} workout</Text>
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity
           style={styles.again}
@@ -287,6 +327,39 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   ctaBusy: { opacity: 0.75 },
+  secondaryCta: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: ms(7),
+    height: ms(42),
+    borderRadius: ms(14),
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+  },
+  secondaryCtaText: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: ms(12.5),
+    color: colors.primary,
+  },
+  restNote: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: ms(9),
+    padding: ms(12),
+    borderRadius: ms(14),
+    backgroundColor: "#EEF2FF",
+    marginBottom: ms(10),
+  },
+  restEmoji: { fontSize: ms(18) },
+  restText: {
+    flex: 1,
+    fontFamily: "OpenSans_600SemiBold",
+    fontSize: ms(11.5),
+    color: "#3730A3",
+    lineHeight: ms(16),
+  },
   ctaText: {
     fontFamily: "OpenSans_800ExtraBold",
     fontSize: ms(13),

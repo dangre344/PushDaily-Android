@@ -23,9 +23,11 @@ import { useUser } from "../../constants/UserContext";
 import { scaling } from "../../constants/useScaling";
 import {
   getAllWorkouts,
+  getCurrentStreak,
   initDB,
   insertMultipleWorkouts,
 } from "../../offlinedb/workoutdb";
+import { syncWidget } from "../../constants/widgetPromo";
 import {
   exercisePrefill,
   setChatContext,
@@ -220,6 +222,17 @@ export default function WorkoutDetail() {
         "Save successful. Total workouts in DB now:",
         allWorkouts.length,
       );
+
+      // Refresh the home-screen widget straight away — finishing a session is
+      // the moment the streak changes, and waiting for the user to open the
+      // Profile tab would leave Jack nagging someone who already trained.
+      syncWidget({
+        name: user?.name,
+        streak: await getCurrentStreak(),
+        everTrained: true,
+        trainedToday: true,
+        daysSinceLast: 0,
+      });
     } catch (error) {
       Logger.log("Workout save failed:", error);
       // Don't update lastSavedWorkoutKeyRef on failure → allows retry on next attempt

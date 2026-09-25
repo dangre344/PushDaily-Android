@@ -25,18 +25,24 @@ import NotificationDialog from "../../components/ui/NotificationDialog";
 import { maybeAskForReview } from "../../constants/appReview";
 import { colors } from "../../constants/colors";
 import { Logger } from "../../constants/Logger";
+import { trackEvent } from "../../constants/mixpanel";
 import { useUser } from "../../constants/UserContext";
+import { syncWidget, trackWidgetGuideOpened } from "../../constants/widgetPromo";
 import { scaling } from "../../constants/useScaling";
 import { saveUserBadge } from "../../constants/utils";
 import {
   getAllWorkouts,
   getCurrentStreak,
+  getDaysSinceLastWorkout,
   getProfileStats,
+  hasWorkoutToday,
   initDB,
 } from "../../offlinedb/workoutdb";
 import WorkoutBadgeInfo, { getUserBadge } from "../home/WorkoutBadgeInfo";
 import MilestonesModal from "./MilestonesModal";
 import StatsModal from "./StatsModal";
+import SupportSheet from "./SupportSheet";
+import WidgetGuideModal from "./WidgetGuideModal";
 import { AboutModal } from "./privacy/AboutModal";
 import { PrivacyPolicyModal } from "./privacy/PrivacyPolicyModal";
 import WaterReminderModal from "./WaterReminderModal";
@@ -135,6 +141,22 @@ const MENU_SECTIONS = [
         icon: "person-outline",
         color: colors.primary,
         key: "edit",
+      },
+
+      {
+        label: "Add home screen widget",
+        subtitle: "A daily nudge where you'll actually see it",
+        icon: "grid-outline",
+        color: "#0EA5E9",
+        key: "widget",
+      },
+
+      {
+        label: "Buy me a coffee",
+        subtitle: "Help improve app quality & build new features",
+        icon: "cafe-outline",
+        color: "#F59E0B",
+        key: "support",
       },
 
       {
@@ -277,6 +299,8 @@ const MenuRow = ({
   setOpenBadgeModal,
   setMilestonesVisible,
   setStatsVisible,
+  setWidgetGuideVisible,
+  setSupportVisible,
   setWaterVisible,
   setNotificationDialog,
 }) => {
@@ -395,6 +419,12 @@ const MenuRow = ({
             });
           } else if (item.key === "scanfood") {
             router.push("/scan/food");
+          } else if (item.key === "support") {
+            trackEvent("Support Sheet Opened", { from: "profile" });
+            setSupportVisible(true);
+          } else if (item.key === "widget") {
+            trackWidgetGuideOpened("profile");
+            setWidgetGuideVisible(true);
           } else if (item.key === "milestones") {
             setMilestonesVisible(true);
           } else if (item.key === "stats") {
@@ -458,13 +488,27 @@ export default function ProfileScreen() {
       const loadStats = async () => {
         await initDB();
 
-        const [data, currentStreak] = await Promise.all([
-          getProfileStats(),
-          getCurrentStreak(),
-        ]);
+        const [data, currentStreak, didTrainToday, daysSinceLast] =
+          await Promise.all([
+            getProfileStats(),
+            getCurrentStreak(),
+            hasWorkoutToday(),
+            getDaysSinceLastWorkout(),
+          ]);
 
         setStats(data);
         setStreak(currentStreak);
+
+        // Hand the home-screen widget what it cannot work out on its own. This
+        // screen is the natural place: the values are already loaded here and
+        // refetched on every focus.
+        syncWidget({
+          name: user?.name,
+          streak: currentStreak,
+          everTrained: (data?.totalWorkouts ?? 0) > 0,
+          trainedToday: didTrainToday,
+          daysSinceLast: daysSinceLast ?? -1,
+        });
 
         // Nudge for a Play Store in-app review (uses already-fetched count).
         maybeAskForReview(data?.totalWorkouts);
@@ -472,7 +516,7 @@ export default function ProfileScreen() {
 
       loadStats();
       loadStoredBadgeRef.current?.(); // refresh the level after each workout
-    }, []),
+    }, [user?.name]),
   );
 
   Logger.log("user--ProfileScreen-->", user);
@@ -486,6 +530,8 @@ export default function ProfileScreen() {
   const [openBadgeModal, setOpenBadgeModal] = useState(false);
   const [milestonesVisible, setMilestonesVisible] = useState(false);
   const [statsVisible, setStatsVisible] = useState(false);
+  const [widgetGuideVisible, setWidgetGuideVisible] = useState(false);
+  const [supportVisible, setSupportVisible] = useState(false);
   const [waterVisible, setWaterVisible] = useState(false);
 
   const [storedBadge, setStoredBadge] = useState(null);
@@ -851,6 +897,8 @@ export default function ProfileScreen() {
                   setOpenBadgeModal={setOpenBadgeModal}
                   setMilestonesVisible={setMilestonesVisible}
                   setStatsVisible={setStatsVisible}
+                  setWidgetGuideVisible={setWidgetGuideVisible}
+                  setSupportVisible={setSupportVisible}
                   setWaterVisible={setWaterVisible}
                   setNotificationDialog={setNotificationDialog}
                 />
@@ -919,6 +967,19 @@ export default function ProfileScreen() {
 
       {statsVisible ? (
         <StatsModal visible={statsVisible} setVisible={setStatsVisible} />
+      ) : null}
+
+      {supportVisible ? (
+        <SupportSheet visible={supportVisible} setVisible={setSupportVisible} />
+      ) : null}
+
+      {widgetGuideVisible ? (
+        <WidgetGuideModal
+          visible={widgetGuideVisible}
+          setVisible={setWidgetGuideVisible}
+          name={user?.name}
+          streak={streak}
+        />
       ) : null}
 
       {waterVisible ? (

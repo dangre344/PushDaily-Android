@@ -1,5 +1,4 @@
 import {
-  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -19,6 +18,7 @@ import { Logger } from "@/constants/Logger.js";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Toast } from "toastify-react-native";
 import InputText from "../../components/ui/InputText.js";
+import NotificationPrimer from "../../components/ui/NotificationPrimer.js";
 import MeasurementsStep from "../../components/ui/MeasurementStep.js";
 import ReminderTimePicker from "../../components/ui/ReminderTimePicker.js";
 import MultipleSelector from "../../components/ui/MultipleSelector.js";
@@ -44,6 +44,7 @@ export default function Signup() {
 
   Logger.log("Signup screen - isEditMode:", isEditMode);
   const [updateSuccessVisible, setUpdateSuccessVisible] = useState(false);
+  const [primerVisible, setPrimerVisible] = useState(false);
   // Prevents double-taps on "Finish" from re-triggering the permission popup.
   const isFinishingRef = useRef(false);
   const { t } = useTranslation();
@@ -407,35 +408,50 @@ export default function Signup() {
     setTimeout(() => submitForm(), 0);
   };
 
-  const askNotificationPopup = () => {
-    Alert.alert(
-      "Never miss your notification",
-      "Allow notifications so we can remind you at your selected time.",
-      [
-        {
-          text: "Later",
-          style: "cancel",
-          // User chose to skip — continue without scheduling, no toast needed.
-          onPress: () => finishAndNavigate(false),
-        },
-        {
-          text: "Yes",
-          onPress: async () => {
-            const granted = await requestNotificationPermission();
-            Logger.log("Notification permission granted:", granted);
-            if (!granted) {
-              Toast.info(
-                "Reminders are off. You can enable them anytime in Settings.",
-                "top",
-              );
-            }
-            finishAndNavigate(granted);
-          },
-        },
-      ],
-      { cancelable: false },
-    );
+  const askNotificationPopup = () => setPrimerVisible(true);
+
+  // User chose to skip — continue without scheduling, no toast needed. The OS
+  // prompt is never fired, so their one system-level shot is still unspent.
+  const onPrimerSkip = () => {
+    setPrimerVisible(false);
+    finishAndNavigate(false);
   };
+
+  const onPrimerAllow = async () => {
+    setPrimerVisible(false);
+    const granted = await requestNotificationPermission();
+    Logger.log("Notification permission granted:", granted);
+    if (!granted) {
+      Toast.info(
+        "Reminders are off. You can enable them anytime in Settings.",
+        "top",
+      );
+    }
+    finishAndNavigate(granted);
+  };
+
+  /**
+   * The actual reminder time, shown in the primer so the ask is concrete
+   * rather than a vague promise. Mirrors scheduleNotification's 15-minute
+   * head start; returns null if the time cannot be resolved, and the primer
+   * falls back to generic wording.
+   */
+  const reminderLabel = (() => {
+    const custom = form.getValues("reminderTime");
+    let t = null;
+
+    if (custom && /^\d{1,2}:\d{2}$/.test(custom)) {
+      const [hh, mm] = custom.split(":").map((n) => parseInt(n, 10));
+      if (Number.isFinite(hh) && Number.isFinite(mm)) t = { hour: hh, minute: mm };
+    }
+    if (!t) t = getNotificationTime(form.getValues("time"));
+    if (!t) return null;
+
+    const total = (t.hour * 60 + t.minute - 15 + 1440) % 1440;
+    const h24 = Math.floor(total / 60);
+    const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+    return `${h12}:${String(total % 60).padStart(2, "0")} ${h24 < 12 ? "AM" : "PM"}`;
+  })();
 
   const nextStep = () => {
     Logger.log("gender---->" + form.getValues("gender"));
@@ -795,6 +811,13 @@ export default function Signup() {
           </View>
         </View>
       </Modal>
+
+      <NotificationPrimer
+        visible={primerVisible}
+        reminderLabel={reminderLabel}
+        onAllow={onPrimerAllow}
+        onSkip={onPrimerSkip}
+      />
     </SafeAreaView>
   );
 }
