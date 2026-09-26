@@ -72,6 +72,7 @@ export default function WidgetGuideModal({
     hour: PREVIEW_HOURS[preview],
     streak,
     everTrained: streak > 0,
+    daysSinceLast: streak > 0 ? 1 : -1, // trained yesterday, not yet today
     rotation: preview,
     name,
   });

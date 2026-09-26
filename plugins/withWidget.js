@@ -66,6 +66,7 @@ import android.widget.RemoteViews
 import org.json.JSONObject
 import java.io.File
 import java.util.Calendar
+import java.util.TimeZone
 
 /**
  * Home-screen widget: Jack, a short line, and the user's streak.
@@ -108,16 +109,29 @@ ${BUCKET_KT}
             if (!everTrained) return bucket("welcome")
             // Genuinely lapsed, not merely resting — see widgetData.js.
             if (daysSinceLast >= 3) return bucket("comeback")
-            if (streak > 0 && hour >= 19) return bucket("streak_danger")
-            // Mid-streak users get celebrated, not needled.
-            if (streak >= 3 && hour >= 12 && hour < 19) return bucket("streak_proud")
+            // Morning greeting outranks streak copy: point at today, not
+            // yesterday.
             if (hour < 10) return bucket("morning")
+            if (streak > 0 && hour >= 19) return bucket("streak_danger")
+            // Any live streak carries through the day.
+            if (streak > 0) return bucket("streak_proud")
             if (hour < 12) return bucket("midmorning")
             if (hour < 15) return bucket("afternoon")
             if (hour < 17) return bucket("late_afternoon")
             if (hour < 19) return bucket("prime_time")
             if (hour < 22) return bucket("evening")
             return bucket("night")
+        }
+
+        /**
+         * Days since the local epoch. Must match localEpochDay() in
+         * constants/widgetPromo.js — both shift UTC by the zone offset and
+         * floor, so they agree on which calendar day it is.
+         */
+        private fun todayEpochDay(): Int {
+            val now = System.currentTimeMillis()
+            val offset = TimeZone.getDefault().getOffset(now)
+            return Math.floorDiv(now + offset, 86400000L).toInt()
         }
 
         private fun firstName(raw: String): String {
@@ -129,10 +143,22 @@ ${BUCKET_KT}
         fun render(context: Context, manager: AppWidgetManager, widgetId: Int) {
             val state = readState(context)
             val name = firstName(state.optString("name", ""))
-            val streak = state.optInt("streak", 0)
-            val trainedToday = state.optBoolean("trainedToday", false)
-            val everTrained = state.optBoolean("everTrained", false)
-            val daysSinceLast = state.optInt("daysSinceLast", -1)
+
+            // Everything date-relative is derived HERE, against the clock at
+            // render time — never read as a stored boolean. The bridge file can
+            // be days old, so "did they train today" has to be recomputed or
+            // the widget congratulates people for yesterday's session forever.
+            val lastWorkoutDay =
+                if (state.isNull("lastWorkoutDay")) -1 else state.optInt("lastWorkoutDay", -1)
+
+            val everTrained = lastWorkoutDay >= 0
+            val daysSinceLast = if (everTrained) todayEpochDay() - lastWorkoutDay else -1
+            val trainedToday = everTrained && daysSinceLast == 0
+
+            // getCurrentStreak() in JS only counts a streak that includes today
+            // or yesterday, so once the gap reaches two days the stored number
+            // is stale and the streak is over.
+            val streak = if (daysSinceLast in 0..1) state.optInt("streak", 0) else 0
 
             val cal = Calendar.getInstance()
             val hour = cal.get(Calendar.HOUR_OF_DAY)
@@ -141,7 +167,13 @@ ${BUCKET_KT}
             // Day-of-year rotation: the line changes daily instead of flicking
             // to a new one on every half-hourly refresh.
             val line = b.lines[Math.floorMod(cal.get(Calendar.DAY_OF_YEAR), b.lines.size)]
-            val text = line.replace("{name}", name).replace("{streak}", streak.toString())
+
+            // Mirrors format() in constants/widgetData.js.
+            val text = line
+                .replace("{name}", name)
+                .replace("{streak}", streak.toString())
+                .replace("{days}", if (streak == 1) "1 day" else streak.toString() + " days")
+                .replace("{next}", (streak + 1).toString())
 
             val views = RemoteViews(context.packageName, R.layout.push_daily_widget)
             views.setTextViewText(R.id.widget_message, text)

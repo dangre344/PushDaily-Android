@@ -35,7 +35,6 @@ import {
   getCurrentStreak,
   getDaysSinceLastWorkout,
   getProfileStats,
-  hasWorkoutToday,
   initDB,
 } from "../../offlinedb/workoutdb";
 import WorkoutBadgeInfo, { getUserBadge } from "../home/WorkoutBadgeInfo";
@@ -488,13 +487,11 @@ export default function ProfileScreen() {
       const loadStats = async () => {
         await initDB();
 
-        const [data, currentStreak, didTrainToday, daysSinceLast] =
-          await Promise.all([
-            getProfileStats(),
-            getCurrentStreak(),
-            hasWorkoutToday(),
-            getDaysSinceLastWorkout(),
-          ]);
+        const [data, currentStreak, daysSinceLast] = await Promise.all([
+          getProfileStats(),
+          getCurrentStreak(),
+          getDaysSinceLastWorkout(),
+        ]);
 
         setStats(data);
         setStreak(currentStreak);
@@ -505,8 +502,6 @@ export default function ProfileScreen() {
         syncWidget({
           name: user?.name,
           streak: currentStreak,
-          everTrained: (data?.totalWorkouts ?? 0) > 0,
-          trainedToday: didTrainToday,
           daysSinceLast: daysSinceLast ?? -1,
         });
 

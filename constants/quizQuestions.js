@@ -32,7 +32,17 @@ export const getCategoryMeta = (key) =>
 export const DAILY_QUESTION_COUNT = 10;
 
 // Difficulty ordering, so each quiz session ramps from easier to harder.
-export const DIFF_RANK = { basic: 0, intermediate: 1, advanced: 2 };
+// The Worker now emits easy/medium/hard. The old basic/intermediate/advanced
+// keys stay mapped so sets cached on a device before that change still sort
+// correctly instead of silently collapsing to rank 0.
+export const DIFF_RANK = {
+  easy: 0,
+  medium: 1,
+  hard: 2,
+  basic: 0,
+  intermediate: 1,
+  advanced: 2,
+};
 
 /** Local (device) calendar day key — used only for caching today's set. */
 export const todayKey = (d = new Date()) => {

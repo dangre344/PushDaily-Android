@@ -52,7 +52,7 @@ const BUCKETS = [
     id: "streak_danger",
     expression: "late",
     lines: [
-      "{streak} days on the line, {name} ⏰",
+      "{days} on the line, {name} ⏰",
       "Don't break it now, {name} 🔥",
       "Still time, {name}. Just 10 min ⏳",
     ],
@@ -61,7 +61,7 @@ const BUCKETS = [
     id: "comeback",
     expression: "missed",
     lines: [
-      "We missed a day, {name}. Bounce back 💪",
+      "Been a few days, {name}. Bounce back 💪",
       "Fresh start today, {name} 🤝",
       "One session and we're rolling again",
     ],
@@ -88,8 +88,8 @@ const BUCKETS = [
     id: "streak_proud",
     expression: "challenge",
     lines: [
-      "🔥 {streak} days, {name}. Keep rolling",
-      "{streak} days strong. Unstoppable 🔥",
+      "Day {next} starts now, {name} 💪",
+      "🔥 {days} in. Don't stop, {name}",
       "Beat yesterday, {name}? 😈",
     ],
   },
@@ -153,19 +153,20 @@ const BUCKETS = [
  * Chooses the bucket for the given state. Mirrored exactly in Kotlin.
  *
  * @param {object}  s
- * @param {number}  s.hour           0-23, local
- * @param {number}  s.streak         current streak in days
- * @param {boolean} s.trainedToday
- * @param {boolean} s.everTrained
- * @param {number}  s.daysSinceLast  whole days since the last session, -1 if never
+ * @param {number} s.hour           0-23, local
+ * @param {number} s.streak         current streak in days
+ * @param {number} s.daysSinceLast  whole days since the last session; 0 means
+ *                                  today, -1 means they have never trained.
+ *                                  "trained today" and "ever trained" are
+ *                                  derived from this, not passed separately.
  */
-function pickBucket({
-  hour,
-  streak = 0,
-  trainedToday = false,
-  everTrained = false,
-  daysSinceLast = -1,
-}) {
+function pickBucket({ hour, streak = 0, daysSinceLast = -1 }) {
+  // Derived, never passed in. These used to be separate arguments and it was a
+  // bug factory: a caller could say daysSinceLast:0 yet trainedToday:false and
+  // get nonsense. One input, one meaning.
+  const everTrained = daysSinceLast >= 0;
+  const trainedToday = daysSinceLast === 0;
+
   if (trainedToday) return byId("done_today");
 
   if (!everTrained) return byId("welcome");
@@ -175,14 +176,19 @@ function pickBucket({
   // someone with "we missed a day" for resting is the nagging we're avoiding.
   if (daysSinceLast >= 3) return byId("comeback");
 
+  // The morning greeting outranks the streak copy: someone who trained
+  // yesterday should be greeted and pointed at TODAY, not congratulated for
+  // what they already did.
+  if (hour < 10) return byId("morning");
+
   // A live streak with the day running out is the one moment worth a nudge.
   if (streak > 0 && hour >= 19) return byId("streak_danger");
 
-  // Someone mid-streak gets celebrated, not needled — the teasing buckets are
-  // for people who have nothing on the line today.
-  if (streak >= 3 && hour >= 12 && hour < 19) return byId("streak_proud");
+  // Any live streak carries through the day. Covers streak 1 (trained
+  // yesterday) as much as streak 20 — in both cases the job is to motivate
+  // today's session, not to needle.
+  if (streak > 0) return byId("streak_proud");
 
-  if (hour < 10) return byId("morning");
   if (hour < 12) return byId("midmorning");
   if (hour < 15) return byId("afternoon");
   if (hour < 17) return byId("late_afternoon");
@@ -195,10 +201,20 @@ function byId(id) {
   return BUCKETS.find((b) => b.id === id);
 }
 
-/** Fills {name} / {streak} and keeps the line short enough for two lines. */
+/**
+ * Fills the placeholders. Mirrored in Kotlin.
+ *   {name}   first name, or "champ"
+ *   {streak} the raw number
+ *   {days}   pluralised — "1 day" / "7 days", so no line reads "1 days"
+ *   {next}   streak + 1, for "Day 2 starts now"
+ */
 function format(line, { name, streak = 0 }) {
   const who = (name || "").trim().split(/\s+/)[0] || "champ";
-  return line.replace(/\{name\}/g, who).replace(/\{streak\}/g, String(streak));
+  return line
+    .replace(/\{name\}/g, who)
+    .replace(/\{streak\}/g, String(streak))
+    .replace(/\{days\}/g, streak === 1 ? "1 day" : `${streak} days`)
+    .replace(/\{next\}/g, String(streak + 1));
 }
 
 /**

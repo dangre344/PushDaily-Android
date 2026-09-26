@@ -48,24 +48,99 @@ End with an energetic one-line cheer.
 Base everything ONLY on the numbers provided — never invent data. Never mention steroids or PEDs. If you suggest any diet or food, end the reply with: "Note: Please check your food allergies before trying these options."`;
 
 // ─── Daily quiz generation (cron) ────────────────────────────────────────────
+// Widened well past the original nine. The old list was narrow enough that the
+// model had little room to move, so sets repeated; these give it a much bigger
+// surface to draw from while staying inside "general fitness".
 const QUIZ_CATEGORIES = [
   "fat_loss",
   "calories",
   "nutrients",
+  "protein",
+  "diet",
   "workouts",
+  "strength",
   "muscles",
   "home",
+  "cardio",
+  "running",
+  "hiit",
+  "flexibility",
+  "warmup",
+  "posture",
   "vitamins",
   "water",
   "recovery",
+  "sleep",
+  "lifestyle",
+  "habits",
+  "motivation",
 ];
 const QUIZ_COUNT = 10;
 
-const QUIZ_PROMPT = `Generate exactly ${QUIZ_COUNT} multiple-choice fitness quiz questions.
+// How many past days of questions to send back as a do-not-repeat list. 21 is
+// about 210 questions — enough to stop recycling, small enough for the prompt.
+const QUIZ_HISTORY_DAYS = 21;
 
-MIX: exactly 4 "basic", 3 "intermediate", 3 "advanced".
-TOPICS: spread across fat_loss, calories, nutrients, workouts, muscles, home, vitamins, water, recovery — include at least one "water" question.
+/**
+ * Picks the day's topic spread.
+ *
+ * The old prompt named all nine categories every single day AND hard-required a
+ * "water" question, so water appeared daily and the rest barely rotated. Here a
+ * date-seeded shuffle hands the model a different eight each day and nothing is
+ * mandatory, so no single topic can dominate.
+ */
+function quizTopicsFor(dateKey) {
+  // Deterministic per date: the cron and a manual re-run on the same day agree.
+  //
+  // The avalanche step matters. Consecutive dates differ by 1 in a plain
+  // rolling hash, and a bare LCG carries that correlation straight into the
+  // shuffle — the first version of this put "workouts" in 72% of days and
+  // "fat_loss" in 2%. Murmur3's finalizer decorrelates neighbouring seeds.
+  let seed = 0;
+  for (const ch of dateKey) seed = (Math.imul(seed, 31) + ch.charCodeAt(0)) >>> 0;
+  const mix = (x) => {
+    x = Math.imul(x ^ (x >>> 16), 0x85ebca6b) >>> 0;
+    x = Math.imul(x ^ (x >>> 13), 0xc2b2ae35) >>> 0;
+    return (x ^ (x >>> 16)) >>> 0;
+  };
+  seed = mix(seed);
 
+  const pool = [...QUIZ_CATEGORIES];
+  for (let i = pool.length - 1; i > 0; i--) {
+    seed = mix(seed);
+    const j = seed % (i + 1);
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, 8);
+}
+
+function quizPrompt(dateKey, recentQuestions) {
+  const topics = quizTopicsFor(dateKey).join(", ");
+
+  const avoid = recentQuestions.length
+    ? `\nALREADY ASKED — do not repeat these, and do not reword them into near-duplicates:\n${recentQuestions
+        .map((q) => `- ${q}`)
+        .join("\n")}\n`
+    : "";
+
+  return `Generate exactly ${QUIZ_COUNT} multiple-choice fitness quiz questions for ${dateKey}.
+
+MIX: exactly 4 "easy", 4 "medium", 2 "hard".
+
+DIFFICULTY CALIBRATION — this is a daily habit app, not an exam:
+- "easy": anyone who exercises casually knows it.
+- "medium": a regular gym-goer knows it; a beginner can reason it out.
+- "hard": makes someone think, but a well-informed enthusiast still gets it.
+  NOT obscure. No lab studies, no biochemistry pathways, no exact research
+  numbers, no professional-certification trivia. If a good personal trainer
+  would have to look it up, it is too hard — rewrite it.
+
+TOPICS for today: ${topics}.
+Use a genuine spread — at most 2 questions from any single topic, and do not
+force a topic in if it yields a weak question. Everyday practical angles are
+welcome: running, walking, home workouts, meals, hydration, sleep, rest days,
+posture, warming up, staying consistent.
+${avoid}
 RULES:
 - Only well-established, mainstream exercise-science and nutrition facts. No fads, no controversial or fringe claims, nothing requiring medical advice.
 - Exactly 4 options per question; exactly ONE is unambiguously correct and the other three are clearly wrong.
@@ -79,11 +154,51 @@ RULES:
 - "emoji" is a single relevant emoji.
 - Keep question text under 110 characters and each option under 60 characters.
 - Never mention steroids or performance-enhancing drugs.
+- Vary the phrasing. Do not open every question with the same stem
+  ("Which of the following...", "How many...").
 
 Return ONLY a JSON array of ${QUIZ_COUNT} objects with exactly these keys:
 category, difficulty, emoji, question, options, correct, tip`;
+}
 
-function validateQuiz(raw) {
+const QUIZ_DIFFICULTIES = ["easy", "medium", "hard"];
+
+// The model occasionally reaches for the old vocabulary; map rather than reject
+// so one stray label does not throw away an otherwise good set.
+const DIFFICULTY_ALIAS = {
+  basic: "easy",
+  beginner: "easy",
+  intermediate: "medium",
+  moderate: "medium",
+  advanced: "hard",
+  expert: "hard",
+};
+
+/**
+ * Loose match so "How much water should you drink?" and "How much water do you
+ * need?" count as the same question: keep the meaningful words, drop order.
+ *
+ * Numbers are kept however short. "Rest 30 seconds" and "Rest 90 seconds" are
+ * different questions, and filtering purely on word length would silently
+ * collapse them into one.
+ *
+ * Deliberately exact rather than fuzzy. Measured on real pairs, any similarity
+ * threshold loose enough to catch a heavy rewording (~0.71 containment) also
+ * flags genuinely different questions — "push ups vs squats" scores 0.75 and
+ * "30 vs 90 seconds" scores 0.80. A false positive here throws away the whole
+ * day's quiz, so this stays strict and heavy rewordings are the prompt's job
+ * via the do-not-repeat list.
+ */
+const quizFingerprint = (s) =>
+  s
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, "")
+    .split(/\s+/)
+    .filter((w) => w.length > 3 || /\d/.test(w))
+    .sort()
+    .join(" ");
+
+function validateQuiz(raw, recent = []) {
   if (!Array.isArray(raw) || raw.length !== QUIZ_COUNT) return null;
 
   const out = [];
@@ -111,9 +226,11 @@ function validateQuiz(raw) {
     out.push({
       id: i + 1,
       category: QUIZ_CATEGORIES.includes(q.category) ? q.category : "workouts",
-      difficulty: ["basic", "intermediate", "advanced"].includes(q.difficulty)
-        ? q.difficulty
-        : "basic",
+      difficulty: (() => {
+        const d = String(q.difficulty || "").toLowerCase();
+        if (QUIZ_DIFFICULTIES.includes(d)) return d;
+        return DIFFICULTY_ALIAS[d] || "easy";
+      })(),
       emoji: typeof q.emoji === "string" && q.emoji ? q.emoji.slice(0, 4) : "💪",
       question: q.question.trim(),
       options: options.map((o) => o.trim()),
@@ -124,6 +241,33 @@ function validateQuiz(raw) {
 
   // Reject a degenerate set where every answer sits at the same index.
   if (new Set(out.map((q) => q.correct)).size < 2) return null;
+
+  // Reject internal duplicates — the same question twice in one day.
+  const prints = out.map((q) => quizFingerprint(q.question));
+  if (new Set(prints).size !== prints.length) {
+    console.log("[quiz] rejected: duplicate questions within the set");
+    return null;
+  }
+
+  // Reject a set that is mostly recycled. The prompt asks the model to avoid
+  // recent questions; this is the check that the ask actually worked, because
+  // repetition is the single thing users notice about a daily quiz.
+  if (recent.length) {
+    const seen = new Set(recent.map(quizFingerprint));
+    const repeats = prints.filter((p) => seen.has(p)).length;
+    if (repeats > 2) {
+      console.log(`[quiz] rejected: ${repeats}/${QUIZ_COUNT} questions repeat recent days`);
+      return null;
+    }
+  }
+
+  // Require a real topic spread. Without this the model happily returns ten
+  // variations on hydration.
+  if (new Set(out.map((q) => q.category)).size < 4) {
+    console.log("[quiz] rejected: fewer than 4 distinct categories");
+    return null;
+  }
+
   return out;
 }
 
@@ -131,19 +275,65 @@ function validateQuiz(raw) {
 // single author keeps the daily set consistent in tone and difficulty.
 // (Groq remains the fallback for chat and analysis, where prose is fine.)
 // A failed night writes nothing, so yesterday's valid set stays live.
-async function generateQuiz(env) {
-  const gem = await callGemini(
-    env,
-    "You are a certified strength & nutrition coach writing quiz content. Output strict JSON only.",
-    QUIZ_PROMPT,
-    2600,
-    true,
-  );
-  const parsed = safeParseArray(gem.status === "ok" ? gem.text : null);
-  const quiz = validateQuiz(parsed);
-  if (quiz) return { quiz, provider: "gemini" };
+/**
+ * Question text from the last QUIZ_HISTORY_DAYS of stored sets.
+ *
+ * Fed back into the prompt as a do-not-repeat list — without it the model has
+ * no memory between nights and drifts to the same handful of "safe" questions.
+ * Best-effort: if the read fails we still generate, just with less protection.
+ */
+async function recentQuizQuestions(env) {
+  try {
+    const rows = await supabaseSelect(
+      env,
+      `daily_quiz?select=questions&order=date.desc&limit=${QUIZ_HISTORY_DAYS}`,
+    );
+    if (!Array.isArray(rows)) return [];
 
-  console.log(`[quiz] gemini failed (status=${gem.status}) — nothing stored`);
+    const seen = new Set();
+    for (const row of rows) {
+      for (const q of row?.questions || []) {
+        if (typeof q?.question === "string") seen.add(q.question.trim());
+      }
+    }
+    return [...seen];
+  } catch (e) {
+    console.log(`[quiz] history lookup failed: ${String(e)}`);
+    return [];
+  }
+}
+
+async function generateQuiz(env, dateKey = utcDateKey()) {
+  const recent = await recentQuizQuestions(env);
+  console.log(`[quiz] ${dateKey}: avoiding ${recent.length} recent questions`);
+
+  // Two attempts: validation is deliberately strict (duplicates, topic spread,
+  // recycled questions), and at temperature 0.9 a re-roll usually clears a
+  // borderline set. Without the retry a single fussy rejection costs a whole
+  // day of quiz content.
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const gem = await callGemini(
+      env,
+      "You are a certified strength & nutrition coach writing quiz content. Output strict JSON only.",
+      quizPrompt(dateKey, recent),
+      2600,
+      true,
+    );
+
+    if (gem.status !== "ok") {
+      console.log(`[quiz] attempt ${attempt}: gemini status=${gem.status}`);
+      continue;
+    }
+
+    const quiz = validateQuiz(safeParseArray(gem.text), recent);
+    if (quiz) {
+      console.log(`[quiz] attempt ${attempt}: accepted`);
+      return { quiz, provider: "gemini" };
+    }
+    console.log(`[quiz] attempt ${attempt}: failed validation`);
+  }
+
+  console.log("[quiz] both attempts failed — nothing stored, yesterday's set stays live");
   return { quiz: null, provider: null };
 }
 

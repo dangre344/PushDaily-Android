@@ -229,9 +229,7 @@ export default function WorkoutDetail() {
       syncWidget({
         name: user?.name,
         streak: await getCurrentStreak(),
-        everTrained: true,
-        trainedToday: true,
-        daysSinceLast: 0,
+        daysSinceLast: 0, // they just finished one
       });
     } catch (error) {
       Logger.log("Workout save failed:", error);

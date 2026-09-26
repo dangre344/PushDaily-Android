@@ -275,24 +275,6 @@ export const getCurrentStreak = async () => {
 };
 
 /**
- * Has the user logged anything today?
- *
- * Uses 'localtime' to match getCurrentStreak above. getAllWorkoutsBydate does
- * not, so the two disagree either side of midnight — don't swap this for it.
- */
-export const hasWorkoutToday = async () => {
-  const database = getDB();
-
-  const row = await database.getFirstAsync(
-    `SELECT COUNT(*) as total FROM workouts
-     WHERE strftime('%Y-%m-%d', dateTime, 'localtime')
-         = strftime('%Y-%m-%d', 'now', 'localtime')`,
-  );
-
-  return (row?.total ?? 0) > 0;
-};
-
-/**
  * Whole days since the last logged workout, or null if there has never been
  * one. 0 means today, 1 yesterday.
  *

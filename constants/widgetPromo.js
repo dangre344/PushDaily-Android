@@ -49,26 +49,36 @@ const BRIDGE_FILE = "push_daily_widget.json";
  *
  * Safe to call often; it is a small synchronous write and a no-op off Android.
  */
+/** Days since the local epoch, i.e. a stable calendar-day number. */
+export const localEpochDay = (d = new Date()) =>
+  Math.floor((d.getTime() - d.getTimezoneOffset() * 60000) / 86400000);
+
 export const syncWidget = async ({
   name,
   streak = 0,
-  trainedToday = false,
-  everTrained = false,
   daysSinceLast = -1,
 } = {}) => {
   if (Platform.OS !== "android") return;
 
   try {
+    const today = localEpochDay();
+    const since = daysSinceLast ?? -1;
+
     const payload = {
       // First name only: the widget re-splits it anyway, but there is no
       // reason to put a surname on someone's home screen.
       name: (name || "").trim().split(/\s+/)[0] || "",
       streak,
-      trainedToday,
-      everTrained,
-      // -1 for "never trained" — the widget treats any negative value as
-      // unknown and falls through to the welcome copy.
-      daysSinceLast: daysSinceLast ?? -1,
+      // WHEN the last workout was, never "did they train today".
+      //
+      // This file can sit unread for days. A boolean like trainedToday is only
+      // true for the day it was written — after midnight it silently becomes a
+      // lie, and the widget goes on congratulating someone for a session they
+      // did yesterday. Storing the day lets the widget recompute against the
+      // current date on every render and correct itself with no app running.
+      //
+      // null = never trained.
+      lastWorkoutDay: since < 0 ? null : today - since,
       updatedAt: Date.now(),
     };
 
