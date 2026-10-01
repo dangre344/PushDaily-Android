@@ -31,6 +31,8 @@ import { useUser } from "../../constants/UserContext";
 import { scaling } from "../../constants/useScaling";
 import {
   getAllWorkouts,
+  getCurrentStreak,
+  getDaysSinceLastWorkout,
   getProfileStats,
   initDB,
 } from "../../offlinedb/workoutdb";
@@ -49,6 +51,7 @@ import HIITCard from "./Componenets/HIITCard";
 import WaterPromptModal from "./Componenets/WaterPromptModal";
 import { registerLevelPicker } from "../../constants/levelPicker";
 import { SESSION_QUOTE } from "../../constants/quotes";
+import MascotCard from "./Componenets/MascotCard";
 import ScanButton from "./Componenets/ScanButton";
 import TrainTodayCard from "./Componenets/TrainTodayCard";
 import WorkoutLevelModal from "./Componenets/WorkoutLevelModal";
@@ -118,6 +121,8 @@ export default function WorkoutScreen() {
   });
   const [selectedBodyPart, setSelectedBodyPart] = useState(null);
   const [allWorkouts, setAllHistoryWorkouts] = useState([]);
+  // Drives the mascot card — same inputs the home-screen widget is given.
+  const [mascot, setMascot] = useState({ streak: 0, daysSinceLast: -1 });
 
   const [stats, setStats] = useState({
     totalWorkouts: 0,
@@ -175,12 +180,17 @@ export default function WorkoutScreen() {
       const setup = async () => {
         await initDB();
 
-        const allWorkoutsData = await getAllWorkouts();
+        const [allWorkoutsData, currentStreak, daysSince] = await Promise.all([
+          getAllWorkouts(),
+          getCurrentStreak(),
+          getDaysSinceLastWorkout(),
+        ]);
 
         Logger.log("All workouts after insertion--->", allWorkoutsData);
 
         if (isActive) {
           setAllHistoryWorkouts(allWorkoutsData);
+          setMascot({ streak: currentStreak, daysSinceLast: daysSince ?? -1 });
         }
       };
 
@@ -359,6 +369,14 @@ export default function WorkoutScreen() {
             {/* Food-label scanner — top-right entry point */}
             <ScanButton />
           </View>
+
+          {/* Same character and line as the home-screen widget, so the app and
+              the widget never say different things on the same day. */}
+          <MascotCard
+            name={user?.name}
+            streak={mascot.streak}
+            daysSinceLast={mascot.daysSinceLast}
+          />
 
           {/* HERO CARD — hidden entirely until the user has workout records.
               Collapsed by default so it never eats the top of the screen; the

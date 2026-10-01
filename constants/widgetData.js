@@ -16,18 +16,18 @@
  * into res/drawable-nodpi at prebuild time.
  */
 const EXPRESSIONS = {
-  coffee: "jack_coffee", // mug in hand, fist up
-  morning: "jack_morning", // hands on hips, cheerful
-  ready: "jack_ready", // fists clenched, determined
-  encouraging: "jack_encouraging", // thumbs up, warm grin
-  confident: "jack_confident", // arms crossed, cool smirk
-  teasing: "jack_teasing", // arms crossed, smug eyebrow
-  waiting: "jack_waiting", // open palm, "well?"
-  challenge: "jack_challenge", // wink, towel, pointing at you
-  gentle: "jack_gentle", // hands together, hopeful
-  late: "jack_late", // pointing at watch, alarmed
-  after_workout: "jack_after_workout", // sweaty, hands on knees, proud
-  missed: "jack_missed", // chin on hand, disappointed
+  hi: "mascot_hi", // waving hello
+  water: "mascot_water", // holding a water bottle
+  think: "mascot_think", // hand on chin, "?" overhead
+  phone: "mascot_phone", // staring at a phone
+  wink: "mascot_wink", // cheeky one-eyed wink
+  dumbbell: "mascot_dumbbell", // mid curl
+  flex: "mascot_flex", // both arms flexed, sweat drop
+  proud: "mascot_proud", // double flex with sparkles
+  cheer: "mascot_cheer", // arms overhead, celebrating
+  wow: "mascot_wow", // eyes wide, shocked
+  sad: "mascot_sad", // frowning, arms down
+  sleepy: "mascot_sleepy", // eyes shut, Zzz
 };
 
 /**
@@ -41,16 +41,16 @@ const EXPRESSIONS = {
 const BUCKETS = [
   {
     id: "done_today",
-    expression: "after_workout",
+    expression: "cheer",
     lines: [
-      "Done and dusted, {name} 🥵",
+      "Done and dusted, {name} 🎉",
       "Logged it, {name}. Rest easy 💪",
       "That's today handled 🔥",
     ],
   },
   {
     id: "streak_danger",
-    expression: "late",
+    expression: "wow",
     lines: [
       "{days} on the line, {name} ⏰",
       "Don't break it now, {name} 🔥",
@@ -59,7 +59,7 @@ const BUCKETS = [
   },
   {
     id: "comeback",
-    expression: "missed",
+    expression: "sad",
     lines: [
       "Been a few days, {name}. Bounce back 💪",
       "Fresh start today, {name} 🤝",
@@ -68,16 +68,16 @@ const BUCKETS = [
   },
   {
     id: "morning",
-    expression: "coffee",
+    expression: "water",
     lines: [
-      "Good morning, {name} ☕",
-      "Coffee first. Then push-ups ☕",
+      "Good morning, {name} 💧",
+      "Water first. Then push-ups 💧",
       "Morning, {name}. Body's ready ⚡",
     ],
   },
   {
     id: "midmorning",
-    expression: "morning",
+    expression: "think",
     lines: [
       "You're warm now, {name}. Let's move 💪",
       "Perfect time, {name}. 10 minutes ⏱️",
@@ -86,7 +86,7 @@ const BUCKETS = [
   },
   {
     id: "streak_proud",
-    expression: "challenge",
+    expression: "proud",
     lines: [
       "Day {next} starts now, {name} 💪",
       "🔥 {days} in. Don't stop, {name}",
@@ -95,7 +95,7 @@ const BUCKETS = [
   },
   {
     id: "afternoon",
-    expression: "teasing",
+    expression: "phone",
     lines: [
       "Still scrolling, {name}? I noticed 👀",
       "The sofa will still be here after 🛋️",
@@ -104,7 +104,7 @@ const BUCKETS = [
   },
   {
     id: "late_afternoon",
-    expression: "waiting",
+    expression: "wink",
     lines: [
       "I'm waiting, {name}. Your workout isn't 😏",
       "Think you can beat yesterday? 😈",
@@ -113,7 +113,7 @@ const BUCKETS = [
   },
   {
     id: "prime_time",
-    expression: "ready",
+    expression: "dumbbell",
     lines: [
       "Prime time, {name}. Let's crush it 🔥",
       "Best hour of the day. Go 💪",
@@ -122,7 +122,7 @@ const BUCKETS = [
   },
   {
     id: "evening",
-    expression: "confident",
+    expression: "flex",
     lines: [
       "You know what time it is, {name} 😎",
       "Let's finish the day strong 🔥",
@@ -131,7 +131,7 @@ const BUCKETS = [
   },
   {
     id: "night",
-    expression: "gentle",
+    expression: "sleepy",
     lines: [
       "Just 5 minutes today, {name}? 🥹",
       "Before bed, {name}. 10 minutes 🌙",
@@ -140,7 +140,7 @@ const BUCKETS = [
   },
   {
     id: "welcome",
-    expression: "encouraging",
+    expression: "hi",
     lines: [
       "Let's start today, {name} 💪",
       "First session is the hardest. Go 🚀",
@@ -210,11 +210,30 @@ function byId(id) {
  */
 function format(line, { name, streak = 0 }) {
   const who = (name || "").trim().split(/\s+/)[0] || "champ";
-  return line
-    .replace(/\{name\}/g, who)
-    .replace(/\{streak\}/g, String(streak))
-    .replace(/\{days\}/g, streak === 1 ? "1 day" : `${streak} days`)
-    .replace(/\{next\}/g, String(streak + 1));
+  return tightenEmoji(
+    line
+      .replace(/\{name\}/g, who)
+      .replace(/\{streak\}/g, String(streak))
+      .replace(/\{days\}/g, streak === 1 ? "1 day" : `${streak} days`)
+      .replace(/\{next\}/g, String(streak + 1)),
+  );
+}
+
+/**
+ * Glues a trailing emoji to the word before it with a non-breaking space.
+ *
+ * The widget is a 2x2 square with maxLines=2, so nearly every line wraps. A
+ * trailing emoji is its own word to the line breaker, and it was landing alone
+ * on the second row — "Let's start today, Gagan" / "💪" — on 8 of 36 lines.
+ *
+ * Applied here for the in-app card, and again by plugins/withWidget.js when it
+ * bakes these strings into Kotlin, so the widget gets it without needing any
+ * emoji detection of its own. Idempotent: it only ever matches a plain space.
+ */
+function tightenEmoji(line) {
+  return line.replace(/ (\S+)$/u, (m, last) =>
+    /\p{Extended_Pictographic}/u.test(last) ? ` ${last}` : m,
+  );
 }
 
 /**
@@ -234,4 +253,11 @@ function resolveWidget(state = {}) {
   };
 }
 
-module.exports = { EXPRESSIONS, BUCKETS, pickBucket, resolveWidget, format };
+module.exports = {
+  EXPRESSIONS,
+  BUCKETS,
+  pickBucket,
+  resolveWidget,
+  format,
+  tightenEmoji,
+};

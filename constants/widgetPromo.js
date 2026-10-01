@@ -14,20 +14,27 @@ import { EXPRESSIONS, resolveWidget } from "./widgetData";
 
 export { EXPRESSIONS, resolveWidget };
 
-/** Local previews for the guide — same art the widget ships. */
+/**
+ * In-app copies of the widget art — used by the "how to add" guide and the
+ * mascot card on the Workouts screen. Same PNGs the widget ships, so what
+ * users see in the app matches their home screen exactly.
+ *
+ * require() needs literal paths, so this cannot be generated from EXPRESSIONS.
+ * The test in widgetData keeps the two in step.
+ */
 export const EXPRESSION_IMAGES = {
-  coffee: require("../assets/widget/jack_coffee.png"),
-  morning: require("../assets/widget/jack_morning.png"),
-  ready: require("../assets/widget/jack_ready.png"),
-  encouraging: require("../assets/widget/jack_encouraging.png"),
-  confident: require("../assets/widget/jack_confident.png"),
-  teasing: require("../assets/widget/jack_teasing.png"),
-  waiting: require("../assets/widget/jack_waiting.png"),
-  challenge: require("../assets/widget/jack_challenge.png"),
-  gentle: require("../assets/widget/jack_gentle.png"),
-  late: require("../assets/widget/jack_late.png"),
-  after_workout: require("../assets/widget/jack_after_workout.png"),
-  missed: require("../assets/widget/jack_missed.png"),
+  hi: require("../assets/widget/mascot_hi.png"),
+  water: require("../assets/widget/mascot_water.png"),
+  think: require("../assets/widget/mascot_think.png"),
+  phone: require("../assets/widget/mascot_phone.png"),
+  wink: require("../assets/widget/mascot_wink.png"),
+  dumbbell: require("../assets/widget/mascot_dumbbell.png"),
+  flex: require("../assets/widget/mascot_flex.png"),
+  proud: require("../assets/widget/mascot_proud.png"),
+  cheer: require("../assets/widget/mascot_cheer.png"),
+  wow: require("../assets/widget/mascot_wow.png"),
+  sad: require("../assets/widget/mascot_sad.png"),
+  sleepy: require("../assets/widget/mascot_sleepy.png"),
 };
 
 // Marketing line shown on the promo card. Keep it in one place so it is easy

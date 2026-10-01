@@ -1,5 +1,6 @@
 import { Ionicons, MaterialCommunityIcons, Octicons } from "@expo/vector-icons";
 import { nativeApplicationVersion, nativeBuildVersion } from "expo-application";
+import { LinearGradient } from "expo-linear-gradient";
 import * as Notifications from "expo-notifications";
 import { router, useFocusEffect } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -118,6 +119,31 @@ const handleShareApp = async () => {
   }
 };
 
+// ── Follow on Instagram ──
+const INSTAGRAM_URL = "https://www.instagram.com/pushdaily_workouts/";
+
+// Instagram has no single brand colour, so the row uses the brand gradient.
+const INSTAGRAM_GRADIENT = ["#FEDA75", "#FA7E1E", "#D62976", "#962FBF", "#4F5BD5"];
+
+const handleOpenInstagram = async () => {
+  trackEvent("Instagram Opened", { from: "profile" });
+  try {
+    // instagram:// jumps straight into the app when it is installed; the https
+    // link is the fallback and also what a browser needs.
+    const deepLink = "instagram://user?username=pushdaily_workouts";
+    if (await Linking.canOpenURL(deepLink)) {
+      await Linking.openURL(deepLink);
+      return;
+    }
+    await Linking.openURL(INSTAGRAM_URL);
+  } catch (error) {
+    Logger.log("Instagram open error:", error);
+    try {
+      await Linking.openURL(INSTAGRAM_URL);
+    } catch {}
+  }
+};
+
 // ── Join WhatsApp community (app announcements) ──
 // Replace with your real group invite link from WhatsApp → Group → Invite.
 const WHATSAPP_GROUP_URL = "https://chat.whatsapp.com/Hv1HdzVbqOPJwPiuv1h2FE";
@@ -192,6 +218,14 @@ const MENU_SECTIONS = [
   {
     title: "Community",
     items: [
+      {
+        label: "Follow on Instagram",
+        subtitle: "Daily form tips, quick workouts & member wins 💪",
+        icon: "logo-instagram",
+        color: "#D62976",
+        gradient: INSTAGRAM_GRADIENT,
+        key: "instagram",
+      },
       {
         label: "Join WhatsApp Community",
         subtitle: "Diet tips, workouts, motivation & app updates 🔥",
@@ -432,6 +466,8 @@ const MenuRow = ({
             setWaterVisible(true);
           } else if (item.key === "notifs") {
             handleNotifications(setNotificationDialog);
+          } else if (item.key === "instagram") {
+            handleOpenInstagram();
           } else if (item.key === "whatsapp") {
             handleJoinWhatsApp();
           } else if (item.key === "privacy") {
@@ -445,11 +481,24 @@ const MenuRow = ({
           }
         }}
       >
-        <View
-          style={[menuStyles.iconWrap, { backgroundColor: item.color + "18" }]}
-        >
-          <Ionicons name={item.icon} size={ms(18)} color={item.color} />
-        </View>
+        {/* A gradient item (Instagram) gets the real brand mark — a flat tint
+            would not read as the logo. Everything else keeps the tinted puck. */}
+        {item.gradient ? (
+          <LinearGradient
+            colors={item.gradient}
+            start={{ x: 0, y: 1 }}
+            end={{ x: 1, y: 0 }}
+            style={menuStyles.iconWrap}
+          >
+            <Ionicons name={item.icon} size={ms(18)} color="#FFFFFF" />
+          </LinearGradient>
+        ) : (
+          <View
+            style={[menuStyles.iconWrap, { backgroundColor: item.color + "18" }]}
+          >
+            <Ionicons name={item.icon} size={ms(18)} color={item.color} />
+          </View>
+        )}
         <View style={menuStyles.labelWrap}>
           <Text style={menuStyles.label}>{item.label}</Text>
           {item.subtitle ? (
