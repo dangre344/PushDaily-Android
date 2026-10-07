@@ -33,6 +33,7 @@ import {
 } from "../ads/Admobmanager";
 import { checkForAppUpdate } from "../constants/appUpdate";
 import { initCrashlytics } from "../constants/crashlytics";
+import { captureInstallAttribution } from "../constants/installAttribution";
 import { Logger } from "../constants/Logger";
 import { initMixpanel, trackEvent } from "../constants/mixpanel";
 import {
@@ -81,7 +82,9 @@ export default function RootLayout() {
   useRouteTracking();
 
   useEffect(() => {
-    initMixpanel();
+    // Attribution waits for Mixpanel so "App First Open" and the utm super
+    // properties land on the same initialised instance.
+    initMixpanel().then(() => captureInstallAttribution());
     // Crashlytics: enable collection + install the global JS error handler so
     // uncaught crashes are recorded and an "App Crashed" event is fired.
     initCrashlytics();

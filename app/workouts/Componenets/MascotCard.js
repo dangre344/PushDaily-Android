@@ -111,17 +111,21 @@ export default function MascotCard({ name, streak = 0, daysSinceLast = -1, onPre
           />
         </Animated.View>
 
+        {/* Streak leads, message under it — same hierarchy as the widget. */}
         <View style={{ flex: 1 }}>
-          <Text style={styles.message}>{shown.text}</Text>
-
           {streak > 0 ? (
             <View style={styles.streak}>
               <Text style={styles.streakFire}>🔥</Text>
-              <Text style={styles.streakText}>
-                {streak === 1 ? "1 day streak" : `${streak} day streak`}
+              <Text style={styles.streakCount}>{streak}</Text>
+              <Text style={styles.streakLabel}>
+                {streak === 1 ? "day streak" : "day streak"}
               </Text>
             </View>
           ) : null}
+
+          <Text style={[styles.message, streak > 0 && styles.messageSmall]}>
+            {shown.text}
+          </Text>
         </View>
       </TouchableOpacity>
     </Animated.View>
@@ -133,9 +137,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: ms(12),
-    backgroundColor: "#FFF9E8",
-    borderWidth: 1,
-    borderColor: "#FFE9A8",
+    // Same accent yellow as the widget, so the app and the home screen read
+    // as one thing.
+    backgroundColor: colors.accent,
     borderRadius: ms(18),
     paddingVertical: ms(12),
     paddingHorizontal: ms(14),
@@ -143,23 +147,26 @@ const styles = StyleSheet.create({
     marginHorizontal: ms(20),
     marginBottom: ms(16),
   },
-  mascot: { width: ms(62), height: ms(62) },
+  mascot: { width: ms(68), height: ms(68) },
   message: {
     fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(13.5),
+    fontSize: ms(14),
     color: colors.text,
     lineHeight: ms(19),
   },
-  streak: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: ms(4),
-    marginTop: ms(5),
+  messageSmall: { fontSize: ms(12), lineHeight: ms(16) },
+  streak: { flexDirection: "row", alignItems: "center", gap: ms(4) },
+  streakFire: { fontSize: ms(15) },
+  streakCount: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: ms(22),
+    color: colors.text,
   },
-  streakFire: { fontSize: ms(11) },
-  streakText: {
+  streakLabel: {
     fontFamily: "OpenSans_700Bold",
     fontSize: ms(11),
-    color: "#C2410C",
+    color: colors.text,
+    opacity: 0.7,
+    marginTop: ms(4),
   },
 });

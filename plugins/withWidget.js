@@ -35,7 +35,6 @@ const { BUCKETS, EXPRESSIONS, tightenEmoji } = require("../constants/widgetData"
 // bridge carries a first name and a workout count and nothing else.
 
 const PKG = "com.pushdaily.homeworkout.fit";
-const PRIMARY = "#FF6B35";
 const BRIDGE_FILE = "push_daily_widget.json";
 
 // Handled in app/_layout.tsx: expo-router routes /home, then the ?tab= param
@@ -64,6 +63,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.util.TypedValue
 import android.view.View
 import android.widget.RemoteViews
 import org.json.JSONObject
@@ -188,12 +188,16 @@ ${BUCKET_KT}
                 views.setImageViewResource(R.id.widget_character, drawableId)
             }
 
-            // Streak pill only earns its space once there is a streak to show.
+            // The streak is the headline when there is one. With no streak the
+            // row would leave an empty band above the character, so the message
+            // grows to fill the space instead of floating in it.
             if (streak > 0) {
                 views.setViewVisibility(R.id.widget_streak, View.VISIBLE)
                 views.setTextViewText(R.id.widget_streak_count, streak.toString())
+                views.setTextViewTextSize(R.id.widget_message, TypedValue.COMPLEX_UNIT_SP, 11f)
             } else {
                 views.setViewVisibility(R.id.widget_streak, View.GONE)
+                views.setTextViewTextSize(R.id.widget_message, TypedValue.COMPLEX_UNIT_SP, 15f)
             }
 
             // Whole widget is the tap target. Deep-links straight to the
@@ -232,92 +236,91 @@ ${BUCKET_KT}
 }
 `;
 
-// Square 2x2. Jack takes every pixel of height the message does not need, so
-// the character reads at a glance and the card stays uncluttered — no brand
-// row, because at this size Jack IS the brand mark.
+// Square 2x2, laid out like the Duolingo widget: the streak is the hero at the
+// top-left, the line sits under it, and the character fills the bottom and
+// bleeds off the edge.
+//
+// Background is the accent yellow the art was drawn on. Measured contrast
+// decided this: on brand orange the mascot's own orange body scores 1.22 and
+// disappears, and on a dark background its dark outline drops to ~1.2 and the
+// silhouette falls apart. On #FFD23F both the outline and the dark text score
+// 8.78, well past WCAG AA, and the character reads exactly as designed.
 const LAYOUT_XML = `<?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="10dp"
     android:background="@drawable/widget_background">
 
-    <FrameLayout
+    <!-- Negative bottom margin lets the feet crop against the widget edge, the
+         way Duo does. FrameLayout clips children, so nothing escapes. -->
+    <ImageView
+        android:id="@+id/widget_character"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_height="104dp"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="-10dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/mascot_hi"
+        android:contentDescription="Push Daily trainer" />
 
-        <ImageView
-            android:id="@+id/widget_character"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:scaleType="fitCenter"
-            android:src="@drawable/mascot_hi"
-            android:contentDescription="Push Daily trainer" />
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|start"
+        android:orientation="vertical"
+        android:paddingStart="13dp"
+        android:paddingEnd="13dp"
+        android:paddingTop="11dp">
 
-        <!-- Floats over the art so it costs no height. Hidden by the provider
-             when the streak is 0. -->
+        <!-- Hidden by the provider when there is no streak to show. -->
         <LinearLayout
             android:id="@+id/widget_streak"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="top|end"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:paddingStart="7dp"
-            android:paddingEnd="8dp"
-            android:paddingTop="2dp"
-            android:paddingBottom="2dp"
-            android:visibility="gone"
-            android:background="@drawable/widget_streak_pill">
+            android:visibility="gone">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="🔥"
-                android:textSize="10sp" />
+                android:textSize="19sp" />
 
             <TextView
                 android:id="@+id/widget_streak_count"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="3dp"
-                android:textColor="#C2410C"
-                android:textSize="11sp"
-                android:textStyle="bold" />
+                android:layout_marginStart="5dp"
+                android:textColor="#2D3436"
+                android:textSize="26sp"
+                android:textStyle="bold"
+                android:includeFontPadding="false" />
         </LinearLayout>
-    </FrameLayout>
 
-    <TextView
-        android:id="@+id/widget_message"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:gravity="center_horizontal"
-        android:maxLines="2"
-        android:ellipsize="end"
-        android:textColor="#111827"
-        android:textSize="12sp"
-        android:textStyle="bold"
-        android:lineSpacingExtra="1dp" />
-</LinearLayout>
+        <TextView
+            android:id="@+id/widget_message"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:textColor="#2D3436"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:lineSpacingExtra="1dp" />
+    </LinearLayout>
+</FrameLayout>
 `;
 
+// colors.accent — and the colour the character art was drawn on, so the
+// outline keeps the contrast it was designed with. See LAYOUT_XML.
 const BACKGROUND_XML = `<?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="#FFFFFF" />
+    <solid android:color="#FFD23F" />
     <corners android:radius="20dp" />
-</shape>
-`;
-
-const STREAK_PILL_XML = `<?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android"
-    android:shape="rectangle">
-    <solid android:color="#FFEDD5" />
-    <corners android:radius="999dp" />
 </shape>
 `;
 
@@ -362,7 +365,6 @@ const withWidgetFiles = (config) =>
       );
       writeFile(path.join(res, "layout", "push_daily_widget.xml"), LAYOUT_XML);
       writeFile(path.join(res, "drawable", "widget_background.xml"), BACKGROUND_XML);
-      writeFile(path.join(res, "drawable", "widget_streak_pill.xml"), STREAK_PILL_XML);
       writeFile(path.join(res, "xml", "push_daily_widget_info.xml"), PROVIDER_INFO_XML);
 
       // Jack's expressions. drawable-nodpi because these are already sized for

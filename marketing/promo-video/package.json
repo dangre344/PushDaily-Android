@@ -1,0 +1,12 @@
+{
+  "name": "push-daily-promo-video",
+  "private": true,
+  "description": "Renders the 9:16 promo video. Not part of the app bundle.",
+  "scripts": {
+    "render": "node render.js"
+  },
+  "dependencies": {
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "puppeteer-core": "^23.11.1"
+  }
+}

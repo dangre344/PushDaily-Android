@@ -133,6 +133,34 @@ export const setUserProperties = async (properties = {}) => {
   }
 };
 
+/**
+ * Sets profile properties only if they are not already set — first-touch
+ * attribution must survive later profile edits, so it never overwrites.
+ */
+export const setUserPropertiesOnce = async (properties = {}) => {
+  try {
+    await ensureReady();
+    mixpanel.getPeople().setOnce(properties);
+    mixpanel.flush();
+  } catch (error) {
+    Logger.log("Mixpanel setUserPropertiesOnce error:", String(error));
+  }
+};
+
+/**
+ * Attaches properties to EVERY event this device sends from now on, without
+ * overwriting values already registered. Used for install attribution, so a
+ * workout logged months later still carries utm_source.
+ */
+export const registerSuperPropertiesOnce = async (properties = {}) => {
+  try {
+    await ensureReady();
+    mixpanel.registerSuperPropertiesOnce(properties);
+  } catch (error) {
+    Logger.log("Mixpanel registerSuperPropertiesOnce error:", String(error));
+  }
+};
+
 // Increments a numeric People property (e.g. total workouts, total calories).
 export const incrementUserProperty = async (property, value = 1) => {
   try {

@@ -14,10 +14,14 @@ import {
 import { colors } from "../../constants/colors";
 import { tapHaptic } from "../../constants/haptics";
 import { scaling } from "../../constants/useScaling";
+import { EXPRESSION_IMAGES } from "../../constants/widgetPromo";
 
 const ms = (n) => scaling().moderateScale(n);
 
-const JACK = require("../../assets/widget/jack_gentle.png");
+// Pulled from the shared map rather than require()'d by path, so renaming the
+// art set cannot silently break this screen — which is exactly what happened
+// when the previous character files were replaced.
+const MASCOT = EXPRESSION_IMAGES.hi;
 
 /**
  * Asks for notification permission BEFORE the OS dialog.
@@ -193,7 +197,7 @@ export default function NotificationPrimer({
               </Animated.View>
             </View>
 
-            <Image source={JACK} style={styles.jack} contentFit="contain" />
+            <Image source={MASCOT} style={styles.mascot} contentFit="contain" />
           </View>
 
           <Text style={styles.title}>Can I remind you?</Text>
@@ -302,7 +306,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  jack: { width: ms(104), height: ms(104), marginLeft: ms(46) },
+  mascot: { width: ms(104), height: ms(104), marginLeft: ms(46) },
 
   title: {
     fontFamily: "OpenSans_800ExtraBold",

@@ -23,6 +23,10 @@ import MeasurementsStep from "../../components/ui/MeasurementStep.js";
 import ReminderTimePicker from "../../components/ui/ReminderTimePicker.js";
 import MultipleSelector from "../../components/ui/MultipleSelector.js";
 import StepContainer from "../../components/ui/StepContainer.js";
+import {
+  applyInstallAttributionToProfile,
+  getInstallAttribution,
+} from "../../constants/installAttribution.js";
 import { registerUser, trackEvent } from "../../constants/mixpanel.js";
 
 import { useUser } from "@/constants/UserContext.js";
@@ -196,9 +200,17 @@ export default function Signup() {
       // Users and all later events are attributed to this distinct id.
       await registerUser(userId, { ...userData, $created: new Date().toISOString() });
 
+      // Where this user came from — e.g. utm_source "instagram". Read from what
+      // was captured on first launch, so it holds however long they took to
+      // sign up. The profile write is set-once and skips "unknown", so a
+      // referrer that resolves on a later launch can still land.
+      const attribution = await getInstallAttribution();
+      await applyInstallAttributionToProfile(userId);
+
       await trackEvent("Signup Completed", {
         ...userData,
         _id: userId,
+        ...attribution,
       });
 
       await updateUser(userData);

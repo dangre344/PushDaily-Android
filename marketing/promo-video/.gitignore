@@ -1,0 +1,5 @@
+# Rendered output and dev stills — regenerate with `npm run render`.
+# The MP4 is ~15 MB; keeping binaries out of the app repo keeps clones fast.
+*.mp4
+previews/
+_strip.html
