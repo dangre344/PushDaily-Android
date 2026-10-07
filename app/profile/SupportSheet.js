@@ -14,6 +14,7 @@ import {
   View,
 } from "react-native";
 import { Toast } from "toastify-react-native";
+import * as WebBrowser from "expo-web-browser";
 
 import { colors } from "../../constants/colors";
 import { tapHaptic } from "../../constants/haptics";
@@ -25,6 +26,11 @@ const ms = (n) => scaling().moderateScale(n);
 
 const UPI_ID = "pushdaily@upi";
 const UPI_QR = require("../../assets/images/support/upi-qr.png");
+
+// Buy Me a Coffee — the route for anyone without UPI: cards, Apple/Google Pay,
+// PayPal, and supporters outside India. UPI stays first because it is instant,
+// has no platform fee, and is what most of our users already have.
+const BMC_URL = "https://buymeacoffee.com/pushdaily";
 
 /**
  * Deep link that opens the user's UPI app with our details prefilled.
@@ -98,6 +104,54 @@ export default function SupportSheet({ visible, setVisible }) {
     } catch (e) {
       Logger.log("[Support] clipboard unavailable:", String(e));
       Toast.info("Rebuild the app to enable copy.", "top");
+    }
+  };
+
+  /**
+   * Opens Buy Me a Coffee WITHOUT leaving the app.
+   *
+   * openBrowserAsync gives a Chrome Custom Tab on Android: an in-app browser
+   * that keeps our task in the foreground, but still shows the real address
+   * bar and padlock. That visible domain matters — people are about to type
+   * card details, and an unverifiable embedded page is exactly what a phishing
+   * screen looks like.
+   *
+   * Deliberately NOT a WebView. A WebView hides the URL, has no access to
+   * Chrome's saved cards, and commonly breaks 3-D Secure redirects, which is
+   * why payment providers advise against it.
+   *
+   * Falls back to the system browser if no Custom Tabs provider exists.
+   */
+  const openBuyMeACoffee = async () => {
+    tapHaptic();
+    const startedAt = Date.now();
+    trackEvent("Support BMC Opened", { surface: "custom_tab" });
+
+    try {
+      await WebBrowser.openBrowserAsync(BMC_URL, {
+        toolbarColor: colors.primary,
+        controlsColor: "#FFFFFF",
+        secondaryToolbarColor: colors.primary,
+        showTitle: true,
+        enableBarCollapsing: true,
+      });
+
+      // Resolves when they close the tab. We cannot know whether they paid —
+      // Buy Me a Coffee has no callback into the app — but dwell time
+      // separates a misfire from someone who actually read the page.
+      trackEvent("Support BMC Returned", {
+        seconds_on_page: Math.round((Date.now() - startedAt) / 1000),
+      });
+    } catch (e) {
+      Logger.log("[Support] custom tab failed, falling back:", String(e));
+      trackEvent("Support BMC Opened", { surface: "external_browser" });
+      try {
+        await Linking.openURL(BMC_URL);
+      } catch (e2) {
+        Logger.log("[Support] BMC link failed:", String(e2));
+        trackEvent("Support BMC Failed");
+        Toast.info("Couldn't open the page — try again in a moment.", "top");
+      }
     }
   };
 
@@ -203,6 +257,33 @@ export default function SupportSheet({ visible, setVisible }) {
               />
               <Text style={styles.copyLabel}>Copy UPI ID</Text>
               <Text style={styles.copyValue}>{UPI_ID}</Text>
+            </TouchableOpacity>
+
+            {/* Second route, for cards / international supporters. Visually
+                secondary so UPI stays the obvious default for most users. */}
+            <View style={styles.orRow}>
+              <View style={styles.orLine} />
+              <Text style={styles.orText}>or</Text>
+              <View style={styles.orLine} />
+            </View>
+
+            <TouchableOpacity
+              style={styles.bmcBtn}
+              activeOpacity={0.9}
+              onPress={openBuyMeACoffee}
+            >
+              <Text style={styles.bmcEmoji}>☕</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.bmcBtnText}>Buy Me a Coffee</Text>
+                <Text style={styles.bmcBtnSub}>
+                  Card, Apple Pay, Google Pay or PayPal
+                </Text>
+              </View>
+              <Ionicons
+                name="open-outline"
+                size={ms(15)}
+                color={colors.text}
+              />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -362,6 +443,45 @@ const styles = StyleSheet.create({
     fontFamily: "OpenSans_800ExtraBold",
     fontSize: ms(12),
     color: colors.text,
+  },
+
+  orRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: ms(10),
+    marginTop: ms(14),
+    marginBottom: ms(4),
+  },
+  orLine: { flex: 1, height: 1, backgroundColor: "#EEF0F4" },
+  orText: {
+    fontFamily: "OpenSans_600SemiBold",
+    fontSize: ms(10.5),
+    color: colors.textLight,
+  },
+
+  bmcBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: ms(11),
+    // Buy Me a Coffee's own yellow — recognisable, and distinct from the
+    // primary UPI button so the two routes don't compete.
+    backgroundColor: "#FFDD00",
+    borderRadius: ms(16),
+    paddingVertical: ms(13),
+    paddingHorizontal: ms(15),
+    marginTop: ms(10),
+  },
+  bmcEmoji: { fontSize: ms(20) },
+  bmcBtnText: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: ms(13.5),
+    color: colors.text,
+  },
+  bmcBtnSub: {
+    fontFamily: "OpenSans_600SemiBold",
+    fontSize: ms(10.5),
+    color: "rgba(45,52,54,0.7)",
+    marginTop: ms(1),
   },
 
   qrToggle: {
