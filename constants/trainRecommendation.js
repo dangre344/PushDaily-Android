@@ -14,8 +14,40 @@ export const BODY_PART_IDS = {
   Abs: 5,
   Legs: 6,
   HIIT: 7,
+  "Upper Body": 8,
   "Full Body": 9,
+  Glutes: 10,
+  "Posture Correction": 11,
 };
+
+// The quick-start programs (the banner row), as opposed to body-part splits.
+export const QUICK_WORKOUTS = ["Full Body", "HIIT", "Upper Body", "Glutes", "Posture Correction"];
+
+// "Plan again" swaps to a sibling that trains similar muscles, so the second
+// suggestion is still sensible for the day — Chest → Shoulder (both push),
+// Back → Arms (both pull), and so on. First entry is the closest match.
+const ALTERNATIVES = {
+  Chest: ["Shoulder", "Upper Body", "Arms"],
+  Shoulder: ["Chest", "Upper Body", "Arms"],
+  Back: ["Arms", "Upper Body", "Posture Correction"],
+  Arms: ["Back", "Upper Body", "Shoulder"],
+  Legs: ["Glutes", "Full Body", "HIIT"],
+  Glutes: ["Legs", "Full Body", "Abs"],
+  Abs: ["Posture Correction", "HIIT", "Full Body"],
+  HIIT: ["Full Body", "Abs", "Legs"],
+  "Full Body": ["HIIT", "Upper Body", "Legs"],
+  "Upper Body": ["Chest", "Back", "Shoulder"],
+  "Posture Correction": ["Back", "Abs", "Full Body"],
+};
+
+const SIBLING_REASON = {
+  Push: "works the same pushing muscles from a different angle",
+  Pull: "hits the same pulling chain without repeating the exact moves",
+  Legs: "keeps the focus on your lower body",
+};
+
+const isBeginner = (experience) =>
+  String(experience || "").toLowerCase().includes("beginner");
 
 const PPL_GROUPS = {
   Push: ["Chest", "Shoulder"],
@@ -39,8 +71,28 @@ const daysAgo = (dateTime) =>
  * @param  history  all completed workouts: [{ bodyPart, dateTime }]
  * @return { bodyPart, id, group, why[], weekSummary, restAdvised, forTomorrow }
  */
-export const recommendToday = (history = []) => {
+export const recommendToday = (history = [], { experience } = {}) => {
   const week = history.filter((w) => w?.dateTime && daysAgo(w.dateTime) <= 7);
+
+  // ── Brand-new beginner with no log at all: a split day is a big ask. A short
+  // quick-start program is the friendliest first session.
+  if (history.length === 0 && isBeginner(experience)) {
+    return {
+      bodyPart: "Full Body",
+      id: BODY_PART_IDS["Full Body"],
+      group: null,
+      isQuick: true,
+      restAdvised: false,
+      forTomorrow: false,
+      trainedToday: [],
+      weekSummary: "First session · Beginner",
+      why: [
+        "You're just starting — a short full-body session is the easiest way in.",
+        "It touches every major muscle once, so nothing gets overloaded.",
+        "Finish this and you'll know exactly what to train next.",
+      ],
+    };
+  }
   const sorted = [...week].sort(
     (a, b) => new Date(b.dateTime) - new Date(a.dateTime),
   );
@@ -172,6 +224,73 @@ export const recommendToday = (history = []) => {
     weekSummary: doneToday
       ? `Done today: ${trainedToday.join(", ")} · ${trainedDays} training day${trainedDays === 1 ? "" : "s"} this week`
       : `${trainedDays} training day${trainedDays === 1 ? "" : "s"} this week · ${trainedParts.join(", ")}`,
+    why,
+  };
+};
+
+/**
+ * "Plan again": a different body part from the same family as `previous`.
+ *
+ * Keeps the day's verdict (rest advised / plan for tomorrow) from the
+ * original analysis — only the focus changes. Among the siblings not yet
+ * suggested (`exclude`), prefers the one trained longest ago. When every
+ * sibling has been shown, it starts over from the original suggestion's list.
+ */
+export const recommendAlternative = (
+  previous,
+  history = [],
+  { experience, exclude = [], anchor } = {},
+) => {
+  const base = recommendToday(history, { experience });
+  const current = previous?.bodyPart || base.bodyPart;
+  // Siblings are always taken from the FIRST suggestion of the round, so
+  // repeated taps stay in one family (Chest → Shoulder → Upper Body → Arms →
+  // Chest…) instead of drifting from push to pull.
+  const from = anchor || current;
+  const siblings = ALTERNATIVES[from] || ALTERNATIVES[base.bodyPart] || ["Full Body"];
+
+  let pool = siblings.filter((p) => !exclude.includes(p) && p !== current);
+  const wrapped = pool.length === 0;
+  if (wrapped) pool = [from, ...siblings].filter((p) => p !== current);
+
+  // Longest since last trained wins; never-trained counts as "longest".
+  const lastSeen = (part) => {
+    const hit = history
+      .filter((w) => w?.bodyPart === part && w?.dateTime)
+      .sort((a, b) => new Date(b.dateTime) - new Date(a.dateTime))[0];
+    return hit ? daysAgo(hit.dateTime) : Infinity;
+  };
+  const bodyPart = pool.reduce((best, p) => (lastSeen(p) > lastSeen(best) ? p : best), pool[0]);
+
+  const group = groupOf(bodyPart);
+  const sameFamily = group && group === groupOf(current);
+  const rested = lastSeen(bodyPart);
+
+  const why = [
+    sameFamily
+      ? `${bodyPart} ${SIBLING_REASON[group]} as ${current}.`
+      : `${bodyPart} is a solid swap for ${current} today.`,
+    rested === Infinity
+      ? `You haven't trained ${bodyPart} recently, so it's fully fresh.`
+      : `${bodyPart} last trained ${rested} day${rested === 1 ? "" : "s"} ago — it's had time to recover.`,
+  ];
+  if (QUICK_WORKOUTS.includes(bodyPart)) {
+    why.push("It's a quick-start program — short, simple, no planning needed.");
+  } else if (base.forTomorrow) {
+    why.push("Keep it for tomorrow — today's work is already done.");
+  } else {
+    why.push("Mixing it up keeps workouts fun and stops you plateauing.");
+  }
+
+  return {
+    ...base,
+    bodyPart,
+    id: BODY_PART_IDS[bodyPart],
+    group,
+    isQuick: QUICK_WORKOUTS.includes(bodyPart),
+    isAlternative: true,
+    replaced: current,
+    wrapped,
     why,
   };
 };

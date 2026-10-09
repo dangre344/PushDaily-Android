@@ -46,6 +46,14 @@ import WorkoutLevelModal from "../workouts/Componenets/WorkoutLevelModal";
 
 const ANALYSIS_AD_COUNT = 1; // rewarded ads required to unlock the analysis
 
+// Suggestion chips, paired top/bottom into columns for the two-row strip.
+const PLAN_CHIP = "__plan__";
+const CHIP_COLUMNS = [PLAN_CHIP, ...QUICK_QUESTIONS].reduce((cols, q, i) => {
+  if (i % 2 === 0) cols.push([q]);
+  else cols[cols.length - 1].push(q);
+  return cols;
+}, []);
+
 // Messages that should trigger the "analyse my week → pick a body part" flow
 // instead of going to the AI.
 const PLAN_INTENT =
@@ -588,9 +596,9 @@ export default function TrainerChat() {
     }
 
     const start = await askConfirm(
-      "Analyze my workouts 📊",
-      `Watch ${ANALYSIS_AD_COUNT} short ads to unlock a full AI review of all your workouts so far — with personalized feedback and a cheer. Ready?`,
-      "Start",
+      "Unlock your AI progress report 🔓",
+      `Watch ${ANALYSIS_AD_COUNT === 1 ? "one short ad" : `${ANALYSIS_AD_COUNT} short ads`} and Jack reviews every workout you've done — your strengths, the muscles you're skipping, and what to train next. Ready?`,
+      "Unlock",
     );
     if (!start) return;
 
@@ -622,7 +630,7 @@ export default function TrainerChat() {
     const analyzeMsg = {
       id: newId("u"),
       role: "user",
-      text: "📊 Analyze my workout stats till date",
+      text: "🔓 Show my AI progress report",
       time: timeNow(),
     };
     setMessages((prev) => [
@@ -745,20 +753,28 @@ export default function TrainerChat() {
       {/* ─── Top action: Analyze (hides once used) ─── */}
       {hasWorkouts && !analysisDone && (
         <View style={styles.topActions}>
+          {/* Curiosity first ("your report is ready"), the ad cost second. */}
           <TouchableOpacity
             style={[styles.analyzeBar, busy && styles.analyzeBarDisabled]}
             onPress={runAnalysis}
             activeOpacity={0.9}
             disabled={busy}
           >
-            <Ionicons name="stats-chart" size={ms(16)} color={colors.primary} />
-            <Text style={styles.analyzeText}>
-              {analyzing
-                ? "Unlocking your analysis…"
-                : "Analyze my workout stats"}
-            </Text>
+            <View style={styles.analyzeIcon}>
+              <Ionicons name="sparkles" size={ms(16)} color="#FFFFFF" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.analyzeText} numberOfLines={1}>
+                {analyzing
+                  ? "Unlocking your report…"
+                  : "Your AI progress report is ready"}
+              </Text>
+              <Text style={styles.analyzeSub} numberOfLines={1}>
+                Strengths, weak spots & what to train next
+              </Text>
+            </View>
             <View style={styles.analyzeBadge}>
-              <Ionicons name="play" size={ms(8)} color="#FFFFFF" />
+              <Ionicons name="lock-open" size={ms(10)} color="#FFFFFF" />
               <Text style={styles.analyzeBadgeText}>
                 {ANALYSIS_AD_COUNT} ad{ANALYSIS_AD_COUNT > 1 ? "s" : ""}
               </Text>
@@ -946,29 +962,40 @@ export default function TrainerChat() {
             contentContainerStyle={styles.chipsWrap}
             keyboardShouldPersistTaps="handled"
           >
-            {/* Analyses this week's data, then body part → level → start. */}
-            <TouchableOpacity
-              style={[styles.chip, styles.chipPlan]}
-              onPress={() => runPlanToday()}
-              activeOpacity={0.85}
-              disabled={busy}
-            >
-              <Ionicons name="sparkles" size={ms(12)} color="#FFFFFF" />
-              <Text style={[styles.chipText, styles.chipPlanText]}>
-                Plan today&apos;s workout
-              </Text>
-            </TouchableOpacity>
-
-            {QUICK_QUESTIONS.map((q) => (
-              <TouchableOpacity
-                key={q}
-                style={styles.chip}
-                onPress={() => sendMessage(q)}
-                activeOpacity={0.85}
-                disabled={busy}
-              >
-                <Text style={styles.chipText}>{q}</Text>
-              </TouchableOpacity>
+            {/* Two compact rows instead of one tall row: about twice as many
+                questions visible before any scrolling. */}
+            {CHIP_COLUMNS.map((col, ci) => (
+              <View key={ci} style={styles.chipCol}>
+                {col.map((q) =>
+                  q === PLAN_CHIP ? (
+                    // Analyses this week's data, then body part → level → start.
+                    <TouchableOpacity
+                      key={q}
+                      style={[styles.chip, styles.chipPlan]}
+                      onPress={() => runPlanToday()}
+                      activeOpacity={0.85}
+                      disabled={busy}
+                    >
+                      <Ionicons name="sparkles" size={ms(11)} color="#FFFFFF" />
+                      <Text style={[styles.chipText, styles.chipPlanText]}>
+                        Plan today&apos;s workout
+                      </Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      key={q}
+                      style={styles.chip}
+                      onPress={() => sendMessage(q)}
+                      activeOpacity={0.85}
+                      disabled={busy}
+                    >
+                      <Text style={styles.chipText} numberOfLines={1}>
+                        {q}
+                      </Text>
+                    </TouchableOpacity>
+                  ),
+                )}
+              </View>
             ))}
           </ScrollView>
         )}
@@ -1176,28 +1203,32 @@ const styles = StyleSheet.create({
   },
   chipsWrap: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: ms(8),
-    paddingHorizontal: ms(14),
-    paddingTop: ms(4),
-    paddingBottom: ms(12),
+    gap: ms(6),
+    paddingHorizontal: ms(12),
+    paddingTop: ms(2),
+    paddingBottom: ms(8),
+  },
+  chipCol: {
+    gap: ms(6),
+    alignItems: "flex-start",
   },
   chip: {
-    justifyContent: "center",
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: "#FFFFFF",
     borderRadius: ms(999),
-    paddingHorizontal: ms(14),
-    paddingVertical: ms(10),
-    borderWidth: 1.5,
-    borderColor: colors.primary + "55",
+    paddingHorizontal: ms(11),
+    paddingVertical: ms(4),
+    borderWidth: 1,
+    borderColor: colors.primary + "4D",
   },
   chipText: {
     fontFamily: "OpenSans_600SemiBold",
-    fontSize: ms(11.5),
+    fontSize: ms(11),
     // Explicit lineHeight + vertical padding — without them the custom font's
     // descenders (y, g, p) get clipped inside the pill on Android.
-    lineHeight: ms(18),
-    paddingVertical: ms(2),
+    lineHeight: ms(16),
+    paddingVertical: ms(1),
     color: colors.primary,
   },
   chipPlan: {
@@ -1227,7 +1258,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: ms(9),
     paddingHorizontal: ms(12),
-    paddingVertical: ms(11),
+    paddingVertical: ms(8),
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "#EEF0F4",
   },
@@ -1246,24 +1277,37 @@ const styles = StyleSheet.create({
   analyzeBar: {
     flexDirection: "row",
     alignItems: "center",
-    gap: ms(8),
+    gap: ms(10),
     marginHorizontal: ms(14),
     marginBottom: ms(8),
-    paddingHorizontal: ms(14),
-    paddingVertical: ms(11),
-    borderRadius: ms(14),
-    backgroundColor: colors.primary + "12",
+    paddingHorizontal: ms(12),
+    paddingVertical: ms(9),
+    borderRadius: ms(16),
+    backgroundColor: "#FFF4EE",
     borderWidth: 1,
-    borderColor: colors.primary + "33",
+    borderColor: colors.primary + "40",
   },
   analyzeBarDisabled: {
     opacity: 0.55,
   },
+  analyzeIcon: {
+    width: ms(34),
+    height: ms(34),
+    borderRadius: ms(11),
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   analyzeText: {
-    flex: 1,
     fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(13),
-    color: colors.primary,
+    fontSize: ms(13.5),
+    color: colors.text,
+  },
+  analyzeSub: {
+    fontFamily: "OpenSans_600SemiBold",
+    fontSize: ms(11),
+    color: colors.textLight,
+    marginTop: 1,
   },
   analyzeBadge: {
     flexDirection: "row",

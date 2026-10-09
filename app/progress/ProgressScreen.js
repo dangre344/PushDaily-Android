@@ -1,10 +1,11 @@
 import { AntDesign, Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+import { useRoute } from "@react-navigation/native";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
+  Pressable,
   RefreshControl,
   SectionList,
   StyleSheet,
@@ -23,13 +24,14 @@ import {
   attendanceNudge,
   sayOncePerSession,
 } from "../../constants/bubbleMessage";
+import BrandGradient from "../../components/ui/BrandGradient";
 import { colors } from "../../constants/colors";
 import { useUser } from "../../constants/UserContext";
-import { bodyParts } from "../../constants/Constants";
+import { localDayKey, partCode } from "../../constants/bodyPartCodes";
+import { bodyParts, workoutListGlobal } from "../../constants/Constants";
 import { Logger } from "../../constants/Logger";
 import { scaling } from "../../constants/useScaling";
 import {
-  getAllWorkoutDates,
   getAllWorkouts,
   getTotalCalories,
   initDB,
@@ -38,7 +40,21 @@ import {
 const scaleWidth = (n) => scaling().moderateScale(n);
 const scaleHeight = (n) => scaling().moderateScale(n);
 
-const toDateKey = (iso) => iso.slice(0, 10);
+// Exercise name → its illustration, for the history rows. Built once, lazily.
+let exercisePhotos = null;
+const exercisePhoto = (name) => {
+  if (!exercisePhotos) {
+    exercisePhotos = new Map();
+    for (const program of workoutListGlobal) {
+      for (const ex of program.workoutList || []) {
+        if (ex?.name && ex.photo && !exercisePhotos.has(ex.name)) {
+          exercisePhotos.set(ex.name, ex.photo);
+        }
+      }
+    }
+  }
+  return exercisePhotos.get(name) || null;
+};
 
 const valueEnterAnimation = FadeIn.duration(180)
   .springify()
@@ -50,15 +66,10 @@ const iconEnterAnimation = ZoomIn.duration(180)
   .damping(16)
   .stiffness(180);
 
-const getWorkoutDateKey = (dateTime) => {
-  if (!dateTime) return null;
-
-  try {
-    return toDateKey(new Date(dateTime).toISOString());
-  } catch (error) {
-    return null;
-  }
-};
+// LOCAL calendar day. Workouts are stored as UTC ISO strings; grouping by the
+// UTC date put an early-morning (IST) session on the previous day here while
+// the Workouts week strip showed it on the right one.
+const getWorkoutDateKey = (dateTime) => (dateTime ? localDayKey(dateTime) : null);
 
 const parseCalories = (cal) => {
   const n = parseInt(String(cal).replace(/^0+/, "") || "0", 10);
@@ -130,96 +141,160 @@ const formatDisplayDate = (dateKey) => {
   return `${MONTHS[parseInt(m, 10) - 1]} ${parseInt(d, 10)}, ${y}`;
 };
 
-const isToday = (dateKey) => {
-  return dateKey === toDateKey(new Date().toISOString());
+const isToday = (dateKey) => dateKey === localDayKey(new Date());
+
+const WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const formatShortDate = (dateKey) => {
+  if (!dateKey) return "";
+  const [y, m, d] = dateKey.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  return `${WEEKDAY_SHORT[date.getDay()]}, ${d} ${MONTHS[m - 1].slice(0, 3)} ${y}`;
 };
 
-const WorkoutCard = ({ item, index }) => {
-  const currentLevelColor = levelColor(item.level);
+// Up to two body-part codes for a calendar cell: "C", "C+B", "C+B+1".
+const cellCodes = (parts) => {
+  const shown = parts.slice(0, 2).map(partCode).join("+");
+  return parts.length > 2 ? `${shown}+${parts.length - 2}` : shown;
+};
+
+/**
+ * Calendar cell: the date, and under it what was trained that day. Selected
+ * = filled orange, trained = soft green, today = orange ring.
+ */
+const CalendarDay = memo(function CalendarDay({ date, state, marking, onPress }) {
+  const parts = marking?.parts || [];
+  const selected = !!marking?.selected;
+  const done = parts.length > 0;
+  const outside = state === "disabled";
+  const today = state === "today";
+
+  return (
+    <Pressable
+      onPress={() => onPress?.(date)}
+      style={dayStyles.cell}
+      accessibilityRole="button"
+      accessibilityLabel={`${date?.day}${done ? `, trained ${parts.join(", ")}` : ""}`}
+    >
+      <View
+        style={[
+          dayStyles.circle,
+          done && dayStyles.circleDone,
+          today && !selected && dayStyles.circleToday,
+          selected && dayStyles.circleSelected,
+        ]}
+      >
+        <Text
+          style={[
+            dayStyles.num,
+            outside && dayStyles.numOutside,
+            done && dayStyles.numDone,
+            today && !selected && dayStyles.numToday,
+            selected && dayStyles.numSelected,
+          ]}
+        >
+          {date?.day}
+        </Text>
+      </View>
+      <Text
+        numberOfLines={1}
+        style={[dayStyles.code, outside && dayStyles.numOutside, selected && dayStyles.codeSelected]}
+      >
+        {done ? cellCodes(parts) : " "}
+      </Text>
+    </Pressable>
+  );
+});
+
+// One exercise from the selected day: its illustration, name, when it was
+// done and at what level — calories on the right. The body part is already the
+// section header, so it isn't repeated on every row.
+const WorkoutCard = memo(function WorkoutCard({ item }) {
+  const lc = levelColor(item.level);
+  const photo = exercisePhoto(item.name);
+  const kcal = parseCalories(item.calories);
 
   return (
     <View style={cardStyles.card}>
-      <View
-        style={[
-          cardStyles.indexCircle,
-          { backgroundColor: currentLevelColor + "18" },
-        ]}
-      >
-        <Text style={[cardStyles.indexText, { color: currentLevelColor }]}>
-          {index + 1}
-        </Text>
-      </View>
-
-      <View style={cardStyles.iconWrap}>
-        <Ionicons
-          name={bodyPartIcon(item.bodyPart)}
-          size={scaleWidth(20)}
-          color={colors.primary}
-        />
+      <View style={cardStyles.thumb}>
+        {photo ? (
+          <Image source={photo} style={cardStyles.thumbImg} contentFit="contain" transition={150} />
+        ) : (
+          <Ionicons name={bodyPartIcon(item.bodyPart)} size={scaleWidth(22)} color={colors.primary} />
+        )}
       </View>
 
       <View style={cardStyles.info}>
         <Text style={cardStyles.name} numberOfLines={1}>
           {item.name}
         </Text>
-
-        <View style={cardStyles.tags}>
-          <View
-            style={[
-              cardStyles.badge,
-              {
-                backgroundColor: currentLevelColor + "12",
-                borderColor: currentLevelColor + "30",
-              },
-            ]}
-          >
-            <View
-              style={[
-                cardStyles.dotSmall,
-                { backgroundColor: currentLevelColor },
-              ]}
-            />
-
-            <Text style={[cardStyles.badgeText, { color: currentLevelColor }]}>
-              {item.level}
-            </Text>
-          </View>
-
-          <View style={cardStyles.badge}>
-            <Text style={cardStyles.badgeText} numberOfLines={1}>
-              {item.bodyPart}
-            </Text>
+        <View style={cardStyles.metaRow}>
+          <View style={[cardStyles.levelChip, { backgroundColor: lc + "14" }]}>
+            <View style={[cardStyles.dotSmall, { backgroundColor: lc }]} />
+            <Text style={[cardStyles.levelText, { color: lc }]}>{item.level}</Text>
           </View>
         </View>
       </View>
 
       <View style={cardStyles.calBox}>
-        <AntDesign name="fire" size={13} color={colors.primary} />
-        <Text style={cardStyles.calNum}>{parseCalories(item.calories)}</Text>
-        <Text style={cardStyles.calUnit}>kcal</Text>
+        <Text style={cardStyles.calNum}>{kcal}</Text>
+        <View style={cardStyles.calUnitRow}>
+          <AntDesign name="fire" size={scaleWidth(10)} color={colors.primary} />
+          <Text style={cardStyles.calUnit}>kcal</Text>
+        </View>
       </View>
     </View>
   );
-};
+});
 
 export default function ProgressScreen() {
   const { t } = useTranslation();
   const { user } = useUser();
+  const route = useRoute();
 
-  const todayKey = toDateKey(new Date().toISOString());
+  const todayKey = localDayKey(new Date());
 
   const [selectedDate, setSelectedDate] = useState(todayKey);
   const [allWorkoutHistory, setAllWorkoutHistory] = useState([]);
-  const [workoutDates, setWorkoutDates] = useState([]);
   const [totalCalories, setTotalCalories] = useState(0);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Opened from a day on the Workouts week strip → jump straight to it.
+  useEffect(() => {
+    const date = route?.params?.date;
+    if (typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      setSelectedDate(date);
+    }
+  }, [route?.params?.date, route?.params?.at]);
 
   const onRefresh = async () => {
     setRefreshing(true);
     await loadData();
     setRefreshing(false);
   };
+
+  // Local day → body parts trained that day (in the order they were done).
+  const partsByDate = useMemo(() => {
+    const map = {};
+    const sorted = [...allWorkoutHistory].sort(
+      (a, b) => new Date(a?.dateTime) - new Date(b?.dateTime),
+    );
+    for (const w of sorted) {
+      const key = getWorkoutDateKey(w?.dateTime);
+      if (!key) continue;
+      if (!map[key]) map[key] = [];
+      if (w.bodyPart && !map[key].includes(w.bodyPart)) map[key].push(w.bodyPart);
+    }
+    return map;
+  }, [allWorkoutHistory]);
+
+  const workoutDates = useMemo(() => Object.keys(partsByDate), [partsByDate]);
+
+  // Every body part that appears anywhere in the history, for the code legend.
+  const legendParts = useMemo(
+    () => [...new Set(Object.values(partsByDate).flat())],
+    [partsByDate],
+  );
 
   const allWorkouts = useMemo(() => {
     return allWorkoutHistory.filter((workout) => {
@@ -237,16 +312,26 @@ export default function ProgressScreen() {
   }, [selectedDate]);
 
   const hasWorkoutOnSelectedDate = allWorkouts.length > 0;
+  const selectedParts = partsByDate[selectedDate] || [];
+
+  // The headline of the summary card: what was trained, not just "a date".
+  const summaryHeadline = selectedParts.length
+    ? selectedParts.join(" + ")
+    : isToday(selectedDate)
+      ? "Nothing logged yet"
+      : "Rest day";
 
   const selectedStatus = useMemo(() => {
-    if (isToday(selectedDate)) return "Today";
     if (workoutDates.includes(selectedDate)) return "Done";
+    if (isToday(selectedDate)) return "Today";
     return "Rest";
   }, [selectedDate, workoutDates]);
 
   const selectedIconName = hasWorkoutOnSelectedDate
     ? "checkmark-done"
-    : "calendar-outline";
+    : isToday(selectedDate)
+      ? "hourglass-outline"
+      : "moon-outline";
 
   const summaryChangeKey = selectedDate;
 
@@ -259,86 +344,49 @@ export default function ProgressScreen() {
           acc[title] = {
             title,
             data: [],
+            kcal: 0,
+            level: item.level,
           };
         }
 
         acc[title].data.push(item);
+        acc[title].kcal += parseCalories(item.calories);
         return acc;
       }, {}),
-    );
+    ).map((s, i) => ({ ...s, first: i === 0 }));
   }, [allWorkouts]);
 
-  const buildMarkedDates = (selectedDateValue, dates) => {
+  // Calendar marks carry the day's body parts; CalendarDay draws them.
+  const markedDates = useMemo(() => {
     const marked = {};
-
-    dates.forEach((dateKey) => {
-      const selected = dateKey === selectedDateValue;
-
-      marked[dateKey] = {
-        marked: true,
-        dotColor: selected ? "#FFFFFF" : colors.green,
-        selected,
-        selectedColor: selected ? colors.primary : undefined,
-        customStyles: {
-          container: {
-            backgroundColor: selected ? colors.primary : colors.green + "16",
-            borderRadius: scaleWidth(18),
-            borderWidth: selected ? 0 : 1,
-            borderColor: colors.green + "30",
-          },
-          text: {
-            color: selected ? "#FFFFFF" : colors.green,
-            fontFamily: "OpenSans_700Bold",
-          },
-        },
-      };
-    });
-
-    if (selectedDateValue && !dates.includes(selectedDateValue)) {
-      marked[selectedDateValue] = {
-        selected: true,
-        customStyles: {
-          container: {
-            backgroundColor: colors.primary,
-            borderRadius: scaleWidth(18),
-          },
-          text: {
-            color: "#FFFFFF",
-            fontFamily: "OpenSans_700Bold",
-          },
-        },
-      };
+    for (const key of workoutDates) {
+      marked[key] = { parts: partsByDate[key], selected: key === selectedDate };
     }
-
+    if (selectedDate && !marked[selectedDate]) {
+      marked[selectedDate] = { parts: [], selected: true };
+    }
     return marked;
-  };
-
-  const markedDates = useMemo(
-    () => buildMarkedDates(selectedDate, workoutDates),
-    [selectedDate, workoutDates],
-  );
+  }, [partsByDate, workoutDates, selectedDate]);
 
   const loadData = async () => {
     try {
       setLoading(true);
       await initDB();
 
-      const [history, cal, dates] = await Promise.all([
+      const [history, cal] = await Promise.all([
         getAllWorkouts(),
         getTotalCalories(),
-        getAllWorkoutDates(),
       ]);
 
-      Logger.log("All workout history--->", history);
+      Logger.log("All workout history--->", history?.length);
       Logger.log("Total calories--->", cal);
-      Logger.log("Workout dates for calendar--->", dates);
 
       setAllWorkoutHistory(history || []);
       setTotalCalories(cal || 0);
-      setWorkoutDates(dates || []);
 
       // Nudge only when today is genuinely empty, and only once per session.
-      if (!(dates || []).includes(toDateKey(new Date().toISOString()))) {
+      const today = localDayKey(new Date());
+      if (!(history || []).some((w) => getWorkoutDateKey(w?.dateTime) === today)) {
         setTimeout(
           () => sayOncePerSession("attendance", attendanceNudge(user?.name)),
           800,
@@ -382,23 +430,23 @@ export default function ProgressScreen() {
           </View>
         </View>
 
-        <LinearGradient
-          colors={[colors.primary, "#7C3AED"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.summaryCard}
-        >
+        <BrandGradient style={styles.summaryCard}>
           <View style={styles.summaryTop}>
-            <View>
-              <Text style={styles.summaryLabel}>Selected date</Text>
+            {/* What was trained leads; the date sits above it, smaller. */}
+            <View style={{ flex: 1, paddingRight: scaleWidth(10) }}>
+              <Text style={styles.summaryLabel}>
+                {isToday(selectedDate) ? "TODAY · " : ""}
+                {formatShortDate(selectedDate).toUpperCase()}
+              </Text>
 
               <Animated.Text
                 key={`date-${summaryChangeKey}`}
                 entering={valueEnterAnimation}
                 layout={LinearTransition.duration(160)}
                 style={styles.summaryDate}
+                numberOfLines={2}
               >
-                {displayDate}
+                {summaryHeadline}
               </Animated.Text>
             </View>
 
@@ -458,7 +506,7 @@ export default function ProgressScreen() {
               <Text style={styles.summaryText}>status</Text>
             </View>
           </View>
-        </LinearGradient>
+        </BrandGradient>
 
         <View style={styles.calendarCard}>
           <View style={styles.calendarHeaderRow}>
@@ -471,10 +519,13 @@ export default function ProgressScreen() {
           </View>
 
           <Calendar
+            // Remount when jumping to another month from outside (a tap on the
+            // Workouts week strip), so the calendar actually shows that month.
+            key={selectedDate.slice(0, 7)}
             current={selectedDate}
             onDayPress={handleDayPress}
             markedDates={markedDates}
-            markingType="custom"
+            dayComponent={CalendarDay}
             enableSwipeMonths
             hideExtraDays={false}
             firstDay={1}
@@ -533,19 +584,31 @@ export default function ProgressScreen() {
             }}
             style={styles.calendar}
           />
+
+          {/* Decode the letters under the dates — only parts actually logged. */}
+          {legendParts.length ? (
+            <View style={styles.codeLegend}>
+              {legendParts.map((p) => (
+                <View key={p} style={styles.codeLegendItem}>
+                  <Text style={styles.codeLegendCode}>{partCode(p)}</Text>
+                  <Text style={styles.codeLegendName}>{p}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
         </View>
 
         {/* Only worth showing once the day actually has something in it — an
             empty summary above an empty list is just noise. */}
         {hasWorkoutOnSelectedDate ? (
           <View style={styles.daySummary}>
-            <View>
-              <Text style={styles.dateLabel}>Completed workouts</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.dateLabel}>Workout history</Text>
 
               <Text style={styles.workoutCount}>
                 {`${allWorkouts.length} exercise${
                   allWorkouts.length !== 1 ? "s" : ""
-                } on ${displayDate}`}
+                } · ${displayDate}`}
               </Text>
             </View>
 
@@ -578,6 +641,8 @@ export default function ProgressScreen() {
       dayCalories,
       handleDayPress,
       markedDates,
+      summaryHeadline,
+      legendParts,
       loading,
     ],
   );
@@ -603,7 +668,14 @@ export default function ProgressScreen() {
         stickySectionHeadersEnabled={false}
         ListHeaderComponent={HeaderContent}
         renderSectionHeader={({ section }) => (
-          <View style={styles.workoutSectionHeader}>
+          // Every group after the first gets clear space above it, so where one
+          // body part ends and the next begins is obvious at a glance.
+          <View
+            style={[
+              styles.workoutSectionHeader,
+              !section.first && styles.workoutSectionHeaderNext,
+            ]}
+          >
             <View style={styles.sectionTitleRow}>
               {bodyPartImage(section.title) ? (
                 <Image
@@ -619,13 +691,25 @@ export default function ProgressScreen() {
                 />
               )}
 
-              <Text style={styles.workoutSectionTitle}>{section.title}</Text>
+              <View>
+                <Text style={styles.workoutSectionTitle}>{section.title}</Text>
+                {section.level ? (
+                  <Text style={styles.workoutSectionMeta}>{section.level}</Text>
+                ) : null}
+              </View>
             </View>
 
-            <Text style={styles.workoutSectionCount}>
-              {section.data.length} exercise
-              {section.data.length !== 1 ? "s" : ""}
-            </Text>
+            <View style={styles.sectionPills}>
+              <Text style={styles.workoutSectionCount}>
+                {section.data.length} ex
+              </Text>
+              {section.kcal > 0 ? (
+                <View style={styles.sectionKcal}>
+                  <AntDesign name="fire" size={scaleWidth(10)} color={colors.primary} />
+                  <Text style={styles.sectionKcalText}>{section.kcal}</Text>
+                </View>
+              ) : null}
+            </View>
           </View>
         )}
         renderItem={({ item, index }) => (
@@ -736,16 +820,19 @@ const styles = StyleSheet.create({
   },
 
   summaryLabel: {
-    fontFamily: "OpenSans_600SemiBold",
-    fontSize: scaleWidth(12),
-    color: "rgba(255,255,255,0.76)",
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: scaleWidth(10.5),
+    letterSpacing: 1.2,
+    color: "rgba(255,255,255,0.85)",
   },
 
   summaryDate: {
     fontFamily: "OpenSans_800ExtraBold",
-    fontSize: scaleWidth(20),
+    fontSize: scaleWidth(21),
+    lineHeight: scaleWidth(27),
     color: "#FFFFFF",
     marginTop: scaleHeight(3),
+    letterSpacing: -0.3,
   },
 
   summaryIcon: {
@@ -820,7 +907,6 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
 
-
   legendPill: {
     flexDirection: "row",
     alignItems: "center",
@@ -847,6 +933,47 @@ const styles = StyleSheet.create({
   calendar: {
     borderRadius: scaleWidth(18),
     overflow: "hidden",
+  },
+
+  codeLegend: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: scaleWidth(6),
+    paddingHorizontal: scaleWidth(4),
+    paddingTop: scaleHeight(8),
+    marginTop: scaleHeight(4),
+    borderTopWidth: 1,
+    borderTopColor: "#F1F3F6",
+  },
+
+  codeLegendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scaleWidth(4),
+    backgroundColor: "#F7F8FA",
+    borderRadius: 999,
+    paddingLeft: scaleWidth(3),
+    paddingRight: scaleWidth(8),
+    paddingVertical: scaleHeight(2),
+  },
+
+  codeLegendCode: {
+    minWidth: scaleWidth(18),
+    textAlign: "center",
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: scaleWidth(9),
+    color: "#FFFFFF",
+    backgroundColor: colors.green,
+    borderRadius: 999,
+    paddingHorizontal: scaleWidth(4),
+    paddingVertical: 1,
+    overflow: "hidden",
+  },
+
+  codeLegendName: {
+    fontFamily: "OpenSans_600SemiBold",
+    fontSize: scaleWidth(10.5),
+    color: colors.textLight,
   },
 
   calendarMonthTitle: {
@@ -930,6 +1057,14 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
 
+  // Second group onwards: a clear gap plus a hairline above the header.
+  workoutSectionHeaderNext: {
+    marginTop: scaleHeight(22),
+    paddingTop: scaleHeight(14),
+    borderTopWidth: 1,
+    borderTopColor: "#E9ECF1",
+  },
+
   sectionTitleRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -937,24 +1072,56 @@ const styles = StyleSheet.create({
   },
 
   sectionImage: {
-    width: scaleWidth(30),
-    height: scaleWidth(30),
-    borderRadius: scaleWidth(15),
-    borderWidth: 1.5,
-    borderColor: colors.primary + "40",
+    width: scaleWidth(38),
+    height: scaleWidth(38),
+    borderRadius: scaleWidth(12),
     backgroundColor: "#F7F8FA",
   },
 
   workoutSectionTitle: {
-    fontSize: scaleWidth(17),
+    fontSize: scaleWidth(15.5),
     fontFamily: "OpenSans_800ExtraBold",
     color: colors.text,
   },
 
-  workoutSectionCount: {
-    fontSize: scaleWidth(12),
+  workoutSectionMeta: {
+    fontSize: scaleWidth(11),
     fontFamily: "OpenSans_600SemiBold",
     color: colors.textLight,
+    marginTop: 1,
+  },
+
+  sectionPills: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scaleWidth(6),
+  },
+
+  workoutSectionCount: {
+    fontSize: scaleWidth(11),
+    fontFamily: "OpenSans_700Bold",
+    color: colors.textLight,
+    backgroundColor: "#EEF0F4",
+    borderRadius: 999,
+    paddingHorizontal: scaleWidth(8),
+    paddingVertical: scaleHeight(3),
+    overflow: "hidden",
+  },
+
+  sectionKcal: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: colors.primary + "14",
+    borderRadius: 999,
+    paddingHorizontal: scaleWidth(8),
+    paddingVertical: scaleHeight(3),
+  },
+
+  sectionKcalText: {
+    fontSize: scaleWidth(11),
+    fontFamily: "OpenSans_800ExtraBold",
+    color: colors.primary,
   },
 
   empty: {
@@ -998,42 +1165,33 @@ const cardStyles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
-    borderRadius: scaleWidth(18),
-    padding: scaleWidth(12),
+    borderRadius: scaleWidth(16),
+    paddingVertical: scaleWidth(9),
+    paddingLeft: scaleWidth(9),
+    paddingRight: scaleWidth(12),
     borderWidth: 1,
     borderColor: "#EEF0F4",
     shadowColor: "#000",
-    shadowOpacity: 0.045,
-    shadowRadius: 10,
-    shadowOffset: {
-      width: 0,
-      height: 5,
-    },
-    elevation: 2,
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 1,
   },
 
-  indexCircle: {
-    width: scaleWidth(28),
-    height: scaleWidth(28),
-    borderRadius: scaleWidth(14),
+  thumb: {
+    width: scaleWidth(52),
+    height: scaleWidth(52),
+    borderRadius: scaleWidth(12),
+    backgroundColor: "#F5F7FA",
     alignItems: "center",
     justifyContent: "center",
-    marginRight: scaleWidth(10),
+    overflow: "hidden",
+    marginRight: scaleWidth(11),
   },
 
-  indexText: {
-    fontFamily: "OpenSans_800ExtraBold",
-    fontSize: scaleWidth(12),
-  },
-
-  iconWrap: {
-    width: scaleWidth(44),
-    height: scaleWidth(44),
-    borderRadius: scaleWidth(14),
-    backgroundColor: colors.primary + "12",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: scaleWidth(10),
+  thumbImg: {
+    width: "92%",
+    height: "92%",
   },
 
   info: {
@@ -1041,28 +1199,25 @@ const cardStyles = StyleSheet.create({
   },
 
   name: {
-    fontFamily: "OpenSans_800ExtraBold",
-    fontSize: scaleWidth(14),
+    fontFamily: "OpenSans_700Bold",
+    fontSize: scaleWidth(13.5),
     color: colors.text,
-    marginBottom: scaleHeight(6),
   },
 
-  tags: {
+  metaRow: {
     flexDirection: "row",
-    gap: scaleWidth(6),
+    alignItems: "center",
+    gap: scaleWidth(8),
+    marginTop: scaleHeight(5),
   },
 
-  badge: {
+  levelChip: {
     flexDirection: "row",
     alignItems: "center",
     gap: scaleWidth(4),
-    backgroundColor: "#F7F8FA",
-    borderRadius: scaleWidth(999),
-    paddingHorizontal: scaleWidth(8),
-    paddingVertical: scaleHeight(4),
-    borderWidth: 1,
-    borderColor: "#EEF0F4",
-    maxWidth: scaleWidth(105),
+    borderRadius: 999,
+    paddingHorizontal: scaleWidth(7),
+    paddingVertical: scaleHeight(2),
   },
 
   dotSmall: {
@@ -1071,28 +1226,92 @@ const cardStyles = StyleSheet.create({
     borderRadius: scaleWidth(3),
   },
 
-  badgeText: {
+  levelText: {
     fontFamily: "OpenSans_700Bold",
-    fontSize: scaleWidth(11),
-    color: colors.textLight,
+    fontSize: scaleWidth(10.5),
   },
 
   calBox: {
-    alignItems: "center",
+    alignItems: "flex-end",
     marginLeft: scaleWidth(8),
-    minWidth: scaleWidth(42),
+    minWidth: scaleWidth(40),
   },
 
   calNum: {
     fontFamily: "OpenSans_800ExtraBold",
-    fontSize: scaleWidth(14),
+    fontSize: scaleWidth(16),
     color: colors.text,
-    marginTop: scaleHeight(1),
+  },
+
+  calUnitRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
   },
 
   calUnit: {
     fontFamily: "OpenSans_600SemiBold",
-    fontSize: scaleWidth(9),
+    fontSize: scaleWidth(9.5),
     color: colors.textLight,
+  },
+});
+
+// Calendar cell (CalendarDay). ~44pt tall: date circle + one line of codes.
+const dayStyles = StyleSheet.create({
+  cell: {
+    width: scaleWidth(42),
+    alignItems: "center",
+    paddingVertical: 2,
+  },
+  circle: {
+    width: scaleWidth(30),
+    height: scaleWidth(30),
+    borderRadius: scaleWidth(15),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  circleDone: {
+    backgroundColor: colors.green + "16",
+    borderWidth: 1,
+    borderColor: colors.green + "30",
+  },
+  circleToday: {
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+  },
+  circleSelected: {
+    backgroundColor: colors.primary,
+    borderWidth: 0,
+  },
+  num: {
+    fontFamily: "OpenSans_600SemiBold",
+    fontSize: scaleWidth(12.5),
+    color: colors.text,
+  },
+  numOutside: {
+    color: "#CBD5E1",
+  },
+  numDone: {
+    fontFamily: "OpenSans_800ExtraBold",
+    color: colors.green,
+  },
+  numToday: {
+    fontFamily: "OpenSans_800ExtraBold",
+    color: colors.primary,
+  },
+  numSelected: {
+    fontFamily: "OpenSans_800ExtraBold",
+    color: "#FFFFFF",
+  },
+  code: {
+    marginTop: 1,
+    height: scaleWidth(12),
+    lineHeight: scaleWidth(12),
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: scaleWidth(8.5),
+    color: colors.green,
+  },
+  codeSelected: {
+    color: colors.primary,
   },
 });

@@ -129,7 +129,7 @@ export default function ScanButton() {
           ]}
         />
 
-        <Ionicons name="scan-outline" size={ms(21)} color={colors.primary} />
+        <Ionicons name="scan-outline" size={ms(18)} color={colors.primary} />
 
         <Animated.View
           pointerEvents="none"
@@ -140,7 +140,7 @@ export default function ScanButton() {
                 {
                   translateY: sweep.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [-ms(7), ms(7)],
+                    outputRange: [-ms(6), ms(6)],
                   }),
                 },
               ],
@@ -162,11 +162,11 @@ export default function ScanButton() {
 }
 
 const styles = StyleSheet.create({
-  wrap: { alignItems: "center", width: ms(66) },
+  wrap: { alignItems: "center", width: ms(60) },
   iconBox: {
-    width: ms(36),
-    height: ms(36),
-    borderRadius: ms(12),
+    width: ms(32),
+    height: ms(32),
+    borderRadius: ms(11),
     backgroundColor: colors.primary + "14",
     alignItems: "center",
     justifyContent: "center",
@@ -174,9 +174,9 @@ const styles = StyleSheet.create({
   },
   ring: {
     position: "absolute",
-    width: ms(36),
-    height: ms(36),
-    borderRadius: ms(12),
+    width: ms(32),
+    height: ms(32),
+    borderRadius: ms(11),
     backgroundColor: colors.primary,
   },
   sweepLine: {
@@ -189,13 +189,15 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(10),
+    fontSize: ms(9),
     color: colors.primary,
-    marginTop: ms(2),
+    marginTop: ms(1),
+    lineHeight: ms(12),
   },
   roll: {
     fontFamily: "OpenSans_600SemiBold",
-    fontSize: ms(7.5),
+    fontSize: ms(7),
+    lineHeight: ms(9),
     color: colors.textLight,
     marginTop: 0,
   },

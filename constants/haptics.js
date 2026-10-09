@@ -4,6 +4,9 @@ import * as Haptics from "expo-haptics";
 export const tapHaptic = () =>
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
 
+// The lightest tick — for each notch passed on a ruler/picker.
+export const selectionHaptic = () => Haptics.selectionAsync().catch(() => {});
+
 export const mediumHaptic = () =>
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
 

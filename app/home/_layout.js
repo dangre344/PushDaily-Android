@@ -17,6 +17,8 @@ import TabTourOverlay, {
 } from "../../components/ui/TabTourOverlay.js";
 import { colors } from "../../constants/colors.js";
 import { trackScreen } from "../../constants/mixpanel.js";
+import { syncPeriodReminders } from "../../constants/periodReminders.js";
+import { useUser } from "../../constants/UserContext.js";
 import { registerTabNavigation } from "../../constants/tabNavigation.js";
 import { scaling } from "../../constants/useScaling";
 import EventScreen from "../event/EventScreen.js";
@@ -221,6 +223,16 @@ const CustomTabBar = ({ state, navigation }) => {
 // ═════════════════════════════════════════════════════════════════════════════
 export default function AppLayout() {
   const [showTour, setShowTour] = useState(false);
+  const { user } = useUser();
+
+  // Period reminders go to everyone; the gender only picks the wording ("your"
+  // for women, "her" for anyone tracking a partner). Re-synced on every launch
+  // and whenever the gender is edited, so the wording follows the profile.
+  // Never prompts for permission here; that's an explicit tap in Periods.
+  useEffect(() => {
+    if (!user) return;
+    syncPeriodReminders({ gender: user.gender });
+  }, [user?.gender]);
 
   // First app open only: walk the user through the tabs. Delayed slightly so
   // it doesn't collide with the tab bar's own entrance animation.

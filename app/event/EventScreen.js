@@ -1,5 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -22,6 +21,9 @@ import {
   leaderboardNudge,
   sayOncePerSession,
 } from "../../constants/bubbleMessage";
+import { Image } from "expo-image";
+
+import BrandGradient from "../../components/ui/BrandGradient";
 import { colors } from "../../constants/colors";
 import {
   getLeaderboard,
@@ -31,6 +33,7 @@ import {
 import { trackScreen } from "../../constants/mixpanel";
 import { useUser } from "../../constants/UserContext";
 import { scaling } from "../../constants/useScaling";
+import { EXPRESSION_IMAGES } from "../../constants/widgetPromo";
 
 const PLAY_STORE_URL =
   "https://play.google.com/store/apps/details?id=com.pushdaily.homeworkout.fit";
@@ -51,6 +54,11 @@ const barColorFor = (row) =>
           ? "#D97706"
           : "#C7D2DA";
 
+// The real username (from the record, or the local profile name for the
+// current user) instead of a generic "You".
+const displayName = (row, userName) =>
+  row.name && row.name !== "Anonymous" ? row.name : row.isUser ? userName || "" : "";
+
 // A single animated vertical bar (grows from the bottom on first load).
 function ChartBar({ row, max, index, userName, onShowName }) {
   const anim = useRef(new Animated.Value(0)).current;
@@ -67,14 +75,7 @@ function ChartBar({ row, max, index, userName, onShowName }) {
 
   const pct = max > 0 ? Math.max(0.06, row.pushups / max) : 0.06;
   const color = barColorFor(row);
-  // Show the real username (from the record, or the local profile name for the
-  // current user) instead of a generic "You".
-  const rawName =
-    row.name && row.name !== "Anonymous"
-      ? row.name
-      : row.isUser
-        ? userName || ""
-        : "";
+  const rawName = displayName(row, userName);
   const firstName = rawName.split(" ")[0] || (row.isUser ? "You" : "Anon");
 
   return (
@@ -329,6 +330,24 @@ export default function EventScreen() {
     }
   };
 
+  // What it takes to climb: the gap to the next spot up, in push-ups.
+  const chase = (() => {
+    const me = board.me;
+    if (loadingBoard) return null;
+    if (board.top.length === 0) return { icon: "flag", text: "Log a session and claim #1 today" };
+    if (!me.best) return { icon: "flag", text: "One session puts you on today's board" };
+    if (me.rank === 1) return { icon: "trophy", text: "You're #1 today — defend your crown 👑" };
+    const target =
+      board.top.find((r) => r.rank === me.rank - 1) || (me.rank > 5 ? board.top[board.top.length - 1] : null);
+    if (!target) return null;
+    const need = Math.max(1, (target.pushups || 0) - me.best + 1);
+    const who = displayName(target, user?.name).split(" ")[0] || `#${target.rank}`;
+    return {
+      icon: "trending-up",
+      text: `${need} more push-up${need === 1 ? "" : "s"} to pass ${who} (#${target.rank})`,
+    };
+  })();
+
   return (
     <View style={styles.screen}>
       {/* Hero header */}
@@ -345,49 +364,53 @@ export default function EventScreen() {
           ],
         }}
       >
-        <LinearGradient
-          colors={[colors.primary, "#7C3AED"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.hero}
-        >
+        <BrandGradient style={styles.hero}>
           <View style={styles.heroRow}>
+            <Image source={EXPRESSION_IMAGES.flex} style={styles.heroMascot} contentFit="contain" />
             <View style={{ flex: 1 }}>
-              <Text style={styles.heroTitle}>Daily Push-Up Challenge 💪</Text>
-              <Text style={styles.heroSub}>
-                Top 5 worldwide · resets in {resetLabel}
-              </Text>
+              <Text style={styles.heroTitle}>Daily Push-Up Challenge</Text>
+              <View style={styles.resetPill}>
+                <Ionicons name="time-outline" size={ms(11)} color="#FFFFFF" />
+                <Text style={styles.resetText}>Resets in {resetLabel}</Text>
+              </View>
             </View>
-            <View style={styles.heroRight}>
-              <Text style={styles.heroTrophy}>🏆</Text>
-              <TouchableOpacity
-                style={styles.sharePill}
-                onPress={handleShare}
-                activeOpacity={0.85}
-              >
-                <Ionicons name="share-social" size={ms(13)} color="#FFFFFF" />
-                <Text style={styles.sharePillText}>Share</Text>
-              </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.shareBtn}
+              onPress={handleShare}
+              activeOpacity={0.85}
+              accessibilityLabel="Share your score"
+            >
+              <Ionicons name="share-social" size={ms(17)} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Your numbers, side by side */}
+          <View style={styles.meCard}>
+            <View style={styles.meStat}>
+              <Text style={styles.meValue}>{board.me.best}</Text>
+              <Text style={styles.meLabel}>Today&apos;s best</Text>
+            </View>
+            <View style={styles.meDivider} />
+            <View style={styles.meStat}>
+              <Text style={styles.meValue}>{board.me.rank ? `#${board.me.rank}` : "—"}</Text>
+              <Text style={styles.meLabel}>Your rank</Text>
+            </View>
+            <View style={styles.meDivider} />
+            <View style={styles.meStat}>
+              <Text style={styles.meValue}>{board.me.lifetime ?? 0}</Text>
+              <Text style={styles.meLabel}>All-time</Text>
             </View>
           </View>
 
-          <View style={styles.meCard}>
-            <View>
-              <Text style={styles.meLabel}>Today&apos;s best</Text>
-              <Text style={styles.meValue}>{board.me.best} push-ups</Text>
-              <View style={styles.lifetimeRow}>
-                <Ionicons name="infinite" size={ms(12)} color="#FDE047" />
-                <Text style={styles.lifetimeText}>
-                  {board.me.lifetime ?? 0} total till date
-                </Text>
-              </View>
+          {chase ? (
+            <View style={styles.chasePill}>
+              <Ionicons name={chase.icon} size={ms(13)} color={colors.primary} />
+              <Text style={styles.chaseText} numberOfLines={1}>
+                {chase.text}
+              </Text>
             </View>
-            <View style={styles.meRankWrap}>
-              <Text style={styles.meRankLabel}>Rank</Text>
-              <Text style={styles.meRank}>#{board.me.rank}</Text>
-            </View>
-          </View>
-        </LinearGradient>
+          ) : null}
+        </BrandGradient>
       </Animated.View>
 
       <ScrollView
@@ -402,12 +425,18 @@ export default function EventScreen() {
           />
         }
       >
-        <Text style={styles.sectionLabel}>
-          Today&apos;s Global Push-Up Leaderboard
-        </Text>
-        <Text style={styles.sectionNote}>Only the top 5 are shown</Text>
+        <View style={styles.sectionHead}>
+          <View>
+            <Text style={styles.sectionLabel}>Today&apos;s top 5</Text>
+            <Text style={styles.sectionNote}>Global leaderboard · pull down to refresh</Text>
+          </View>
+          <View style={styles.livePill}>
+            <View style={styles.liveDot} />
+            <Text style={styles.liveText}>LIVE</Text>
+          </View>
+        </View>
 
-        {/* ── Bar chart (top 5, #1 centered, no horizontal scroll) ── */}
+        {/* ── Podium chart (top 5, #1 centered) + the full ranked list ── */}
         <View style={styles.chartCard}>
           {loadingBoard ? (
             // Contained in the chart card only — the hero and Start button stay
@@ -420,27 +449,75 @@ export default function EventScreen() {
             </View>
           ) : podium.length === 0 ? (
             <View style={styles.emptyChart}>
-              <Text style={styles.emptyEmoji}>🥇</Text>
+              <Image source={EXPRESSION_IMAGES.wink} style={styles.emptyMascot} contentFit="contain" />
               <Text style={styles.emptyTitle}>Become the first champion!</Text>
               <Text style={styles.emptyText}>
-                No push-ups logged yet. Complete a session and claim the very
-                first spot on the board.
+                No push-ups logged yet today. Finish one session and the top
+                spot is yours.
               </Text>
             </View>
           ) : (
-            <View style={styles.chartRow}>
-              {podium.map((row, i) => (
-                <ChartBar
-                  key={`${row.rank}-${row.name}`}
-                  row={row}
-                  max={maxPushups}
-                  index={i}
-                  userName={user?.name}
-                  onShowName={showNameTip}
-                />
-              ))}
-            </View>
+            <>
+              <View style={styles.chartRow}>
+                {podium.map((row, i) => (
+                  <ChartBar
+                    key={`${row.rank}-${row.name}`}
+                    row={row}
+                    max={maxPushups}
+                    index={i}
+                    userName={user?.name}
+                    onShowName={showNameTip}
+                  />
+                ))}
+              </View>
+
+              <View style={styles.rankList}>
+                {top5.map((row) => {
+                  const name = displayName(row, user?.name) || "Anonymous";
+                  return (
+                    <View
+                      key={`row-${row.rank}-${row.name}`}
+                      style={[styles.rankRow, row.isUser && styles.rankRowUser]}
+                    >
+                      <Text style={styles.rankNum}>{MEDALS[row.rank] || `#${row.rank}`}</Text>
+                      <View style={[styles.avatar, { backgroundColor: barColorFor(row) + "26" }]}>
+                        <Text style={[styles.avatarText, { color: row.isUser ? colors.primary : colors.text }]}>
+                          {name.charAt(0).toUpperCase()}
+                        </Text>
+                      </View>
+                      <Text style={[styles.rankName, row.isUser && styles.rankNameUser]} numberOfLines={1}>
+                        {name}
+                        {row.isUser ? "  · You" : ""}
+                      </Text>
+                      <Text style={styles.rankScore}>
+                        {row.pushups}
+                        <Text style={styles.rankUnit}> reps</Text>
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </>
           )}
+        </View>
+
+        {/* ── How it works — three steps, no reading required ── */}
+        <View style={styles.howCard}>
+          {[
+            { icon: "phone-portrait-outline", text: "Prop your phone up" },
+            { icon: "scan-outline", text: "AI camera counts every rep" },
+            { icon: "podium-outline", text: "Climb today's board" },
+          ].map((s, i) => (
+            <View key={s.text} style={styles.howStep}>
+              <View style={styles.howIcon}>
+                <Ionicons name={s.icon} size={ms(17)} color={colors.primary} />
+                <View style={styles.howNum}>
+                  <Text style={styles.howNumText}>{i + 1}</Text>
+                </View>
+              </View>
+              <Text style={styles.howText}>{s.text}</Text>
+            </View>
+          ))}
         </View>
       </ScrollView>
 
@@ -487,12 +564,11 @@ export default function EventScreen() {
         ]}
       >
         {showTaunts && (
-          <Animated.Text
-            style={[styles.tauntText, { opacity: tauntAnim }]}
-            numberOfLines={1}
-          >
-            {taunts[tauntIndex]}
-          </Animated.Text>
+          <Animated.View style={[styles.tauntPill, { opacity: tauntAnim }]}>
+            <Text style={styles.tauntText} numberOfLines={1}>
+              {taunts[tauntIndex]}
+            </Text>
+          </Animated.View>
         )}
 
         <TouchableOpacity
@@ -511,120 +587,141 @@ export default function EventScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#F7F8FA" },
 
+  // ── Hero ──
   hero: {
-    paddingTop: ms(16),
-    paddingHorizontal: ms(18),
-    paddingBottom: ms(20),
+    paddingTop: ms(12),
+    paddingHorizontal: ms(16),
+    paddingBottom: ms(16),
     borderBottomLeftRadius: ms(26),
     borderBottomRightRadius: ms(26),
   },
   heroRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: ms(10),
   },
+  heroMascot: { width: ms(54), height: ms(54), marginVertical: -ms(4) },
   heroTitle: {
     fontFamily: "OpenSans_800ExtraBold",
     fontSize: ms(17),
     color: "#FFFFFF",
-    marginTop: ms(2),
+    letterSpacing: -0.2,
   },
-  heroSub: {
-    fontFamily: "OpenSans_500Medium",
-    fontSize: ms(12),
-    color: "rgba(255,255,255,0.85)",
-    marginTop: ms(2),
-  },
-  heroTrophy: { fontSize: ms(24) },
-  heroRight: { alignItems: "center", gap: ms(8) },
-  sharePill: {
+  resetPill: {
+    alignSelf: "flex-start",
     flexDirection: "row",
     alignItems: "center",
     gap: ms(4),
-    backgroundColor: "rgba(255,255,255,0.22)",
-    borderRadius: ms(999),
-    paddingHorizontal: ms(10),
-    paddingVertical: ms(5),
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.3)",
+    marginTop: ms(4),
+    backgroundColor: "rgba(0,0,0,0.14)",
+    borderRadius: 999,
+    paddingHorizontal: ms(8),
+    paddingVertical: ms(3),
   },
-  sharePillText: {
+  resetText: {
     fontFamily: "OpenSans_700Bold",
-    fontSize: ms(11),
+    fontSize: ms(10.5),
     color: "#FFFFFF",
+  },
+  shareBtn: {
+    width: ms(38),
+    height: ms(38),
+    borderRadius: ms(19),
+    backgroundColor: "rgba(255,255,255,0.22)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.32)",
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   meCard: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     backgroundColor: "rgba(255,255,255,0.16)",
     borderRadius: ms(16),
-    paddingHorizontal: ms(16),
-    paddingVertical: ms(12),
-    marginTop: ms(16),
+    paddingVertical: ms(10),
+    marginTop: ms(12),
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.25)",
   },
-  meLabel: {
-    fontFamily: "OpenSans_500Medium",
-    fontSize: ms(11),
-    color: "rgba(255,255,255,0.85)",
-  },
+  meStat: { flex: 1, alignItems: "center" },
+  meDivider: { width: 1, height: ms(28), backgroundColor: "rgba(255,255,255,0.25)" },
   meValue: {
     fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(18),
+    fontSize: ms(19),
     color: "#FFFFFF",
-    marginTop: ms(2),
   },
-  lifetimeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: ms(5),
-    marginTop: ms(6),
-  },
-  lifetimeText: {
-    fontFamily: "OpenSans_700Bold",
-    fontSize: ms(11),
-    color: "rgba(255,255,255,0.9)",
-  },
-  meRankWrap: { alignItems: "center" },
-  meRankLabel: {
-    fontFamily: "OpenSans_500Medium",
-    fontSize: ms(10),
+  meLabel: {
+    fontFamily: "OpenSans_600SemiBold",
+    fontSize: ms(10.5),
     color: "rgba(255,255,255,0.85)",
-  },
-  meRank: {
-    fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(20),
-    color: "#FFFFFF",
+    marginTop: 1,
   },
 
+  chasePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: ms(6),
+    marginTop: ms(10),
+    backgroundColor: "#FFFFFF",
+    borderRadius: ms(12),
+    paddingHorizontal: ms(12),
+    paddingVertical: ms(8),
+  },
+  chaseText: {
+    flex: 1,
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: ms(12),
+    color: colors.text,
+  },
+
+  // ── Body ──
   listContent: {
     paddingHorizontal: ms(16),
-    paddingTop: ms(14),
-    paddingBottom: ms(150),
+    paddingTop: ms(16),
+    paddingBottom: ms(170),
+  },
+  sectionHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: ms(10),
+    paddingHorizontal: ms(2),
   },
   sectionLabel: {
     fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(13),
+    fontSize: ms(15),
     color: colors.text,
-    marginLeft: ms(2),
   },
   sectionNote: {
     fontFamily: "OpenSans_500Medium",
-    fontSize: ms(10.5),
+    fontSize: ms(11),
     color: colors.textLight,
-    marginTop: ms(2),
-    marginBottom: ms(10),
-    marginLeft: ms(2),
+    marginTop: 1,
+  },
+  livePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "#FDECEC",
+    borderRadius: 999,
+    paddingHorizontal: ms(8),
+    paddingVertical: ms(3),
+  },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#EF4444" },
+  liveText: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: ms(9.5),
+    letterSpacing: 0.8,
+    color: "#DC2626",
   },
 
-  // ── Bar chart ──
+  // ── Chart + ranked list ──
   chartCard: {
     backgroundColor: "#FFFFFF",
-    borderRadius: ms(18),
-    paddingVertical: ms(16),
+    borderRadius: ms(20),
+    paddingTop: ms(16),
+    paddingBottom: ms(8),
     paddingHorizontal: ms(6),
     borderWidth: 1,
     borderColor: "#EEF0F4",
@@ -641,14 +738,16 @@ const styles = StyleSheet.create({
   },
   emptyChart: {
     alignItems: "center",
-    paddingVertical: ms(24),
+    paddingTop: ms(4),
+    paddingBottom: ms(18),
     paddingHorizontal: ms(16),
   },
+  emptyMascot: { width: ms(90), height: ms(90), marginBottom: ms(4) },
   nameTip: {
     position: "absolute",
     left: ms(28),
     right: ms(28),
-    bottom: ms(150),
+    bottom: ms(170),
     backgroundColor: "rgba(17,24,39,0.94)",
     borderRadius: ms(12),
     paddingVertical: ms(10),
@@ -673,7 +772,6 @@ const styles = StyleSheet.create({
     fontSize: ms(11.5),
     color: colors.textLight,
   },
-  emptyEmoji: { fontSize: ms(40), marginBottom: ms(8) },
   emptyTitle: {
     fontFamily: "OpenSans_800ExtraBold",
     fontSize: ms(16),
@@ -704,11 +802,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   bar: {
-    width: ms(24),
-    borderTopLeftRadius: ms(7),
-    borderTopRightRadius: ms(7),
-    borderBottomLeftRadius: ms(3),
-    borderBottomRightRadius: ms(3),
+    width: ms(28),
+    borderTopLeftRadius: ms(9),
+    borderTopRightRadius: ms(9),
+    borderBottomLeftRadius: ms(4),
+    borderBottomRightRadius: ms(4),
   },
   barRank: {
     fontFamily: "OpenSans_800ExtraBold",
@@ -728,20 +826,120 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
 
+  rankList: {
+    marginTop: ms(14),
+    marginHorizontal: ms(6),
+    borderTopWidth: 1,
+    borderTopColor: "#F1F3F6",
+    paddingTop: ms(6),
+  },
+  rankRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: ms(10),
+    paddingVertical: ms(8),
+    paddingHorizontal: ms(8),
+    borderRadius: ms(12),
+  },
+  rankRowUser: { backgroundColor: colors.primary + "12" },
+  rankNum: {
+    width: ms(26),
+    textAlign: "center",
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: ms(13),
+    color: colors.textLight,
+  },
+  avatar: {
+    width: ms(30),
+    height: ms(30),
+    borderRadius: ms(15),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarText: { fontFamily: "OpenSans_800ExtraBold", fontSize: ms(13) },
+  rankName: {
+    flex: 1,
+    fontFamily: "OpenSans_700Bold",
+    fontSize: ms(13),
+    color: colors.text,
+  },
+  rankNameUser: { color: colors.primary, fontFamily: "OpenSans_800ExtraBold" },
+  rankScore: { fontFamily: "OpenSans_800ExtraBold", fontSize: ms(14), color: colors.text },
+  rankUnit: { fontFamily: "OpenSans_600SemiBold", fontSize: ms(10), color: colors.textLight },
 
+  // ── How it works ──
+  howCard: {
+    flexDirection: "row",
+    marginTop: ms(14),
+    backgroundColor: "#FFFFFF",
+    borderRadius: ms(18),
+    paddingVertical: ms(14),
+    paddingHorizontal: ms(6),
+    borderWidth: 1,
+    borderColor: "#EEF0F4",
+  },
+  howStep: { flex: 1, alignItems: "center", paddingHorizontal: ms(4) },
+  howIcon: {
+    width: ms(40),
+    height: ms(40),
+    borderRadius: ms(14),
+    backgroundColor: colors.primary + "12",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  howNum: {
+    position: "absolute",
+    top: -ms(5),
+    right: -ms(5),
+    width: ms(17),
+    height: ms(17),
+    borderRadius: ms(9),
+    backgroundColor: colors.primary,
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  howNumText: { fontFamily: "OpenSans_800ExtraBold", fontSize: ms(8.5), color: "#FFFFFF" },
+  howText: {
+    fontFamily: "OpenSans_700Bold",
+    fontSize: ms(11),
+    lineHeight: ms(15),
+    color: colors.text,
+    textAlign: "center",
+    marginTop: ms(8),
+  },
+
+  // ── Pinned CTA ──
   ctaWrap: {
     position: "absolute",
     left: 0,
     right: 0,
     bottom: ms(86),
     paddingHorizontal: ms(18),
+    alignItems: "stretch",
+  },
+  tauntPill: {
+    alignSelf: "center",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.primary + "33",
+    paddingHorizontal: ms(14),
+    paddingVertical: ms(6),
+    marginBottom: ms(8),
+    maxWidth: "100%",
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   tauntText: {
     fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(13),
+    fontSize: ms(12.5),
     color: colors.primary,
     textAlign: "center",
-    marginBottom: ms(8),
   },
   startBtn: {
     flexDirection: "row",

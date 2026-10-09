@@ -1,11 +1,15 @@
-import { colors } from "@/constants/colors";
-import Slider from "@react-native-community/slider";
+import { Ionicons } from "@expo/vector-icons";
+import { MotiView } from "moti";
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+
+import { colors } from "@/constants/colors";
 import { scaling } from "../../constants/useScaling";
+import RulerCard from "./RulerCard";
 
-const { scaleHeight, scaleWidth } = scaling();
+const ms = (n) => scaling().moderateScale(n);
 
+// ── Unit maths — unchanged from the previous version, so saved data matches ──
 const roundToOne = (value) => Math.round(Number(value) * 10) / 10;
 
 const toNumber = (value, fallback) => {
@@ -13,438 +17,347 @@ const toNumber = (value, fallback) => {
   return Number.isFinite(number) ? number : fallback;
 };
 
-const clamp = (value, min, max) => {
-  return Math.min(Math.max(value, min), max);
-};
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
 const cmToFtIn = (cm) => {
   const totalInches = Number(cm) / 2.54;
-
   let feet = Math.floor(totalInches / 12);
   let inches = Math.round(totalInches % 12);
-
   if (inches === 12) {
     feet += 1;
     inches = 0;
   }
-
   return { feet, inches };
 };
 
-const ftInToCm = (feet, inches) => {
-  return roundToOne((Number(feet) * 12 + Number(inches)) * 2.54);
-};
-
 const kgToLbs = (kg) => roundToOne(Number(kg) * 2.20462);
+
+// Module-level so its identity is stable: a fresh function each render would
+// invalidate the ruler's renderItem on every notch while dragging.
+const footLabel = (inches) => `${inches / 12}′`;
 const lbsToKg = (lbs) => roundToOne(Number(lbs) / 2.20462);
 
-function UnitToggle({ options, selected, onChange }) {
-  return (
-    <View style={styles.toggleContainer}>
-      {options.map((item) => {
-        const active = selected === item.value;
+/**
+ * Starting point when nothing has been saved yet.
+ *
+ * The old default was 140 cm / 65 kg for everyone — 140 cm is 4′7″, which is
+ * implausible for almost any adult, and since it was one tap from being
+ * saved, it was. Starting near a typical adult for the selected gender means
+ * someone who barely nudges the ruler still lands close to the truth, and the
+ * "Typical value · set yours" chip makes it clear it isn't theirs yet.
+ */
+const SUGGESTED = {
+  Male: { height: 170, weight: 70 },
+  Female: { height: 157, weight: 57 },
+  default: { height: 164, weight: 64 },
+};
 
-        return (
-          <Pressable
-            key={item.value}
-            onPress={() => onChange(item.value)}
-            style={[styles.toggleButton, active && styles.toggleButtonActive]}
-          >
-            <Text
-              style={[styles.toggleText, active && styles.toggleTextActive]}
-            >
-              {item.label}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
+const bmiInfo = (kg, cm) => {
+  const m = cm / 100;
+  if (!m) return null;
+  const bmi = kg / (m * m);
+  if (bmi < 18.5) return { bmi, label: "Below the typical range", color: "#2563EB", bg: "#EFF6FF" };
+  if (bmi < 25) return { bmi, label: "In the healthy range", color: "#047857", bg: "#ECFDF5" };
+  if (bmi < 30) return { bmi, label: "Above the typical range", color: "#B45309", bg: "#FFFBEB" };
+  return { bmi, label: "Well above the typical range", color: "#C2410C", bg: "#FFF7ED" };
+};
 
-function StepperButton({ label, onPress }) {
-  return (
-    <Pressable onPress={onPress} style={styles.stepperButton}>
-      <Text style={styles.stepperText}>{label}</Text>
-    </Pressable>
-  );
-}
-
-function MeasurementCard({
-  title,
-  unit,
-  unitOptions,
-  value,
-  min,
-  max,
-  step = 1,
-  displayValue,
-  helperText,
-  onUnitChange,
-  onChange,
-}) {
-  const decrease = () => {
-    const nextValue = clamp(roundToOne(value - step), min, max);
-    onChange(nextValue);
-  };
-
-  const increase = () => {
-    const nextValue = clamp(roundToOne(value + step), min, max);
-    onChange(nextValue);
-  };
-
-  return (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <Text style={styles.cardTitle}>{title}</Text>
-
-        <UnitToggle
-          options={unitOptions}
-          selected={unit}
-          onChange={onUnitChange}
-        />
-      </View>
-
-      <Text style={styles.mainValue}>{displayValue}</Text>
-
-      {helperText ? <Text style={styles.helperText}>{helperText}</Text> : null}
-
-      <View style={styles.sliderRow}>
-        <StepperButton label="−" onPress={decrease} />
-
-        <Slider
-          style={styles.slider}
-          minimumValue={min}
-          maximumValue={max}
-          step={0} // continuous drag = smooth; we round the value on change
-          value={value}
-          minimumTrackTintColor={colors.primary}
-          maximumTrackTintColor="#E5E7EB"
-          thumbTintColor={colors.primary}
-          tapToSeek
-          onValueChange={(nextValue) => {
-            onChange(Math.round(nextValue));
-          }}
-        />
-
-        <StepperButton label="+" onPress={increase} />
-      </View>
-
-      <View style={styles.rangeRow}>
-        <Text style={styles.rangeText}>{min}</Text>
-        <Text style={styles.rangeText}>{max}</Text>
-      </View>
-    </View>
-  );
-}
-
+/**
+ * @param ui        a ref owned by the signup screen that survives this step
+ *                  unmounting (going Back/Continue): which values the user has
+ *                  actually touched, and which units they chose.
+ * @param hasSaved  true when editing a profile that already has measurements —
+ *                  never overwrite those with a suggestion.
+ */
 export default function MeasurementsStep({
   form,
+  ui,
+  hasSaved = false,
   minHeight = 120,
   maxHeight = 240,
-  unitHeight = "cm",
   minWeight = 30,
   maxWeight = 170,
-  unitWeight = "kg",
-  selectedWeight,
-  selectedHeight,
 }) {
-  const DEFAULT_HEIGHT_CM = 140;
-  const DEFAULT_WEIGHT_KG = 65;
+  const state = ui?.current ?? {};
 
-  const initialHeightCm = clamp(
-    toNumber(selectedHeight || form.getValues("height"), DEFAULT_HEIGHT_CM),
-    minHeight,
-    maxHeight,
-  );
-
-  const initialWeightKg = clamp(
-    toNumber(selectedWeight || form.getValues("weight"), DEFAULT_WEIGHT_KG),
-    minWeight,
-    maxWeight,
-  );
-
-  const [heightCm, setHeightCm] = useState(initialHeightCm);
-  const [weightKg, setWeightKg] = useState(initialWeightKg);
-
-  const [heightUnit, setHeightUnit] = useState(
-    String(unitHeight).toLowerCase() === "ftin" ? "ftin" : "cm",
-  );
-
-  const [weightUnit, setWeightUnit] = useState(
-    String(unitWeight).toLowerCase() === "lbs" ? "lbs" : "kg",
-  );
-
-  const saveHeightValues = (nextCm) => {
-    const safeCm = clamp(roundToOne(nextCm), minHeight, maxHeight);
-    const { feet, inches } = cmToFtIn(safeCm);
-
-    setHeightCm(safeCm);
-
-    form.setValue("height", safeCm, {
-      shouldValidate: true,
-      shouldDirty: true,
-    });
-
-    form.setValue("heightFeet", feet, {
-      shouldValidate: true,
-      shouldDirty: true,
-    });
-
-    form.setValue("heightInches", inches, {
-      shouldValidate: true,
-      shouldDirty: true,
-    });
-  };
-
-  const saveWeightValues = (nextKg) => {
-    const safeKg = clamp(roundToOne(nextKg), minWeight, maxWeight);
-    const lbs = kgToLbs(safeKg);
-
-    setWeightKg(safeKg);
-
-    form.setValue("weight", safeKg, {
-      shouldValidate: true,
-      shouldDirty: true,
-    });
-
-    form.setValue("weightLbs", lbs, {
-      shouldValidate: true,
-      shouldDirty: true,
-    });
-  };
-
-  useEffect(() => {
-    const currentHeight = toNumber(form.getValues("height"), initialHeightCm);
-    const currentWeight = toNumber(form.getValues("weight"), initialWeightKg);
-
-    const heightFromEdit = clamp(currentHeight, minHeight, maxHeight);
-    const weightFromEdit = clamp(currentWeight, minWeight, maxWeight);
-
-    const heightFtIn = cmToFtIn(heightFromEdit);
-    const weightLbs = kgToLbs(weightFromEdit);
-
-    setHeightCm(heightFromEdit);
-    setWeightKg(weightFromEdit);
-
-    form.setValue("height", heightFromEdit, {
-      shouldValidate: true,
-      shouldDirty: false,
-    });
-
-    form.setValue("heightFeet", heightFtIn.feet, {
-      shouldValidate: true,
-      shouldDirty: false,
-    });
-
-    form.setValue("heightInches", heightFtIn.inches, {
-      shouldValidate: true,
-      shouldDirty: false,
-    });
-
-    form.setValue("weight", weightFromEdit, {
-      shouldValidate: true,
-      shouldDirty: false,
-    });
-
-    form.setValue("weightLbs", weightLbs, {
-      shouldValidate: true,
-      shouldDirty: false,
-    });
+  const initial = useMemo(() => {
+    const gender = form.getValues("gender");
+    const s = SUGGESTED[gender] ?? SUGGESTED.default;
+    // Suggest only until the user has touched the value — then it's theirs.
+    const useSuggestion = !hasSaved;
+    const h = useSuggestion && !state.heightTouched ? s.height : form.getValues("height");
+    const w = useSuggestion && !state.weightTouched ? s.weight : form.getValues("weight");
+    return {
+      height: clamp(toNumber(h, s.height), minHeight, maxHeight),
+      weight: clamp(toNumber(w, s.weight), minWeight, maxWeight),
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const heightFtIn = useMemo(() => cmToFtIn(heightCm), [heightCm]);
-  const weightLbs = useMemo(() => kgToLbs(weightKg), [weightKg]);
+  const [heightCm, setHeightCm] = useState(initial.height);
+  const [weightKg, setWeightKg] = useState(initial.weight);
+  const [heightUnit, setHeightUnitState] = useState(state.heightUnit || "cm");
+  const [weightUnit, setWeightUnitState] = useState(state.weightUnit || "kg");
+  const [heightTouched, setHeightTouched] = useState(!!state.heightTouched);
+  const [weightTouched, setWeightTouched] = useState(!!state.weightTouched);
 
-  const heightDisplay =
-    heightUnit === "cm"
-      ? `${heightCm} cm`
-      : `${heightFtIn.feet} ft ${heightFtIn.inches} in`;
+  const remember = (patch) => {
+    if (ui) ui.current = { ...ui.current, ...patch };
+  };
 
-  const heightHelper =
-    heightUnit === "cm"
-      ? `${heightFtIn.feet} ft ${heightFtIn.inches} in`
-      : `${heightCm} cm`;
+  // Writes exactly the same five fields, with the same rounding, as before.
+  const commitHeight = (cm, validate) => {
+    const safeCm = clamp(roundToOne(cm), minHeight, maxHeight);
+    const { feet, inches } = cmToFtIn(safeCm);
+    setHeightCm(safeCm);
+    // While dragging: write the value, skip validation (it runs per notch
+    // otherwise). Validate once the ruler settles.
+    const opts = validate ? { shouldValidate: true, shouldDirty: true } : undefined;
+    form.setValue("height", safeCm, opts);
+    form.setValue("heightFeet", feet, opts);
+    form.setValue("heightInches", inches, opts);
+  };
 
-  const weightDisplay =
-    weightUnit === "kg" ? `${weightKg} kg` : `${weightLbs} lbs`;
+  const commitWeight = (kg, validate) => {
+    const safeKg = clamp(roundToOne(kg), minWeight, maxWeight);
+    setWeightKg(safeKg);
+    const opts = validate ? { shouldValidate: true, shouldDirty: true } : undefined;
+    form.setValue("weight", safeKg, opts);
+    form.setValue("weightLbs", kgToLbs(safeKg), opts);
+  };
 
-  const weightHelper =
-    weightUnit === "kg" ? `${weightLbs} lbs` : `${weightKg} kg`;
+  // Seed the form on mount — including the suggestion, if one applies.
+  useEffect(() => {
+    const ftIn = cmToFtIn(initial.height);
+    const quiet = { shouldValidate: true, shouldDirty: false };
+    form.setValue("height", initial.height, quiet);
+    form.setValue("heightFeet", ftIn.feet, quiet);
+    form.setValue("heightInches", ftIn.inches, quiet);
+    form.setValue("weight", initial.weight, quiet);
+    form.setValue("weightLbs", kgToLbs(initial.weight), quiet);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const touchHeight = () => {
+    if (!heightTouched) {
+      setHeightTouched(true);
+      remember({ heightTouched: true });
+    }
+  };
+  const touchWeight = () => {
+    if (!weightTouched) {
+      setWeightTouched(true);
+      remember({ weightTouched: true });
+    }
+  };
+
+  const setHeightUnit = (u) => {
+    setHeightUnitState(u);
+    remember({ heightUnit: u });
+  };
+  const setWeightUnit = (u) => {
+    setWeightUnitState(u);
+    remember({ weightUnit: u });
+  };
+
+  // ── Height ruler, in whichever unit is showing ──
+  const isCm = heightUnit === "cm";
+  const inMin = Math.ceil(minHeight / 2.54);
+  const inMax = Math.floor(maxHeight / 2.54);
+  const totalIn = Math.round(heightCm / 2.54);
+  const ftIn = cmToFtIn(heightCm);
+
+  const heightRuler = isCm
+    ? {
+        min: minHeight,
+        max: maxHeight,
+        value: Math.round(heightCm),
+        toCm: (v) => v,
+        majorEvery: 10,
+        labelFor: undefined,
+        display: `${Math.round(heightCm)} cm`,
+        secondary: `${ftIn.feet} ft ${ftIn.inches} in`,
+      }
+    : {
+        min: inMin,
+        max: inMax,
+        value: clamp(totalIn, inMin, inMax),
+        toCm: (v) => v * 2.54,
+        majorEvery: 12, // a major notch per foot
+        labelFor: footLabel,
+        display: `${ftIn.feet} ft ${ftIn.inches} in`,
+        secondary: `${Math.round(heightCm)} cm`,
+      };
+
+  // ── Weight ruler ──
+  const isKg = weightUnit === "kg";
+  const lbMin = Math.floor(minWeight * 2.20462);
+  const lbMax = Math.floor(maxWeight * 2.20462);
+  const lbs = Math.round(kgToLbs(weightKg));
+
+  const weightRuler = isKg
+    ? {
+        min: minWeight,
+        max: maxWeight,
+        value: Math.round(weightKg),
+        toKg: (v) => v,
+        display: `${Math.round(weightKg)} kg`,
+        secondary: `${lbs} lbs`,
+      }
+    : {
+        min: lbMin,
+        max: lbMax,
+        value: clamp(lbs, lbMin, lbMax),
+        toKg: (v) => lbsToKg(v),
+        display: `${lbs} lbs`,
+        secondary: `${Math.round(weightKg)} kg`,
+      };
+
+  const status = (touched) => (touched ? "set" : hasSaved ? "saved" : "suggested");
+  const bmi = bmiInfo(weightKg, heightCm);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.stepTitle}>Your Measurements</Text>
-      <Text style={styles.stepSubtitle}>
-        Select your height and weight. We save both units automatically.
-      </Text>
+      <MotiView
+        from={{ opacity: 0, translateY: 8 }}
+        animate={{ opacity: 1, translateY: 0 }}
+        transition={{ type: "timing", duration: 280 }}
+      >
+        <Text style={styles.stepTitle}>Your measurements</Text>
+        <Text style={styles.stepSubtitle}>
+          Drag the ruler, tap ± or tap the number to type it.
+        </Text>
+      </MotiView>
 
-      <MeasurementCard
+      <RulerCard
+        index={0}
         title="Height"
-        unit={heightUnit}
+        icon="resize-outline"
         unitOptions={[
           { label: "CM", value: "cm" },
           { label: "FT/IN", value: "ftin" },
         ]}
-        value={heightCm}
-        min={minHeight}
-        max={maxHeight}
-        step={1}
-        displayValue={heightDisplay}
-        helperText={heightHelper}
+        unit={heightUnit}
         onUnitChange={setHeightUnit}
-        onChange={saveHeightValues}
+        min={heightRuler.min}
+        max={heightRuler.max}
+        value={heightRuler.value}
+        majorEvery={heightRuler.majorEvery}
+        labelFor={heightRuler.labelFor}
+        display={heightRuler.display}
+        secondary={heightRuler.secondary}
+        typeable={isCm}
+        typeSuffix="cm"
+        status={status(heightTouched)}
+        onInteract={touchHeight}
+        onChange={(v) => commitHeight(heightRuler.toCm(v), false)}
+        onSettle={(v) => commitHeight(heightRuler.toCm(v), true)}
       />
 
-      <MeasurementCard
+      <RulerCard
+        index={1}
         title="Weight"
-        unit={weightUnit}
+        icon="barbell-outline"
         unitOptions={[
           { label: "KG", value: "kg" },
           { label: "LBS", value: "lbs" },
         ]}
-        value={weightKg}
-        min={minWeight}
-        max={maxWeight}
-        step={1}
-        displayValue={weightDisplay}
-        helperText={weightHelper}
+        unit={weightUnit}
         onUnitChange={setWeightUnit}
-        onChange={saveWeightValues}
+        min={weightRuler.min}
+        max={weightRuler.max}
+        value={weightRuler.value}
+        display={weightRuler.display}
+        secondary={weightRuler.secondary}
+        typeSuffix={isKg ? "kg" : "lbs"}
+        status={status(weightTouched)}
+        onInteract={touchWeight}
+        onChange={(v) => commitWeight(weightRuler.toKg(v), false)}
+        onSettle={(v) => commitWeight(weightRuler.toKg(v), true)}
       />
+
+      {bmi ? (
+        <MotiView
+          from={{ opacity: 0, translateY: 10 }}
+          animate={{ opacity: 1, translateY: 0, backgroundColor: bmi.bg }}
+          transition={{ type: "timing", duration: 300, delay: 240 }}
+          style={styles.bmiCard}
+        >
+          <View>
+            <Text style={styles.bmiLabel}>Your BMI</Text>
+            <Text style={[styles.bmiValue, { color: bmi.color }]}>
+              {bmi.bmi.toFixed(1)}
+            </Text>
+          </View>
+          <Text style={[styles.bmiNote, { color: bmi.color }]}>{bmi.label}</Text>
+        </MotiView>
+      ) : null}
+
+      <View style={styles.note}>
+        <Ionicons name="information-circle-outline" size={ms(15)} color={colors.primary} />
+        <Text style={styles.noteText}>
+          Accurate values give you accurate calorie burn and daily water targets.
+        </Text>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    marginHorizontal: 5,
-    gap: 18,
-    paddingBottom: 30,
-  },
+  container: { gap: 14, paddingBottom: 24 },
 
   stepTitle: {
-    fontSize: 24,
-    fontFamily: "OpenSans_700Bold",
-    color: colors.text,
-  },
-
-  stepSubtitle: {
-    fontSize: 14,
-    fontFamily: "OpenSans_400Regular",
-    color: colors.textLight,
-    marginBottom: 6,
-  },
-
-  card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 22,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: "#EEF0F4",
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    shadowOffset: {
-      width: 0,
-      height: 6,
-    },
-    elevation: 3,
-  },
-
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-
-  cardTitle: {
-    fontSize: 18,
-    fontFamily: "OpenSans_700Bold",
-    color: colors.text,
-  },
-
-  toggleContainer: {
-    flexDirection: "row",
-    backgroundColor: "#F3F4F6",
-    borderRadius: 999,
-    padding: 4,
-  },
-
-  toggleButton: {
-    paddingVertical: 7,
-    paddingHorizontal: 14,
-    borderRadius: 999,
-  },
-
-  toggleButtonActive: {
-    backgroundColor: colors.primary,
-  },
-
-  toggleText: {
-    fontSize: 12,
-    fontFamily: "OpenSans_700Bold",
-    color: colors.textLight,
-  },
-
-  toggleTextActive: {
-    color: "#FFFFFF",
-  },
-
-  mainValue: {
-    marginTop: 22,
-    textAlign: "center",
-    fontSize: 42,
+    fontSize: ms(24),
     fontFamily: "OpenSans_800ExtraBold",
-    color: colors.primary,
+    color: colors.text,
+    letterSpacing: -0.4,
   },
-
-  helperText: {
-    textAlign: "center",
-    fontSize: 14,
-    fontFamily: "OpenSans_600SemiBold",
+  stepSubtitle: {
+    fontSize: ms(13.5),
+    fontFamily: "OpenSans_500Medium",
     color: colors.textLight,
     marginTop: 4,
+    lineHeight: ms(19),
   },
 
-  sliderRow: {
+  bmiCard: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 22,
-    gap: 12,
-  },
-
-  slider: {
-    flex: 1,
-    height: 56,
-    marginHorizontal: 4,
-  },
-
-  stepperButton: {
-    width: scaleWidth(42),
-    height: scaleHeight(42),
-    borderRadius: 999,
-    backgroundColor: colors.primary + "15",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  stepperText: {
-    fontSize: 26,
-    fontFamily: "OpenSans_700Bold",
-    color: colors.primary,
-    lineHeight: 28,
-  },
-
-  rangeRow: {
-    flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 4,
+    borderRadius: 18,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+  },
+  bmiLabel: {
+    fontSize: ms(11.5),
+    fontFamily: "OpenSans_700Bold",
+    color: colors.textLight,
+    letterSpacing: 0.4,
+  },
+  bmiValue: {
+    fontSize: ms(24),
+    fontFamily: "OpenSans_800ExtraBold",
+    fontVariant: ["tabular-nums"],
+  },
+  bmiNote: {
+    flexShrink: 1,
+    marginLeft: 12,
+    textAlign: "right",
+    fontSize: ms(13),
+    fontFamily: "OpenSans_700Bold",
   },
 
-  rangeText: {
-    fontSize: 12,
+  note: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 4,
+  },
+  noteText: {
+    flex: 1,
+    fontSize: ms(12),
+    fontFamily: "OpenSans_500Medium",
     color: colors.textLight,
-    fontFamily: "OpenSans_400Regular",
+    lineHeight: ms(17),
   },
 });

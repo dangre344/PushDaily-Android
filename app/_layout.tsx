@@ -253,6 +253,13 @@ export default function RootLayout() {
           return;
         }
 
+        // Period reminder → straight to the Periods tab, where logging is.
+        if (data?.type === "period") {
+          dismiss();
+          router.push("/profile/water?tab=period");
+          return;
+        }
+
         // "Show me details" action OR tapping the notification body → open the
         // Water Reminder screen.
         if (resp.actionIdentifier === WATER_ACTION_DETAILS || data?.type === "water") {

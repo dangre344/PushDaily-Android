@@ -1,7 +1,6 @@
 {
   "appName": "Push Daily",
   "tagLine": "Train - Transform - Triumph",
-
   "signup": {
     "title": "🏋️ Push Daily",
     "step": "Step {{current}} of {{total}}",
@@ -30,7 +29,6 @@
     "finish": "Finish",
     "skip": "Skip for now"
   },
-
   "enterName": "Enter Name",
   "enterEmail": "Enter Email",
   "selectAge": "Select Age",
@@ -91,5 +89,12 @@
   "selectExpLevel": "Pick the level that matches your progress 💪",
   "continue": "Continue",
   "start": "Start",
-  "selectExperience": "Please select your experience level"
+  "selectExperience": "Please select your experience level",
+  "goodMorning": "Good morning",
+  "goodAfternoon": "Good afternoon",
+  "goodEvening": "Good evening",
+  "trainByBodyPart": "Train by body part",
+  "trainByBodyPartSub": "Pick a focus · 3 levels each",
+  "quickStarts": "Quick starts",
+  "quickStartsSub": "Beginner friendly picks"
 }

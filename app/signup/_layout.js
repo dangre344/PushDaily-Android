@@ -12,7 +12,6 @@ import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { ScrollView, StyleSheet, View } from "react-native";
-import { Button } from "../../components/ui/Button.js";
 
 import { Logger } from "@/constants/Logger.js";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -38,7 +37,8 @@ import { scaling } from "@/constants/useScaling.js";
 import { Ionicons } from "@expo/vector-icons";
 import * as yup from "yup";
 import { OptionCardController } from "../../components/ui/OptionCard.js";
-import SliderSelector from "../../components/ui/SliderSelector.js";
+import AgeField from "../../components/ui/AgeField.js";
+import { SignupFooter, SignupHeader } from "../../components/ui/SignupChrome.js";
 import { colors } from "../../constants/colors.js";
 
 export default function Signup() {
@@ -55,7 +55,12 @@ export default function Signup() {
   const router = useRouter();
   const totalSteps = 6;
   const [step, setStep] = useState(1);
-  const progress = (step / totalSteps) * 100;
+  // 1 = forward, -1 = back — only drives which side the next step slides in from.
+  const [direction, setDirection] = useState(1);
+  // UI-only memory for the measurements step, kept here so it survives that
+  // step unmounting when the user moves Back/Continue: which values they've
+  // actually touched, and the units they picked.
+  const measureUi = useRef({});
 
   const { user, updateUser } = useUser();
 
@@ -495,6 +500,7 @@ export default function Signup() {
     Logger.log(" totalSteps:", totalSteps);
 
     if (step < totalSteps) {
+      setDirection(1);
       setStep(step + 1);
     } else {
       // Ignore extra taps while the finish flow / permission popup is running.
@@ -504,7 +510,11 @@ export default function Signup() {
     }
   };
 
-  const prevStep = () => step > 1 && setStep(step - 1);
+  const prevStep = () => {
+    if (step <= 1) return;
+    setDirection(-1);
+    setStep(step - 1);
+  };
 
   const toggleDay = (day) => {
     const current = form.days || [];
@@ -530,6 +540,7 @@ export default function Signup() {
             rules={{ required: "Please select a gender" }}
             defaultValue={form.getValues("gender")}
             horizontal
+            columns={3}
             options={[
               { emoji: "🚹", title: "Male" },
               { emoji: "🚺", title: "Female" },
@@ -546,6 +557,7 @@ export default function Signup() {
           inputType="text"
           placeholder="Enter your full name"
           rootContainer={styles.inputMargin}
+          icon="person-outline"
           // Surface the keyboard's name suggestions (autofill) when available.
           autoComplete="name"
           textContentType="name"
@@ -555,14 +567,12 @@ export default function Signup() {
           keyboardType="default"
         />
 
-        <SliderSelector
+        <AgeField
           control={form.control}
           name="age"
           label={t("selectAge")}
           min={13}
-          defaultValue={form.getValues("age")}
           max={80}
-          rules={{ required: "Please select your age" }}
           units={t("years")}
         />
       </View>
@@ -722,28 +732,16 @@ export default function Signup() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t("signup.title")}</Text>
-        <Text style={styles.headerSubtitle}>
-          {t("signup.step", { current: step, total: totalSteps })}
-        </Text>
-      </View>
-
-      <View style={styles.progressBarContainer}>
-        <View style={[styles.progressBar, { width: `${progress}%` }]} />
-      </View>
-
-      {/* Shown on every step */}
-      <View style={styles.formNote}>
-        <Ionicons
-          name="information-circle-outline"
-          size={scaling().moderateScale(15)}
-          color={colors.primary}
-        />
-        <Text style={styles.formNoteText}>
-          Filling correct details helps us create customized plans for you.
-        </Text>
-      </View>
+      {/* The old "filling correct details…" banner sat on every step and
+          pushed content down; the measurements step now carries a specific
+          version of that message where it actually matters. */}
+      <SignupHeader
+        step={step}
+        total={totalSteps}
+        title={t("signup.title")}
+        subtitle={t("signup.step", { current: step, total: totalSteps })}
+        onBack={prevStep}
+      />
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -755,9 +753,15 @@ export default function Signup() {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
-          <StepContainer step={step}>
+          <StepContainer step={step} direction={direction}>
             {step === 1 && <AboutYouStep form={form} />}
-            {step === 2 && <MeasurementsStep form={form} />}
+            {step === 2 && (
+              <MeasurementsStep
+                form={form}
+                ui={measureUi}
+                hasSaved={!!user?.height}
+              />
+            )}
             {step === 3 && <ExperienceStep form={form} />}
             {step === 4 && <GoalStep form={form} />}
             {step === 5 && <DaysStep form={form} />}
@@ -765,26 +769,15 @@ export default function Signup() {
           </StepContainer>
         </ScrollView>
 
-        <View style={styles.footer}>
-          <View style={styles.buttonRow}>
-            {step > 1 && (
-              <Button
-                title={t("signup.back")}
-                style={{ flex: 1, marginEnd: 15 }}
-                onPress={prevStep}
-                variant="outline"
-              />
-            )}
-
-            <Button
-              title={
-                step === totalSteps ? t("signup.finish") : t("signup.continue")
-              }
-              style={{ flex: 1 }}
-              onPress={nextStep}
-            />
-          </View>
-        </View>
+        {/* Back lives in the header now, so the footer has one clear action. */}
+        <SignupFooter
+          form={form}
+          step={step}
+          total={totalSteps}
+          onNext={nextStep}
+          continueLabel={t("signup.continue")}
+          finishLabel={t("signup.finish")}
+        />
       </KeyboardAvoidingView>
 
       <Modal
@@ -888,25 +881,29 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 28,
   },
   stepContainer: {
     flex: 1,
   },
   stepTitle: {
     fontSize: 24,
-    fontFamily: "OpenSans_700Bold",
+    fontFamily: "OpenSans_800ExtraBold",
     color: colors.text,
-    marginBottom: 8,
+    letterSpacing: -0.4,
+    marginBottom: 4,
   },
   stepSubtitle: {
-    fontSize: 14,
-    fontFamily: "OpenSans_400Regular",
+    fontSize: 13.5,
+    fontFamily: "OpenSans_500Medium",
     color: colors.textLight,
-    marginBottom: 10,
+    lineHeight: 19,
+    marginBottom: 18,
   },
   optionsContainer: {
-    marginTop: 8,
+    marginTop: 0,
   },
   input: {
     backgroundColor: colors.background,
@@ -949,8 +946,8 @@ const styles = StyleSheet.create({
   },
 
   inputMargin: {
-    marginTop: 15,
-    marginBottom: 5,
+    marginTop: 18,
+    marginBottom: 18,
   },
   dayButtonSelected: {
     borderColor: colors.primary,

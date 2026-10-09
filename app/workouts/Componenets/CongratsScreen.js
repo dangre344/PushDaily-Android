@@ -1,5 +1,5 @@
 import { FontAwesome5, Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+import { Image } from "expo-image";
 import LottieView from "lottie-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -20,6 +20,7 @@ import {
   BannerAdSize,
   InterstitialAdManager,
 } from "../../../ads/Admobmanager";
+import BrandGradient from "../../../components/ui/BrandGradient";
 import { praiseWorkout, sayFromJack } from "../../../constants/bubbleMessage";
 import { maybeAskForReview } from "../../../constants/appReview";
 import { colors } from "../../../constants/colors";
@@ -27,6 +28,7 @@ import { useUser } from "../../../constants/UserContext";
 import { Logger } from "../../../constants/Logger";
 import { trackEvent } from "../../../constants/mixpanel";
 import { scaling } from "../../../constants/useScaling";
+import { EXPRESSION_IMAGES } from "../../../constants/widgetPromo";
 import { getAllWorkouts, initDB } from "../../../offlinedb/workoutdb";
 import {
   getNextBadgeProgress,
@@ -100,10 +102,28 @@ const CongratsScreen = ({
 
   const safeCalories = totalCalories || Number(workouts?.calories || 0) || 0;
 
-  const motivationText =
-    progressPercent >= 100
-      ? "You completed the full session. That’s consistency in action."
-      : "Great progress. Keep showing up and finish strong next time.";
+  // Jack's one-liner in the hero — proud, a little cheeky.
+  const [cheer] = useState(() => {
+    const lines =
+      progressPercent >= 100
+        ? [
+            "Look at you, sweaty and proud. I'm proud too 🥹",
+            "Full session done. You may now flex at strangers 💪",
+            "That was elite. Even I'm impressed 😎",
+            "Your couch just lost a loyal customer 🛋️",
+          ]
+        : [
+            "Half a workout still beats zero. Respect 🙌",
+            "You showed up — that's the hard part done 💪",
+            "Not every set, but every bit counts 🔥",
+          ];
+    return lines[Math.floor(Math.random() * lines.length)];
+  });
+
+  // Minutes from opening the workout to finishing it (at least 1).
+  const [minutes] = useState(() =>
+    startTime ? Math.max(1, Math.round((Date.now() - startTime) / 60000)) : null,
+  );
 
   // ─── Track event + show interstitial ad ─────────────────────────────────
   // DB insertion is handled by the parent (WorkoutDetail) BEFORE this
@@ -378,6 +398,7 @@ const CongratsScreen = ({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* ─── Hero: Jack, proud ─── */}
         <Animated.View
           style={[
             styles.heroCard,
@@ -387,71 +408,37 @@ const CongratsScreen = ({
             },
           ]}
         >
-          <LinearGradient
-            colors={[colors.primary, "#7C3AED"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.heroGradient}
-          >
+          <BrandGradient style={styles.heroGradient}>
             <Animated.View
               style={[
-                styles.badgeContainer,
-                {
-                  transform: [
-                    { scale: Animated.multiply(scaleAnim, pulseAnim) },
-                  ],
-                },
+                styles.mascotWrap,
+                { transform: [{ scale: Animated.multiply(scaleAnim, pulseAnim) }] },
               ]}
             >
-              <View style={styles.badgeGlow}>
-                <View style={styles.badgeWhiteCircle}>
-                  <LottieView
-                    source={require("../../../assets/animations/trophy.json")}
-                    autoPlay
-                    loop
-                    style={styles.trophyAnimation}
-                  />
-                </View>
-              </View>
+              <View style={styles.mascotHalo} />
+              <Image
+                source={EXPRESSION_IMAGES.proud}
+                style={styles.mascot}
+                contentFit="contain"
+              />
             </Animated.View>
 
-            <Text style={styles.congratsTitle}>Workout Complete!</Text>
-
-            <Text style={styles.congratsSubtitle}>
-              You crushed your {workouts?.bodyPart || "workout"} session.
-            </Text>
+            <Text style={styles.congratsTitle}>Workout complete!</Text>
+            <Text style={styles.congratsSubtitle}>{cheer}</Text>
 
             <View style={styles.workoutNameContainer}>
-              <Icon name="fitness-outline" size={17} color="#FFFFFF" />
+              <Icon name="fitness-outline" size={15} color="#FFFFFF" />
               <Text style={styles.workoutName}>
                 {workouts?.bodyPart || "Workout"} • {workouts?.level || "Level"}
               </Text>
             </View>
-          </LinearGradient>
+          </BrandGradient>
         </Animated.View>
 
+        {/* ─── Stats: one clean card, three numbers ─── */}
         <Animated.View
           style={[
-            styles.messageCard,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: cardSlideAnim }],
-            },
-          ]}
-        >
-          <View style={styles.messageIcon}>
-            <Icon name="sparkles-outline" size={22} color={colors.primary} />
-          </View>
-
-          <View style={styles.messageContent}>
-            <Text style={styles.messageTitle}>Great job showing up today</Text>
-            <Text style={styles.messageText}>{motivationText}</Text>
-          </View>
-        </Animated.View>
-
-        <Animated.View
-          style={[
-            styles.statsContainer,
+            styles.statsCard,
             {
               opacity: fadeAnim,
               transform: [{ translateY: cardSlideAnim }],
@@ -459,51 +446,48 @@ const CongratsScreen = ({
           ]}
         >
           <TouchableOpacity
-            style={styles.statCard}
-            activeOpacity={0.9}
+            style={styles.statCol}
+            activeOpacity={0.7}
             onPress={() => setShowCaloriesDetails(true)}
           >
-            <LinearGradient
-              colors={["#F97316", "#FBBF24"]}
-              style={styles.statCardGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <Icon name="flame-outline" size={28} color="white" />
-
-              <Text style={styles.statCardTitle}>Calories</Text>
-
-              <Animated.Text style={styles.statCardValue}>
-                {animatedCalories.interpolate({
-                  inputRange: [0, Math.max(safeCalories, 1)],
-                  outputRange: ["0", String(safeCalories)],
-                })}
-              </Animated.Text>
-
-              <Text style={styles.statCardUnit}>kcal burned</Text>
-            </LinearGradient>
+            <View style={[styles.statIcon, { backgroundColor: "#FFF1EA" }]}>
+              <Icon name="flame" size={18} color={colors.primary} />
+            </View>
+            <Animated.Text style={styles.statValue}>
+              {animatedCalories.interpolate({
+                inputRange: [0, Math.max(safeCalories, 1)],
+                outputRange: ["0", String(safeCalories)],
+              })}
+            </Animated.Text>
+            <View style={styles.statLabelRow}>
+              <Text style={styles.statLabel}>kcal</Text>
+              <Icon name="information-circle-outline" size={12} color={colors.textLight} />
+            </View>
           </TouchableOpacity>
 
-          <View style={styles.statCard}>
-            <LinearGradient
-              colors={["#4F46E5", "#7C3AED"]}
-              style={styles.statCardGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <Icon name="checkmark-done" size={28} color="white" />
+          <View style={styles.statDivider} />
 
-              <Text style={styles.statCardTitle}>Completed</Text>
+          <View style={styles.statCol}>
+            <View style={[styles.statIcon, { backgroundColor: "#E9F7EF" }]}>
+              <Icon name="checkmark-done" size={18} color="#16A34A" />
+            </View>
+            <Animated.Text style={styles.statValue}>
+              {animatedWorkouts.interpolate({
+                inputRange: [0, Math.max(completedCount, 1)],
+                outputRange: ["0", String(completedCount)],
+              })}
+            </Animated.Text>
+            <Text style={styles.statLabel}>exercises</Text>
+          </View>
 
-              <Animated.Text style={styles.statCardValue}>
-                {animatedWorkouts.interpolate({
-                  inputRange: [0, Math.max(completedCount, 1)],
-                  outputRange: ["0", String(completedCount)],
-                })}
-              </Animated.Text>
+          <View style={styles.statDivider} />
 
-              <Text style={styles.statCardUnit}>exercises</Text>
-            </LinearGradient>
+          <View style={styles.statCol}>
+            <View style={[styles.statIcon, { backgroundColor: "#EEF2FF" }]}>
+              <Icon name="time" size={18} color="#4F46E5" />
+            </View>
+            <Text style={styles.statValue}>{minutes ?? "–"}</Text>
+            <Text style={styles.statLabel}>minutes</Text>
           </View>
         </Animated.View>
 
@@ -544,7 +528,7 @@ const CongratsScreen = ({
           </View>
 
           <Text style={styles.progressText}>
-            Small wins repeated daily become real results. Come back tomorrow 💪
+            📅 One workout a day this week. Consistency beats intensity.
           </Text>
         </Animated.View>
 
@@ -620,28 +604,6 @@ const CongratsScreen = ({
             </Text>
           </Animated.View>
         )}
-
-        <Animated.View
-          style={[
-            styles.consistencyCard,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: cardSlideAnim }],
-            },
-          ]}
-        >
-          <View style={styles.consistencyIcon}>
-            <Icon name="calendar-outline" size={22} color={colors.green} />
-          </View>
-
-          <View style={styles.consistencyContent}>
-            <Text style={styles.consistencyTitle}>Build the habit</Text>
-            <Text style={styles.consistencyText}>
-              Try to complete one workout every day this week. Consistency beats
-              intensity.
-            </Text>
-          </View>
-        </Animated.View>
 
         {/* ─── Workout rating ─── */}
         <Animated.View
@@ -830,7 +792,7 @@ const styles = StyleSheet.create({
 
   heroCard: {
     width: "100%",
-    borderRadius: scaling().moderateScale(30),
+    borderRadius: scaling().moderateScale(26),
     overflow: "hidden",
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 12 },
@@ -842,61 +804,108 @@ const styles = StyleSheet.create({
   heroGradient: {
     alignItems: "center",
     paddingHorizontal: scaling().moderateScale(20),
-    paddingTop: scaling().scaleHeight(28),
-    paddingBottom: scaling().scaleHeight(26),
+    paddingTop: scaling().scaleHeight(18),
+    paddingBottom: scaling().scaleHeight(20),
   },
 
-  badgeContainer: {
-    marginBottom: scaling().scaleHeight(14),
+  mascotWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: scaling().scaleHeight(6),
   },
 
-  badgeGlow: {
-    width: scaling().scaleWidth(138),
-    height: scaling().scaleWidth(138),
-    borderRadius: scaling().scaleWidth(69),
+  mascotHalo: {
+    position: "absolute",
+    width: scaling().moderateScale(132),
+    height: scaling().moderateScale(132),
+    borderRadius: scaling().moderateScale(66),
     backgroundColor: "rgba(255,255,255,0.18)",
-    alignItems: "center",
-    justifyContent: "center",
   },
 
-  badgeWhiteCircle: {
-    width: scaling().scaleWidth(112),
-    height: scaling().scaleWidth(112),
-    borderRadius: scaling().scaleWidth(56),
+  mascot: {
+    width: scaling().moderateScale(150),
+    height: scaling().moderateScale(150),
+  },
+
+  // ─── Stats card ──────────────────────────────────────────────────────────
+  statsCard: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: scaling().scaleHeight(14),
     backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
+    borderRadius: scaling().moderateScale(22),
+    paddingVertical: scaling().moderateScale(14),
+    borderWidth: 1,
+    borderColor: "#EEF0F4",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18,
-    shadowRadius: 18,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    elevation: 3,
   },
 
-  trophyAnimation: {
-    width: scaling().scaleWidth(82),
-    height: scaling().scaleHeight(82),
+  statCol: {
+    flex: 1,
+    alignItems: "center",
+  },
+
+  statIcon: {
+    width: scaling().moderateScale(34),
+    height: scaling().moderateScale(34),
+    borderRadius: scaling().moderateScale(17),
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: scaling().moderateScale(6),
+  },
+
+  statValue: {
+    fontSize: scaling().moderateScale(22),
+    fontFamily: "OpenSans_800ExtraBold",
+    color: colors.text,
+  },
+
+  statLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+  },
+
+  statLabel: {
+    fontSize: scaling().moderateScale(11.5),
+    fontFamily: "OpenSans_600SemiBold",
+    color: colors.textLight,
+  },
+
+  statDivider: {
+    width: 1,
+    alignSelf: "stretch",
+    marginVertical: scaling().moderateScale(6),
+    backgroundColor: "#EEF0F4",
   },
 
   congratsTitle: {
-    fontSize: scaling().moderateScale(20),
+    fontSize: scaling().moderateScale(22),
     fontFamily: "OpenSans_800ExtraBold",
     color: "#FFFFFF",
     textAlign: "center",
+    letterSpacing: -0.3,
   },
 
   congratsSubtitle: {
-    fontSize: scaling().moderateScale(14),
+    fontSize: scaling().moderateScale(13.5),
+    lineHeight: scaling().moderateScale(19),
     fontFamily: "OpenSans_600SemiBold",
-    color: "rgba(255,255,255,0.86)",
+    color: "rgba(255,255,255,0.92)",
     textAlign: "center",
-    marginTop: scaling().scaleHeight(8),
+    marginTop: scaling().scaleHeight(6),
+    paddingHorizontal: scaling().moderateScale(8),
   },
 
   workoutNameContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: scaling().scaleHeight(16),
+    marginTop: scaling().scaleHeight(12),
     paddingHorizontal: scaling().scaleWidth(14),
     paddingVertical: scaling().scaleHeight(8),
     borderRadius: scaling().moderateScale(999),
@@ -912,96 +921,11 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
   },
 
-  messageCard: {
-    width: "100%",
-    marginTop: scaling().scaleHeight(18),
-    backgroundColor: "#FFFFFF",
-    borderRadius: scaling().moderateScale(22),
-    padding: scaling().moderateScale(16),
-    flexDirection: "row",
-    borderWidth: 1,
-    borderColor: "#EEF0F4",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.06,
-    shadowRadius: 14,
-    elevation: 3,
-  },
-
-  messageIcon: {
-    width: scaling().scaleWidth(44),
-    height: scaling().scaleWidth(44),
-    borderRadius: scaling().scaleWidth(22),
-    backgroundColor: colors.primary + "12",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: scaling().scaleWidth(12),
-  },
-
-  messageContent: {
-    flex: 1,
-  },
-
-  messageTitle: {
-    fontSize: scaling().moderateScale(15),
-    fontFamily: "OpenSans_800ExtraBold",
-    color: colors.text,
-  },
-
-  messageText: {
-    fontSize: scaling().moderateScale(12),
-    fontFamily: "OpenSans_500Medium",
-    color: colors.textLight,
-    lineHeight: scaling().moderateScale(18),
-    marginTop: scaling().scaleHeight(4),
-  },
-
-  statsContainer: {
-    width: "100%",
-    flexDirection: "row",
-    gap: scaling().moderateScale(12),
-    marginTop: scaling().scaleHeight(16),
-  },
-
-  statCard: {
-    flex: 1,
-    borderRadius: scaling().moderateScale(22),
-    overflow: "hidden",
-  },
-
-  statCardGradient: {
-    minHeight: scaling().scaleHeight(100),
-    padding: scaling().moderateScale(16),
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: scaling().moderateScale(22),
-  },
-
-  statCardTitle: {
-    fontSize: scaling().moderateScale(12),
-    fontFamily: "OpenSans_700Bold",
-    color: "rgba(255,255,255,0.86)",
-    marginTop: scaling().scaleHeight(8),
-  },
-
-  statCardValue: {
-    fontSize: scaling().moderateScale(30),
-    fontFamily: "OpenSans_800ExtraBold",
-    color: "#FFFFFF",
-    marginTop: scaling().scaleHeight(2),
-  },
-
-  statCardUnit: {
-    fontSize: scaling().moderateScale(11),
-    fontFamily: "OpenSans_600SemiBold",
-    color: "rgba(255,255,255,0.78)",
-  },
-
   progressContainer: {
     backgroundColor: "#FFFFFF",
-    padding: scaling().moderateScale(18),
-    borderRadius: scaling().moderateScale(24),
-    marginTop: scaling().scaleHeight(16),
+    padding: scaling().moderateScale(16),
+    borderRadius: scaling().moderateScale(22),
+    marginTop: scaling().scaleHeight(14),
     width: "100%",
     borderWidth: 1,
     borderColor: "#EEF0F4",
@@ -1170,31 +1094,6 @@ const styles = StyleSheet.create({
     lineHeight: scaling().moderateScale(16),
   },
 
-  consistencyCard: {
-    width: "100%",
-    marginTop: scaling().scaleHeight(16),
-    backgroundColor: "#FFFFFF",
-    borderRadius: scaling().moderateScale(22),
-    padding: scaling().moderateScale(16),
-    flexDirection: "row",
-    borderWidth: 1,
-    borderColor: "#EEF0F4",
-  },
-
-  consistencyIcon: {
-    width: scaling().scaleWidth(44),
-    height: scaling().scaleWidth(44),
-    borderRadius: scaling().scaleWidth(22),
-    backgroundColor: colors.green + "12",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: scaling().scaleWidth(12),
-  },
-
-  consistencyContent: {
-    flex: 1,
-  },
-
   shareCta: {
     width: "100%",
     marginTop: scaling().scaleHeight(16),
@@ -1226,20 +1125,6 @@ const styles = StyleSheet.create({
     color: colors.textLight,
     marginTop: scaling().scaleHeight(8),
     textAlign: "center",
-  },
-
-  consistencyTitle: {
-    fontSize: scaling().moderateScale(15),
-    fontFamily: "OpenSans_800ExtraBold",
-    color: colors.text,
-  },
-
-  consistencyText: {
-    fontSize: scaling().moderateScale(12),
-    fontFamily: "OpenSans_500Medium",
-    color: colors.textLight,
-    lineHeight: scaling().moderateScale(18),
-    marginTop: scaling().scaleHeight(4),
   },
 
   caloriesDetailsContainer: {

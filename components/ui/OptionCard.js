@@ -1,9 +1,136 @@
+import { Ionicons } from "@expo/vector-icons";
+import { MotiView } from "moti";
+import { useEffect, useRef } from "react";
 import { Controller } from "react-hook-form";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { colors } from "@/constants/colors";
-import React from "react";
+import { tapHaptic } from "../../constants/haptics";
+import { scaling } from "../../constants/useScaling";
 
+const ms = (n) => scaling().moderateScale(n);
+
+/**
+ * Press-in shrink + a small pop when it becomes selected. The pop runs only
+ * on the transition into "selected", never on an unrelated re-render.
+ */
+function useCardMotion(selected) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const wasSelected = useRef(selected);
+
+  useEffect(() => {
+    if (selected && !wasSelected.current) {
+      Animated.sequence([
+        Animated.spring(scale, { toValue: 1.04, useNativeDriver: true, speed: 40, bounciness: 0 }),
+        Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 18, bounciness: 10 }),
+      ]).start();
+    }
+    wasSelected.current = selected;
+  }, [selected, scale]);
+
+  const pressIn = () =>
+    Animated.spring(scale, { toValue: 0.97, useNativeDriver: true, speed: 50, bounciness: 0 }).start();
+  const pressOut = () =>
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 30, bounciness: 6 }).start();
+
+  return { scale, pressIn, pressOut };
+}
+
+function Radio({ selected }) {
+  return (
+    <View style={[styles.radio, selected && styles.radioOn]}>
+      {selected ? (
+        <MotiView
+          from={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ type: "spring", damping: 12, stiffness: 260 }}
+        >
+          <Ionicons name="checkmark" size={ms(13)} color="#FFFFFF" />
+        </MotiView>
+      ) : null}
+    </View>
+  );
+}
+
+function ListCard({ option, selected, onPress, index }) {
+  const { scale, pressIn, pressOut } = useCardMotion(selected);
+  return (
+    <MotiView
+      from={{ opacity: 0, translateY: 12 }}
+      animate={{ opacity: 1, translateY: 0 }}
+      transition={{ type: "timing", duration: 280, delay: 40 + index * 60 }}
+    >
+      <Pressable onPress={onPress} onPressIn={pressIn} onPressOut={pressOut}>
+        <Animated.View
+          style={[styles.card, selected && styles.cardOn, { transform: [{ scale }] }]}
+        >
+          <View style={[styles.emojiWrap, selected && styles.emojiWrapOn]}>
+            <Text style={styles.emoji}>{option.emoji}</Text>
+          </View>
+
+          <View style={styles.textWrap}>
+            <Text style={[styles.title, selected && styles.titleOn]}>{option.title}</Text>
+            {option.time ? <Text style={styles.time}>{option.time}</Text> : null}
+            {option.description ? (
+              <Text style={styles.description}>{option.description}</Text>
+            ) : null}
+          </View>
+
+          <Radio selected={selected} />
+        </Animated.View>
+      </Pressable>
+    </MotiView>
+  );
+}
+
+function GridCard({ option, selected, onPress, index, columns }) {
+  const { scale, pressIn, pressOut } = useCardMotion(selected);
+  return (
+    <MotiView
+      from={{ opacity: 0, scale: 0.92 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ type: "timing", duration: 260, delay: 40 + index * 50 }}
+      style={{ width: `${100 / columns}%`, padding: 5 }}
+    >
+      <Pressable onPress={onPress} onPressIn={pressIn} onPressOut={pressOut}>
+        <Animated.View
+          style={[styles.gridCard, selected && styles.cardOn, { transform: [{ scale }] }]}
+        >
+          <Text style={styles.gridEmoji}>{option.emoji}</Text>
+          <Text
+            style={[styles.gridTitle, selected && styles.titleOn]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
+            {option.title}
+          </Text>
+          {option.time ? <Text style={styles.gridTime}>{option.time}</Text> : null}
+
+          {selected ? (
+            <MotiView
+              from={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", damping: 12, stiffness: 260 }}
+              style={styles.gridCheck}
+            >
+              <Ionicons name="checkmark" size={ms(11)} color="#FFFFFF" />
+            </MotiView>
+          ) : null}
+        </Animated.View>
+      </Pressable>
+    </MotiView>
+  );
+}
+
+/**
+ * Single-choice cards bound to a react-hook-form field.
+ *
+ * The stored value is still `option.title`, exactly as before — signup and
+ * WorkoutLevelModal both depend on that, so this is a visual change only.
+ *
+ * @param horizontal  compact grid instead of a list
+ * @param columns     grid columns (default 2; gender uses 3 so all fit on a row)
+ */
 export const OptionCardController = ({
   control,
   name,
@@ -11,263 +138,141 @@ export const OptionCardController = ({
   options = [],
   defaultValue = "",
   horizontal = false,
-}) => {
-  return (
-    <Controller
-      control={control}
-      name={name}
-      rules={rules}
-      defaultValue={defaultValue}
-      render={({ field: { value, onChange } }) =>
-        horizontal ? (
-          // Compact 2-per-row grid — emoji on top, no description. Lets steps
-          // with several options + extra widgets fit on screen without scroll.
-          <View style={styles.gridContainer}>
-            {options.map((option) => {
-              const isSelected = value === option.title;
-              return (
-                <TouchableOpacity
-                  key={option.title}
-                  style={[styles.gridCard, isSelected && styles.cardSelected]}
-                  onPress={() => onChange(option.title)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.gridEmoji}>{option.emoji}</Text>
-                  <Text
-                    style={[
-                      styles.gridTitle,
-                      isSelected && styles.cardSelectedText,
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {option.title}
-                  </Text>
-                  {option.time && (
-                    <Text
-                      style={[
-                        styles.gridTime,
-                        isSelected && styles.cardSelectedText,
-                      ]}
-                    >
-                      {option.time}
-                    </Text>
-                  )}
-                  {isSelected && (
-                    <Text style={styles.gridCheckmark}>✓</Text>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        ) : (
-          <View style={styles.optionsContainer}>
-            {options.map((option) => {
-              const isSelected = value === option.title;
-              return (
-                <TouchableOpacity
-                  key={option.title}
-                  style={[styles.card, isSelected && styles.cardSelected]}
-                  onPress={() => onChange(option.title)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.cardContent}>
-                    <Text style={styles.emoji}>{option.emoji}</Text>
-                    <View style={styles.textContainer}>
-                      <Text
-                        style={[
-                          styles.title,
-                          isSelected && styles.cardSelectedText,
-                        ]}
-                      >
-                        {option.title}
-                      </Text>
+  columns = 2,
+}) => (
+  <Controller
+    control={control}
+    name={name}
+    rules={rules}
+    defaultValue={defaultValue}
+    render={({ field: { value, onChange } }) => {
+      const select = (title) => {
+        if (title !== value) tapHaptic();
+        onChange(title);
+      };
 
-                      {option.time && (
-                        <Text
-                          style={[
-                            styles.time,
-                            isSelected && styles.cardSelectedText,
-                          ]}
-                        >
-                          {option.time}
-                        </Text>
-                      )}
-                      {option.description && (
-                        <Text
-                          style={[
-                            styles.description,
-                            isSelected && styles.cardSelectedText,
-                          ]}
-                        >
-                          {option.description}
-                        </Text>
-                      )}
-                    </View>
-                  </View>
-                  {isSelected && <Text style={styles.checkmark}>✓</Text>}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )
-      }
-    />
-  );
-};
+      return horizontal ? (
+        <View style={styles.grid}>
+          {options.map((option, i) => (
+            <GridCard
+              key={option.title}
+              index={i}
+              columns={columns}
+              option={option}
+              selected={value === option.title}
+              onPress={() => select(option.title)}
+            />
+          ))}
+        </View>
+      ) : (
+        <View style={styles.list}>
+          {options.map((option, i) => (
+            <ListCard
+              key={option.title}
+              index={i}
+              option={option}
+              selected={value === option.title}
+              onPress={() => select(option.title)}
+            />
+          ))}
+        </View>
+      );
+    }}
+  />
+);
 
-// Example styles (you can adjust to your existing styles)
 const styles = StyleSheet.create({
-  optionsContainer: {
-    flexWrap: "wrap",
-    gap: 20,
-  },
+  // ── list ──
+  list: { gap: 10 },
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    padding: 12,
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: colors.grey,
+    gap: 14,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderWidth: 1.5,
+    borderColor: "#E7EAEF",
   },
-  cardSelected: {
+  cardOn: {
     borderColor: colors.primary,
-    backgroundColor: colors.primary + "10",
+    backgroundColor: "#FFF6F2",
   },
-  cardContent: {
-    flexDirection: "row",
+  emojiWrap: {
+    width: ms(46),
+    height: ms(46),
+    borderRadius: ms(14),
+    backgroundColor: "#F4F6F8",
     alignItems: "center",
-    flex: 1,
+    justifyContent: "center",
   },
-  emoji: {
-    fontSize: 24,
-    marginRight: 8,
-  },
-  textContainer: {
-    flexShrink: 1,
-  },
+  emojiWrapOn: { backgroundColor: "#FFFFFF" },
+  emoji: { fontSize: ms(22) },
+  textWrap: { flex: 1 },
   title: {
-    fontSize: 16,
-    color: "#333",
-    fontFamily: "OpenSans_600SemiBold",
+    fontSize: ms(15),
+    fontFamily: "OpenSans_700Bold",
+    color: colors.text,
   },
-  cardSelectedText: {
-    color: colors.primary,
-
-    fontFamily: "OpenSans_600SemiBold",
-  },
-  description: {
-    fontSize: 12,
-    color: "#666",
-    fontFamily: "OpenSans_600SemiBold",
-  },
-
+  titleOn: { color: colors.primary },
   time: {
-    fontSize: 14,
-    color: colors.green,
+    fontSize: ms(12),
     fontFamily: "OpenSans_700Bold",
-  },
-  checkmark: {
-    fontSize: 16,
-    color: colors.primary,
-    fontFamily: "OpenSans_600SemiBold",
-  },
-
-  // ── Horizontal (compact grid) mode ──
-  gridContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  gridCard: {
-    flexGrow: 1,
-    flexBasis: "40%",
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: colors.grey,
-  },
-  gridEmoji: {
-    fontSize: 22,
-  },
-  gridTitle: {
-    fontSize: 13,
-    color: "#333",
-    fontFamily: "OpenSans_600SemiBold",
-    marginTop: 4,
-  },
-  gridTime: {
-    fontSize: 11,
-    color: colors.green,
-    fontFamily: "OpenSans_700Bold",
+    color: colors.success,
     marginTop: 1,
   },
-  gridCheckmark: {
-    position: "absolute",
-    top: 6,
-    right: 8,
-    fontSize: 13,
-    color: colors.primary,
+  description: {
+    fontSize: ms(12.5),
+    fontFamily: "OpenSans_500Medium",
+    color: colors.textLight,
+    marginTop: 2,
+    lineHeight: ms(17),
+  },
+  radio: {
+    width: ms(24),
+    height: ms(24),
+    borderRadius: ms(12),
+    borderWidth: 2,
+    borderColor: "#D5DAE1",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  radioOn: { borderColor: colors.primary, backgroundColor: colors.primary },
+
+  // ── grid ──
+  grid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -5 },
+  gridCard: {
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    borderWidth: 1.5,
+    borderColor: "#E7EAEF",
+  },
+  gridEmoji: { fontSize: ms(26) },
+  gridTitle: {
+    fontSize: ms(13.5),
     fontFamily: "OpenSans_700Bold",
+    color: colors.text,
+    marginTop: 6,
+  },
+  gridTime: {
+    fontSize: ms(11),
+    fontFamily: "OpenSans_700Bold",
+    color: colors.success,
+    marginTop: 2,
+  },
+  gridCheck: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: ms(18),
+    height: ms(18),
+    borderRadius: ms(9),
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
-
-// const styles = StyleSheet.create({
-//   card: {
-//     backgroundColor: colors.background,
-//     borderWidth: 2,
-//     borderColor: colors.border,
-//     borderRadius: 12,
-//     padding: 16,
-//     marginBottom: 12,
-//   },
-//   cardSelected: {
-//     borderColor: colors.primary,
-//     backgroundColor: colors.primary + "10",
-//   },
-//   cardContent: {
-//     flexDirection: "row",
-//     alignItems: "center",
-//   },
-//   emoji: {
-//     fontSize: 32,
-//     marginRight: 16,
-//   },
-//   textContainer: {
-//     flex: 1,
-//   },
-//   title: {
-//     fontSize: 16,
-//     fontFamily: "OpenSans_600SemiBold",
-//     color: colors.text,
-//   },
-//   titleSelected: {
-//     color: colors.primary,
-//   },
-//   description: {
-//     fontSize: 13,
-//     fontFamily: "OpenSans_400Regular",
-//     color: colors.textLight,
-//     marginTop: 4,
-//   },
-//   descriptionSelected: {
-//     color: colors.text,
-//   },
-//   checkmark: {
-//     position: "absolute",
-//     top: 12,
-//     right: 12,
-//     backgroundColor: colors.primary,
-//     width: 24,
-//     height: 24,
-//     borderRadius: 12,
-//     alignItems: "center",
-//     justifyContent: "center",
-//     fontSize: 14,
-//     color: colors.white,
-//     fontFamily: "OpenSans_700Bold",
-//   },
-// });

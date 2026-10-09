@@ -1,10 +1,12 @@
 import { Ionicons, Octicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import { Image as ExpoImage } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Animated,
+  Easing,
   FlatList,
   Image,
   Modal,
@@ -26,20 +28,24 @@ import { colors } from "../../constants/colors";
 import { workoutListGlobal } from "../../constants/Constants.js";
 import { Logger } from "../../constants/Logger.js";
 import { scaling } from "../../constants/useScaling.js";
+import { EXPRESSION_IMAGES } from "../../constants/widgetPromo";
 
 const { scaleHeight, scaleWidth, moderateScale } = scaling();
 
 // Rotating nudges above the Start button — the last push past procrastination.
+// Jack's expression changes with each line.
 const MOTIVATIONS = [
-  "Let's go — your body is ready 💪",
-  "There's no tomorrow. Start today! 🔥",
-  "Come on, let's defeat procrastination 🚀",
-  "One session now beats a perfect plan later ⚡",
-  "Future you is already saying thank you 🙌",
-  "The hardest part is pressing Start 👇",
+  { text: "Let's go — your body is ready 💪", expression: "dumbbell" },
+  { text: "Staring won't burn calories. Tap Start 😏", expression: "wink" },
+  { text: "Come on, let's defeat procrastination 🚀", expression: "flex" },
+  { text: "Still thinking? I'm already sweating 🤔", expression: "think" },
+  { text: "Future you is already saying thank you 🙌", expression: "cheer" },
+  { text: "The hardest part is pressing Start 👇", expression: "hi" },
 ];
 
-const MOTIVATION_MS = 2800; // time each line stays on screen
+// Long enough to actually read a two-line bubble, then a short breather.
+const MOTIVATION_MS = 6500; // time each line stays on screen
+const MOTIVATION_GAP_MS = 350; // empty beat between lines
 
 export default function WorkoutListingScreen({ route }) {
   const navigation = useNavigation();
@@ -68,12 +74,14 @@ export default function WorkoutListingScreen({ route }) {
       Animated.parallel([
         Animated.timing(motivationOpacity, {
           toValue: 1,
-          duration: 380,
+          duration: 450,
+          easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.timing(motivationY, {
           toValue: 0,
-          duration: 380,
+          duration: 450,
+          easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
       ]).start(() => {
@@ -82,19 +90,21 @@ export default function WorkoutListingScreen({ route }) {
           Animated.parallel([
             Animated.timing(motivationOpacity, {
               toValue: 0,
-              duration: 300,
+              duration: 350,
+              easing: Easing.in(Easing.quad),
               useNativeDriver: true,
             }),
             Animated.timing(motivationY, {
               toValue: -8,
-              duration: 300,
+              duration: 350,
+              easing: Easing.in(Easing.quad),
               useNativeDriver: true,
             }),
           ]).start(() => {
             if (cancelled) return;
             motivationY.setValue(8);
             setMotivationIndex((i) => (i + 1) % MOTIVATIONS.length);
-            showNext();
+            setTimeout(() => !cancelled && showNext(), MOTIVATION_GAP_MS);
           });
         }, MOTIVATION_MS);
       });
@@ -509,18 +519,56 @@ export default function WorkoutListingScreen({ route }) {
       />
 
       <View style={styles.bottomBar}>
-        <Animated.Text
-          style={[
-            styles.motivationText,
-            {
-              opacity: motivationOpacity,
-              transform: [{ translateY: motivationY }],
-            },
-          ]}
-          numberOfLines={1}
-        >
-          {MOTIVATIONS[motivationIndex]}
-        </Animated.Text>
+        {/* Jack + a speech bubble, nudging towards Start. */}
+        <View style={styles.coachRow}>
+          {/* Jack dims and settles while the line swaps, and the new pose
+              cross-dissolves in, so the change never pops. */}
+          <Animated.View
+            style={{
+              opacity: motivationOpacity.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.45, 1],
+              }),
+              transform: [
+                {
+                  translateY: startPulse.interpolate({
+                    inputRange: [1, 1.035],
+                    outputRange: [0, -3],
+                  }),
+                },
+                {
+                  scale: motivationOpacity.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.92, 1],
+                  }),
+                },
+              ],
+            }}
+          >
+            <ExpoImage
+              source={EXPRESSION_IMAGES[MOTIVATIONS[motivationIndex].expression]}
+              style={styles.coachMascot}
+              contentFit="contain"
+              transition={{ duration: 420, effect: "cross-dissolve" }}
+            />
+          </Animated.View>
+
+          <View style={styles.coachBubble}>
+            <View style={styles.coachTail} />
+            <Animated.Text
+              style={[
+                styles.motivationText,
+                {
+                  opacity: motivationOpacity,
+                  transform: [{ translateY: motivationY }],
+                },
+              ]}
+              numberOfLines={2}
+            >
+              {MOTIVATIONS[motivationIndex].text}
+            </Animated.Text>
+          </View>
+        </View>
 
         <Animated.View style={{ transform: [{ scale: startPulse }] }}>
           <Button
@@ -936,7 +984,7 @@ const styles = StyleSheet.create({
 
   listContent: {
     paddingHorizontal: moderateScale(16),
-    paddingBottom: moderateScale(150),
+    paddingBottom: moderateScale(185),
   },
 
   listHeaderCard: {
@@ -1125,15 +1173,46 @@ const styles = StyleSheet.create({
     marginBottom: moderateScale(8),
   },
 
-  motivationText: {
-    fontFamily: "OpenSans_700Bold",
-    fontSize: moderateScale(13),
-    color: colors.primary,
-    textAlign: "center",
+  coachRow: {
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: moderateScale(8),
     // Fixed height keeps the Start button from shifting as lines swap.
-    height: moderateScale(19),
-    lineHeight: moderateScale(19),
+    height: moderateScale(52),
+  },
+
+  coachMascot: {
+    width: moderateScale(52),
+    height: moderateScale(52),
+  },
+
+  coachBubble: {
+    flex: 1,
+    marginLeft: moderateScale(10),
+    backgroundColor: "#FFF3EE",
+    borderRadius: moderateScale(14),
+    paddingHorizontal: moderateScale(12),
+    paddingVertical: moderateScale(7),
+    justifyContent: "center",
+    minHeight: moderateScale(40),
+  },
+
+  coachTail: {
+    position: "absolute",
+    left: -moderateScale(5),
+    top: "50%",
+    marginTop: -moderateScale(5),
+    width: moderateScale(10),
+    height: moderateScale(10),
+    backgroundColor: "#FFF3EE",
+    transform: [{ rotate: "45deg" }],
+  },
+
+  motivationText: {
+    fontFamily: "OpenSans_700Bold",
+    fontSize: moderateScale(12.5),
+    color: colors.primary,
+    lineHeight: moderateScale(17),
   },
 
   bannerContainer: {

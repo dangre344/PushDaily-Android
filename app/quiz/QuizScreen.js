@@ -1,5 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -19,6 +18,7 @@ import { Toast } from "toastify-react-native";
 import { InterstitialAdManager } from "../../ads/Admobmanager";
 import QuizFeedback from "./QuizFeedback";
 import { praiseQuiz, sayFromJack } from "../../constants/bubbleMessage";
+import BrandGradient from "../../components/ui/BrandGradient";
 import { colors } from "../../constants/colors";
 import {
   successHaptic,
@@ -449,12 +449,7 @@ export default function QuizScreen() {
 
     return (
       <View style={styles.screen}>
-        <LinearGradient
-          colors={[colors.primary, "#7C3AED"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.hero}
-        >
+        <BrandGradient style={styles.hero}>
           <View style={styles.heroTop}>
             <View style={{ flex: 1 }}>
               <Text style={styles.heroTitle}>Fitness Quiz 🧠</Text>
@@ -501,7 +496,7 @@ export default function QuizScreen() {
               />
             </View>
           </View>
-        </LinearGradient>
+        </BrandGradient>
 
         <ScrollView
           contentContainerStyle={styles.body}
@@ -778,12 +773,7 @@ export default function QuizScreen() {
     <View style={styles.screen}>
       {/* One compact bar instead of hero + status row, so the whole question
           card fits on screen without scrolling. */}
-      <LinearGradient
-        colors={[colors.primary, "#7C3AED"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.playHero}
-      >
+      <BrandGradient style={styles.playHero}>
         <View style={styles.playHeroRow}>
           <View style={{ flex: 1 }}>
             <Text style={styles.playHeroTitle}>
@@ -813,7 +803,7 @@ export default function QuizScreen() {
             {streak >= 3 ? <Text style={styles.comboTag}>COMBO</Text> : null}
           </Animated.View>
         </View>
-      </LinearGradient>
+      </BrandGradient>
 
       <View style={styles.playTrack}>
         <Animated.View

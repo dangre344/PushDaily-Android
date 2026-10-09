@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 import { Logger } from "./Logger";
+import { isPeriodSetUp } from "./periodTracker";
 
 // One "session"/glass = 250 ml.
 export const WATER_GLASS_ML = 250;
@@ -233,21 +234,34 @@ const readPromptState = async () => {
  * Call once per app launch. Increments the open counter and returns true only
  * when it's a good moment to show the water-reminder nudge.
  */
-export const shouldOfferWaterReminder = async () => {
+export const shouldOfferWaterReminder = async () =>
+  (await pickWellnessPrompt()) === "water";
+
+/**
+ * Same gating, extended to period tracking. Returns which tab the prompt
+ * should open on — "water" or "period" — or null to stay quiet.
+ *
+ * With includePeriods, someone who already has water reminders on can still
+ * be offered period tracking (and vice versa); once both are set up, never.
+ */
+export const pickWellnessPrompt = async ({ includePeriods = false } = {}) => {
   try {
-    if (await isWaterTrackingEnabled()) return false;
+    const waterOn = await isWaterTrackingEnabled();
+    const periodOn = includePeriods ? await isPeriodSetUp() : true;
+    if (waterOn && periodOn) return null;
 
     const s = await readPromptState();
     s.opens = (s.opens || 0) + 1;
     await AsyncStorage.setItem(K_PROMPT, JSON.stringify(s));
 
-    if (s.opens < 3) return false; // skip first launches (incl. just after sign-in)
-    if ((s.declines || 0) >= 3) return false; // they keep saying no — stop asking
-    if (s.lastShown && Date.now() - s.lastShown < PROMPT_COOLDOWN_MS) return false;
+    if (s.opens < 3) return null; // skip first launches (incl. just after sign-in)
+    if ((s.declines || 0) >= 3) return null; // they keep saying no — stop asking
+    if (s.lastShown && Date.now() - s.lastShown < PROMPT_COOLDOWN_MS) return null;
 
-    return Math.random() < 0.5; // only sometimes, so it never feels naggy
+    if (Math.random() >= 0.5) return null; // only sometimes, so it never feels naggy
+    return waterOn ? "period" : "water";
   } catch {
-    return false;
+    return null;
   }
 };
 

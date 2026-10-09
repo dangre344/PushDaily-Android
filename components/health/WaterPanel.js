@@ -7,23 +7,16 @@ import {
   AppState,
   Easing,
   Linking,
-  Modal,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Toast } from "toastify-react-native";
-import { AD_UNIT_IDS } from "../../ads/Admobmanager";
 import { colors } from "../../constants/colors";
 import { Logger } from "../../constants/Logger";
-import {
-  sayOncePerSession,
-  waterNudge,
-} from "../../constants/bubbleMessage";
+import { sayOncePerSession, waterNudge } from "../../constants/bubbleMessage";
 import { useUser } from "../../constants/UserContext";
 import { scaling } from "../../constants/useScaling";
 import {
@@ -50,12 +43,28 @@ const IMPORTANCE = [
 
 const getPlant = (ratio) => {
   if (ratio >= 1)
-    return { emoji: "🌳", label: "Fully hydrated! Your plant is thriving 🎉", color: colors.green };
+    return {
+      emoji: "🌳",
+      label: "Fully hydrated! Your plant is thriving 🎉",
+      color: colors.green,
+    };
   if (ratio >= 0.66)
-    return { emoji: "🪴", label: "Almost there — keep sipping!", color: colors.green };
+    return {
+      emoji: "🪴",
+      label: "Almost there — keep sipping!",
+      color: colors.green,
+    };
   if (ratio > 0)
-    return { emoji: "🌱", label: "Good start! Your plant is growing.", color: "#F59E0B" };
-  return { emoji: "🥀", label: "Thirsty! Let's drink some water.", color: "#EF4444" };
+    return {
+      emoji: "🌱",
+      label: "Good start! Your plant is growing.",
+      color: "#F59E0B",
+    };
+  return {
+    emoji: "🥀",
+    label: "Thirsty! Let's drink some water.",
+    color: "#EF4444",
+  };
 };
 
 // Animated card wrapper — fades + slides in with a stagger delay.
@@ -94,7 +103,12 @@ function AnimCard({ delay = 0, children, style }) {
   );
 }
 
-export default function WaterReminderModal({ visible, setVisible }) {
+/**
+ * Water tab of the Water & Periods screen (app/profile/water.js).
+ * Formerly a full-screen modal; the header, back button and banner now belong
+ * to the screen that hosts both tabs.
+ */
+export default function WaterPanel({ visible = true }) {
   const { user } = useUser();
   const goal = calculateWaterGoal(user?.weight, user?.height);
 
@@ -133,7 +147,9 @@ export default function WaterReminderModal({ visible, setVisible }) {
         Logger.log("[Water] load failed:", String(e));
       }
     })();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [visible]);
 
   // A glass can be logged from the notification's action button while the app
@@ -171,8 +187,17 @@ export default function WaterReminderModal({ visible, setVisible }) {
 
   const pulsBtn = () => {
     Animated.sequence([
-      Animated.timing(btnPulse, { toValue: 0.93, duration: 80, useNativeDriver: true }),
-      Animated.spring(btnPulse, { toValue: 1, friction: 4, tension: 180, useNativeDriver: true }),
+      Animated.timing(btnPulse, {
+        toValue: 0.93,
+        duration: 80,
+        useNativeDriver: true,
+      }),
+      Animated.spring(btnPulse, {
+        toValue: 1,
+        friction: 4,
+        tension: 180,
+        useNativeDriver: true,
+      }),
     ]).start();
   };
 
@@ -219,220 +244,149 @@ export default function WaterReminderModal({ visible, setVisible }) {
   };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent={false}
-      statusBarTranslucent
-      onRequestClose={() => setVisible(false)}
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
     >
-      <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => setVisible(false)}
-            style={styles.closeBtn}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="arrow-back" size={ms(22)} color={colors.text} />
-          </TouchableOpacity>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle}>Water Reminder</Text>
-            <Text style={styles.headerSubtitle}>Stay hydrated, stay strong</Text>
+      {/* Why hydration matters */}
+      <AnimCard delay={60} style={styles.card}>
+        <Text style={styles.cardTitle}>Why hydration matters</Text>
+        <Text style={styles.cardLead}>
+          Even mild dehydration drains your energy and focus. Drinking enough
+          water every day helps your body perform and recover better.
+        </Text>
+        {IMPORTANCE.map((item) => (
+          <View key={item.icon} style={styles.impRow}>
+            <View style={styles.impIcon}>
+              <Ionicons name={item.icon} size={ms(15)} color={colors.primary} />
+            </View>
+            <Text style={styles.impText}>{item.text}</Text>
           </View>
-          <View style={styles.dropWrap}>
-            <Ionicons name="water" size={ms(20)} color={colors.primary} />
-          </View>
+        ))}
+      </AnimCard>
+
+      {/* Daily goal */}
+      <AnimCard delay={140} style={[styles.card, styles.goalCard]}>
+        <Text style={styles.goalLabel}>Your daily water goal</Text>
+        <Text style={styles.goalValue}>{fmt(goal.ml)} ml</Text>
+        <Text style={styles.goalGlasses}>
+          ≈ {goal.glasses} glasses ({WATER_GLASS_ML} ml each)
+        </Text>
+        <Text style={styles.goalNote}>
+          Based on your weight ({user?.weight || "—"} kg) and height (
+          {user?.height || "—"} cm).
+        </Text>
+      </AnimCard>
+
+      {/* Plant + progress */}
+      <AnimCard delay={220} style={styles.card}>
+        <Animated.Text
+          style={[styles.plant, { transform: [{ scale: plantScale }] }]}
+        >
+          {plant.emoji}
+        </Animated.Text>
+        <Text style={[styles.plantLabel, { color: plant.color }]}>
+          {plant.label}
+        </Text>
+
+        <View style={styles.progressHeader}>
+          <Text style={styles.progressGlasses}>
+            {consumed} / {goal.glasses} glasses
+          </Text>
+          <Text style={styles.progressPercent}>{percent}%</Text>
         </View>
 
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Why hydration matters */}
-          <AnimCard delay={60} style={styles.card}>
-            <Text style={styles.cardTitle}>Why hydration matters</Text>
-            <Text style={styles.cardLead}>
-              Even mild dehydration drains your energy and focus. Drinking
-              enough water every day helps your body perform and recover better.
-            </Text>
-            {IMPORTANCE.map((item) => (
-              <View key={item.icon} style={styles.impRow}>
-                <View style={styles.impIcon}>
-                  <Ionicons name={item.icon} size={ms(15)} color={colors.primary} />
-                </View>
-                <Text style={styles.impText}>{item.text}</Text>
-              </View>
-            ))}
-          </AnimCard>
-
-          {/* Daily goal */}
-          <AnimCard delay={140} style={[styles.card, styles.goalCard]}>
-            <Text style={styles.goalLabel}>Your daily water goal</Text>
-            <Text style={styles.goalValue}>{fmt(goal.ml)} ml</Text>
-            <Text style={styles.goalGlasses}>
-              ≈ {goal.glasses} glasses ({WATER_GLASS_ML} ml each)
-            </Text>
-            <Text style={styles.goalNote}>
-              Based on your weight ({user?.weight || "—"} kg) and height ({user?.height || "—"} cm).
-            </Text>
-          </AnimCard>
-
-          {/* Plant + progress */}
-          <AnimCard delay={220} style={styles.card}>
-            <Animated.Text style={[styles.plant, { transform: [{ scale: plantScale }] }]}>
-              {plant.emoji}
-            </Animated.Text>
-            <Text style={[styles.plantLabel, { color: plant.color }]}>
-              {plant.label}
-            </Text>
-
-            <View style={styles.progressHeader}>
-              <Text style={styles.progressGlasses}>
-                {consumed} / {goal.glasses} glasses
-              </Text>
-              <Text style={styles.progressPercent}>{percent}%</Text>
-            </View>
-
-            <View style={styles.progressTrack}>
-              <Animated.View
-                style={[
-                  styles.progressFill,
-                  {
-                    width: progressAnim.interpolate({
-                      inputRange: [0, 100],
-                      outputRange: ["0%", "100%"],
-                    }),
-                  },
-                ]}
-              />
-            </View>
-
-            {/* "I drank a glass" is always visible — tracking just enables reminders */}
-            <View style={styles.logRow}>
-              <TouchableOpacity
-                style={styles.minusBtn}
-                onPress={handleRemoveGlass}
-                activeOpacity={0.85}
-              >
-                <Ionicons name="remove" size={ms(20)} color={colors.text} />
-              </TouchableOpacity>
-
-              <Animated.View style={{ flex: 1, transform: [{ scale: btnPulse }] }}>
-                <TouchableOpacity
-                  style={styles.addBtn}
-                  onPress={handleAddGlass}
-                  activeOpacity={0.9}
-                >
-                  <Ionicons name="water" size={ms(18)} color="#FFFFFF" />
-                  <Text style={styles.addBtnText}>I drank a glass</Text>
-                </TouchableOpacity>
-              </Animated.View>
-            </View>
-          </AnimCard>
-
-          {/* Start / Stop */}
-          <AnimCard delay={300}>
-            {!enabled ? (
-              <TouchableOpacity
-                style={styles.startBtn}
-                onPress={handleStart}
-                activeOpacity={0.9}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <>
-                    <Ionicons name="notifications" size={ms(18)} color="#FFFFFF" />
-                    <Text style={styles.startBtnText}>Start Tracking Water</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            ) : (
-              <>
-                <View style={styles.trackingPill}>
-                  <Ionicons name="checkmark-circle" size={ms(16)} color={colors.green} />
-                  <Text style={styles.trackingText}>
-                    Reminders on — every ~1.5 hrs, 8 AM to 10 PM
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.stopBtn}
-                  onPress={handleStop}
-                  activeOpacity={0.85}
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <ActivityIndicator color="#EF4444" />
-                  ) : (
-                    <>
-                      <Ionicons name="stop-circle" size={ms(18)} color="#EF4444" />
-                      <Text style={styles.stopBtnText}>Stop Tracking</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              </>
-            )}
-          </AnimCard>
-        </ScrollView>
-
-        <View style={styles.bannerContainer}>
-          <BannerAd
-            unitId={AD_UNIT_IDS.banner}
-            size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
-            requestOptions={{ requestNonPersonalizedAdsOnly: false }}
-            onAdFailedToLoad={(e) => Logger.log("[AdMob] Banner failed:", String(e))}
+        <View style={styles.progressTrack}>
+          <Animated.View
+            style={[
+              styles.progressFill,
+              {
+                width: progressAnim.interpolate({
+                  inputRange: [0, 100],
+                  outputRange: ["0%", "100%"],
+                }),
+              },
+            ]}
           />
         </View>
-      </SafeAreaView>
-    </Modal>
+
+        {/* "I drank a glass" is always visible — tracking just enables reminders */}
+        <View style={styles.logRow}>
+          <TouchableOpacity
+            style={styles.minusBtn}
+            onPress={handleRemoveGlass}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="remove" size={ms(20)} color={colors.text} />
+          </TouchableOpacity>
+
+          <Animated.View style={{ flex: 1, transform: [{ scale: btnPulse }] }}>
+            <TouchableOpacity
+              style={styles.addBtn}
+              onPress={handleAddGlass}
+              activeOpacity={0.9}
+            >
+              <Ionicons name="water" size={ms(18)} color="#FFFFFF" />
+              <Text style={styles.addBtnText}>I drank a glass</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+      </AnimCard>
+
+      {/* Start / Stop */}
+      <AnimCard delay={300}>
+        {!enabled ? (
+          <TouchableOpacity
+            style={styles.startBtn}
+            onPress={handleStart}
+            activeOpacity={0.9}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <>
+                <Ionicons name="notifications" size={ms(18)} color="#FFFFFF" />
+                <Text style={styles.startBtnText}>Start Tracking Water</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        ) : (
+          <>
+            <View style={styles.trackingPill}>
+              <Ionicons
+                name="checkmark-circle"
+                size={ms(16)}
+                color={colors.green}
+              />
+              <Text style={styles.trackingText}>
+                Reminders on — every ~1.5 hrs, 8 AM to 10 PM
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.stopBtn}
+              onPress={handleStop}
+              activeOpacity={0.85}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#EF4444" />
+              ) : (
+                <>
+                  <Ionicons name="stop-circle" size={ms(18)} color="#EF4444" />
+                  <Text style={styles.stopBtnText}>Stop Tracking</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </>
+        )}
+      </AnimCard>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#FFF8F5" },
-
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: ms(12),
-    paddingHorizontal: ms(16),
-    paddingTop: ms(8),
-    paddingBottom: ms(12),
-    backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0E6E0",
-  },
-  closeBtn: {
-    width: ms(42),
-    height: ms(42),
-    borderRadius: ms(21),
-    backgroundColor: "#FFF0EB",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  headerTitle: {
-    fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(19),
-    color: colors.text,
-  },
-  headerSubtitle: {
-    fontFamily: "OpenSans_500Medium",
-    fontSize: ms(11),
-    color: colors.textLight,
-    marginTop: ms(2),
-  },
-  dropWrap: {
-    width: ms(40),
-    height: ms(40),
-    borderRadius: ms(20),
-    backgroundColor: colors.primary + "18",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
   scroll: { flex: 1 },
   scrollContent: { padding: ms(16), paddingBottom: ms(24) },
 
@@ -634,15 +588,5 @@ const styles = StyleSheet.create({
     fontFamily: "OpenSans_800ExtraBold",
     fontSize: ms(14),
     color: "#EF4444",
-  },
-
-  bannerContainer: {
-    width: "100%",
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: ms(52),
-    backgroundColor: "#FFFFFF",
-    borderTopWidth: 1,
-    borderTopColor: "#F0E6E0",
   },
 });

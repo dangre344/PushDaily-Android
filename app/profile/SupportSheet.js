@@ -227,6 +227,36 @@ export default function SupportSheet({ visible, setVisible }) {
               </Animated.Text>
             </View>
 
+            {/* Trust, stated plainly and only with claims that are true: the
+                payment happens in the user's UPI app or on Buy Me a Coffee's
+                own HTTPS page — this app never handles payment details. */}
+            <View style={styles.trustCard}>
+              <View style={styles.trustHead}>
+                <View style={styles.trustIcon}>
+                  <Ionicons name="shield-checkmark" size={ms(18)} color="#15803D" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.trustTitle}>Safe & secure payment</Text>
+                  <Text style={styles.trustSub}>
+                    You pay in your own UPI app or on Buy Me a Coffee&apos;s secure
+                    page. Push Daily never sees your card, UPI PIN or bank details.
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.trustBadges}>
+                {[
+                  { icon: "lock-closed", label: "Encrypted (HTTPS)" },
+                  { icon: "eye-off", label: "No details stored" },
+                  { icon: "phone-portrait", label: "Stays in the app" },
+                ].map((b) => (
+                  <View key={b.label} style={styles.trustBadge}>
+                    <Ionicons name={b.icon} size={ms(11)} color="#15803D" />
+                    <Text style={styles.trustBadgeText}>{b.label}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+
             <TouchableOpacity
               style={styles.upiBtn}
               activeOpacity={0.9}
@@ -235,9 +265,11 @@ export default function SupportSheet({ visible, setVisible }) {
               <Ionicons name="wallet" size={ms(17)} color="#FFFFFF" />
               <View style={{ flex: 1 }}>
                 <Text style={styles.upiBtnText}>Pay with any UPI app</Text>
-                <Text style={styles.upiBtnSub}>{UPI_ID}</Text>
+                <Text style={styles.upiBtnSub}>
+                  GPay, PhonePe, Paytm · you approve with your PIN
+                </Text>
               </View>
-              <Ionicons name="open-outline" size={ms(15)} color="#FFFFFF" />
+              <Ionicons name="lock-closed" size={ms(15)} color="#FFFFFF" />
             </TouchableOpacity>
 
             {/* Separate tap target — copying and paying are different
@@ -276,11 +308,11 @@ export default function SupportSheet({ visible, setVisible }) {
               <View style={{ flex: 1 }}>
                 <Text style={styles.bmcBtnText}>Buy Me a Coffee</Text>
                 <Text style={styles.bmcBtnSub}>
-                  Card, Apple Pay, Google Pay or PayPal
+                  Opens securely inside the app · Card, Google Pay, PayPal
                 </Text>
               </View>
               <Ionicons
-                name="open-outline"
+                name="lock-closed"
                 size={ms(15)}
                 color={colors.text}
               />
@@ -390,14 +422,66 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: ms(12),
     backgroundColor: colors.primary + "10",
-    marginTop: ms(16),
-    marginBottom: ms(16),
+    marginTop: ms(14),
+    marginBottom: ms(12),
     paddingHorizontal: ms(12),
   },
   reasonText: {
     fontFamily: "OpenSans_700Bold",
     fontSize: ms(12),
     color: colors.primary,
+  },
+
+  trustCard: {
+    backgroundColor: "#F0FBF4",
+    borderRadius: ms(16),
+    borderWidth: 1,
+    borderColor: "#CDEFD9",
+    padding: ms(12),
+    marginBottom: ms(14),
+  },
+  trustHead: { flexDirection: "row", alignItems: "flex-start", gap: ms(10) },
+  trustIcon: {
+    width: ms(32),
+    height: ms(32),
+    borderRadius: ms(10),
+    backgroundColor: "#DCF5E5",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  trustTitle: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: ms(13),
+    color: "#14532D",
+  },
+  trustSub: {
+    fontFamily: "OpenSans_500Medium",
+    fontSize: ms(11),
+    lineHeight: ms(15.5),
+    color: "#3F6B50",
+    marginTop: 2,
+  },
+  trustBadges: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: ms(6),
+    marginTop: ms(10),
+  },
+  trustBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#CDEFD9",
+    paddingHorizontal: ms(8),
+    paddingVertical: ms(3),
+  },
+  trustBadgeText: {
+    fontFamily: "OpenSans_700Bold",
+    fontSize: ms(10),
+    color: "#15803D",
   },
 
   upiBtn: {

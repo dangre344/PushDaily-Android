@@ -1,10 +1,22 @@
 import { Ionicons } from "@expo/vector-icons";
+import { AnimatePresence, MotiView } from "moti";
 import { useState } from "react";
 import { Controller } from "react-hook-form";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+
 import { colors } from "../../constants/colors";
+import { scaling } from "../../constants/useScaling";
 import TitleText from "./TitleText";
 
+const ms = (n) => scaling().moderateScale(n);
+
+/**
+ * Text field bound to react-hook-form. Same props as before; adds visible
+ * states — focused (orange ring), filled (check), error (red + message).
+ *
+ * Caller-supplied onFocus/onBlur are still called; they're composed with the
+ * field's own handlers rather than overriding them.
+ */
 export default function InputText({
   form,
   fieldName,
@@ -15,100 +27,130 @@ export default function InputText({
   error,
   rootContainer,
   secureTextEntry = false,
+  icon,
+  onFocus: onFocusProp,
+  onBlur: onBlurProp,
   ...props
 }) {
-  // console.log("fieldName--->", fieldName);
-  // console.log("errors-InputText-->", form?.formState?.errors[fieldName]);
-
   const [isSecure, setIsSecure] = useState(secureTextEntry);
+  const [focused, setFocused] = useState(false);
 
-  const toggleSecureText = () => {
-    setIsSecure(!isSecure);
-  };
   return (
     <View style={rootContainer}>
       <Controller
         control={form.control}
         name={fieldName}
-        render={({ field: { onChange, onBlur, value } }) => (
-          <View>
-            {titleTextLabel ? (
-              <TitleText
-                text={titleTextLabel}
-                style={titleStyle}
-                isOptional={isOptional}
-              />
-            ) : null}
+        render={({ field: { onChange, onBlur, value } }) => {
+          const message = error || form?.formState?.errors?.[fieldName]?.message;
+          const filled = typeof value === "string" ? value.trim().length > 0 : value != null && value !== "";
 
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={[styles.inputTextStyle, inputStyle]}
-                onBlur={onBlur}
-                onChangeText={onChange}
-                autoCapitalize={props.autoCapitalize ?? "sentences"}
-                value={value}
-                secureTextEntry={isSecure}
-                {...props}
-              />
+          return (
+            <View>
+              {titleTextLabel ? (
+                <TitleText
+                  text={titleTextLabel}
+                  style={[styles.label, focused && styles.labelFocused, titleStyle]}
+                  isOptional={isOptional}
+                />
+              ) : null}
 
-              {secureTextEntry && (
-                <Pressable
-                  onPress={toggleSecureText}
-                  style={styles.iconContainer}
-                >
-                  <Ionicons
-                    name={isSecure ? "eye-off" : "eye"}
-                    size={24}
-                    color="gray"
-                  />
-                </Pressable>
-              )}
+              <MotiView
+                animate={{
+                  borderColor: message ? colors.error : focused ? colors.primary : "#E7EAEF",
+                  backgroundColor: focused ? "#FFFAF7" : "#FFFFFF",
+                }}
+                transition={{ type: "timing", duration: 160 }}
+                style={styles.box}
+              >
+                <Ionicons
+                  name={icon || "person-outline"}
+                  size={ms(18)}
+                  color={focused ? colors.primary : "#9AA3AD"}
+                />
+                <TextInput
+                  style={[styles.input, inputStyle]}
+                  placeholderTextColor="#9AA3AD"
+                  onChangeText={onChange}
+                  value={value}
+                  secureTextEntry={isSecure}
+                  autoCapitalize={props.autoCapitalize ?? "sentences"}
+                  {...props}
+                  onFocus={(e) => {
+                    setFocused(true);
+                    onFocusProp?.(e);
+                  }}
+                  onBlur={(e) => {
+                    setFocused(false);
+                    onBlur();
+                    onBlurProp?.(e);
+                  }}
+                />
+
+                {secureTextEntry ? (
+                  <Pressable onPress={() => setIsSecure((s) => !s)} hitSlop={8}>
+                    <Ionicons name={isSecure ? "eye-off" : "eye"} size={ms(20)} color="#9AA3AD" />
+                  </Pressable>
+                ) : (
+                  <AnimatePresence>
+                    {filled && !message ? (
+                      <MotiView
+                        from={{ opacity: 0, scale: 0.4 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.4 }}
+                        transition={{ type: "spring", damping: 14 }}
+                      >
+                        <Ionicons name="checkmark-circle" size={ms(19)} color={colors.success} />
+                      </MotiView>
+                    ) : null}
+                  </AnimatePresence>
+                )}
+              </MotiView>
+
+              <AnimatePresence>
+                {message ? (
+                  <MotiView
+                    from={{ opacity: 0, translateY: -4 }}
+                    animate={{ opacity: 1, translateY: 0 }}
+                    exit={{ opacity: 0 }}
+                    style={styles.errorRow}
+                  >
+                    <Ionicons name="alert-circle" size={ms(13)} color={colors.error} />
+                    <Text style={styles.errorText}>{message}</Text>
+                  </MotiView>
+                ) : null}
+              </AnimatePresence>
             </View>
-
-            {error ? (
-              <Text style={styles.errorText}>{error}</Text>
-            ) : (
-              form?.formState?.errors[fieldName]?.message && (
-                <Text style={styles.errorText}>
-                  {form?.formState?.errors[fieldName]?.message}
-                </Text>
-              )
-            )}
-          </View>
-        )}
+          );
+        }}
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  inputTextStyle: {
-    borderColor: colors.grey,
-    borderWidth: 1,
-    fontSize: 15,
-    fontFamily: "OpenSans_400Regular",
-    paddingHorizontal: 15,
-    marginTop: 5,
-    color: colors.textLight,
-    borderRadius: 10,
-    paddingVertical: 10,
-    flex: 1,
+  label: {
+    fontSize: ms(13),
+    fontFamily: "OpenSans_700Bold",
+    color: colors.text,
+    marginBottom: 6,
   },
-
-  iconContainer: {
-    paddingHorizontal: 10,
-  },
-
-  inputContainer: {
+  labelFocused: { color: colors.primary },
+  box: {
     flexDirection: "row",
     alignItems: "center",
-    alignContent: "center",
+    gap: 10,
+    borderWidth: 1.5,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    minHeight: ms(54),
   },
-
-  errorText: {
-    fontSize: 12,
-    fontFamily: "OpenSans_400Regular",
-    color: colors.errorRed,
-    marginTop: 2,
+  input: {
+    flex: 1,
+    fontSize: ms(15),
+    fontFamily: "OpenSans_600SemiBold",
+    color: colors.text,
+    paddingVertical: 12,
   },
+  errorRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 6 },
+  errorText: { fontSize: ms(12), fontFamily: "OpenSans_600SemiBold", color: colors.error },
 });

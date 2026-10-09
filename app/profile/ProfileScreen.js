@@ -8,7 +8,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
-  Easing,
   Linking,
   Platform,
   Share,
@@ -20,12 +19,13 @@ import {
 import { BannerAd } from "react-native-google-mobile-ads";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AD_UNIT_IDS, BannerAdSize } from "../../ads/Admobmanager";
-import { Image } from "expo-image";
 import { FemaleIcon, ManIconSVG } from "../../assets/AllSvgs";
 import NotificationDialog from "../../components/ui/NotificationDialog";
 import { maybeAskForReview } from "../../constants/appReview";
 import { colors } from "../../constants/colors";
+import { tapHaptic } from "../../constants/haptics";
 import { Logger } from "../../constants/Logger";
+import { isPartnerMode } from "../../constants/periodReminders";
 import { trackEvent } from "../../constants/mixpanel";
 import { useUser } from "../../constants/UserContext";
 import { syncWidget, trackWidgetGuideOpened } from "../../constants/widgetPromo";
@@ -45,7 +45,6 @@ import SupportSheet from "./SupportSheet";
 import WidgetGuideModal from "./WidgetGuideModal";
 import { AboutModal } from "./privacy/AboutModal";
 import { PrivacyPolicyModal } from "./privacy/PrivacyPolicyModal";
-import WaterReminderModal from "./WaterReminderModal";
 
 const { width } = Dimensions.get("window");
 const ms = (n) => scaling().moderateScale(n);
@@ -144,30 +143,11 @@ const handleOpenInstagram = async () => {
   }
 };
 
-// ── Join WhatsApp community (app announcements) ──
-// Replace with your real group invite link from WhatsApp → Group → Invite.
-const WHATSAPP_GROUP_URL = "https://chat.whatsapp.com/Hv1HdzVbqOPJwPiuv1h2FE";
-
-const handleJoinWhatsApp = async () => {
-  try {
-    await Linking.openURL(WHATSAPP_GROUP_URL);
-  } catch (error) {
-    Logger.log("WhatsApp open error:", error);
-  }
-};
-
 // ─── Menu sections ────────────────────────────────────────────────────────────
 const MENU_SECTIONS = [
   {
     title: "Account",
     items: [
-      {
-        label: "Edit Profile",
-        icon: "person-outline",
-        color: colors.primary,
-        key: "edit",
-      },
-
       {
         label: "Add home screen widget",
         subtitle: "A daily nudge where you'll actually see it",
@@ -200,7 +180,8 @@ const MENU_SECTIONS = [
       },
 
       {
-        label: "Water Reminder",
+        label: "Water Reminder & Period Tracking",
+        subtitle: "Hydration reminders & track your period cycle",
         icon: "water-outline",
         color: "#2E90FA",
         key: "water",
@@ -225,13 +206,6 @@ const MENU_SECTIONS = [
         color: "#D62976",
         gradient: INSTAGRAM_GRADIENT,
         key: "instagram",
-      },
-      {
-        label: "Join WhatsApp Community",
-        subtitle: "Diet tips, workouts, motivation & app updates 🔥",
-        icon: "logo-whatsapp",
-        color: "#25D366",
-        key: "whatsapp",
       },
     ],
   },
@@ -334,7 +308,6 @@ const MenuRow = ({
   setStatsVisible,
   setWidgetGuideVisible,
   setSupportVisible,
-  setWaterVisible,
   setNotificationDialog,
 }) => {
   const anim = useRef(new Animated.Value(0)).current;
@@ -463,13 +436,11 @@ const MenuRow = ({
           } else if (item.key === "stats") {
             setStatsVisible(true);
           } else if (item.key === "water") {
-            setWaterVisible(true);
+            router.push("/profile/water");
           } else if (item.key === "notifs") {
             handleNotifications(setNotificationDialog);
           } else if (item.key === "instagram") {
             handleOpenInstagram();
-          } else if (item.key === "whatsapp") {
-            handleJoinWhatsApp();
           } else if (item.key === "privacy") {
             setPrivacyVisible(true);
           } else if (item.key === "share") {
@@ -525,6 +496,11 @@ export default function ProfileScreen() {
   const { user } = useUser();
   const [streak, setStreak] = useState(0);
 
+  const openEditProfile = () => {
+    tapHaptic();
+    router.push({ pathname: "../signup", params: { from: "edit" } });
+  };
+
   const [stats, setStats] = useState({
     totalWorkouts: 0,
     totalCalories: 0,
@@ -576,11 +552,8 @@ export default function ProfileScreen() {
   const [statsVisible, setStatsVisible] = useState(false);
   const [widgetGuideVisible, setWidgetGuideVisible] = useState(false);
   const [supportVisible, setSupportVisible] = useState(false);
-  const [waterVisible, setWaterVisible] = useState(false);
 
   const [storedBadge, setStoredBadge] = useState(null);
-  // Pulse + shimmer on the level badge so users notice it's tappable.
-  const badgePulse = useRef(new Animated.Value(0)).current;
 
   const [notificationDialog, setNotificationDialog] = useState({
     visible: false,
@@ -591,30 +564,6 @@ export default function ProfileScreen() {
     secondaryText: "",
     onPrimaryPress: null,
   });
-
-  // Gentle attention loop — runs only while a badge exists.
-  useEffect(() => {
-    if (!storedBadge) return;
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(badgePulse, {
-          toValue: 1,
-          duration: 1100,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(badgePulse, {
-          toValue: 0,
-          duration: 1100,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.delay(1400), // pause so it never feels frantic
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [storedBadge, badgePulse]);
 
   // The cached "userBadge" key was never actually written by anything, so
   // getStoredUserBadge() always returned null and the badge stayed hidden.
@@ -722,80 +671,6 @@ export default function ProfileScreen() {
         )}
         scrollEventThrottle={16}
       >
-        <View style={styles.levelRow}>
-        {/* Level badge — sits in the scroll content (not pinned), so it moves
-              up with the page like any other element. */}
-        {storedBadge ? (
-          <TouchableOpacity
-            style={styles.levelBadge}
-            activeOpacity={0.85}
-            onPress={() => setOpenBadgeModal(true)}
-          >
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                styles.levelHalo,
-                {
-                  opacity: badgePulse.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, 0.5],
-                  }),
-                  transform: [
-                    {
-                      scale: badgePulse.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0.9, 1.5],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            />
-
-            <Animated.View
-              style={[
-                styles.levelPill,
-                {
-                  transform: [
-                    {
-                      scale: badgePulse.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [1, 1.07],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            >
-              {storedBadge?.image ? (
-                <Image source={storedBadge.image} style={styles.levelPillImage} />
-              ) : (
-                <Text style={styles.levelPillEmoji}>
-                  {storedBadge?.emoji || "🏅"}
-                </Text>
-              )}
-              <Text style={styles.levelPillText} numberOfLines={1}>
-                {storedBadge?.title || "Badge"}
-              </Text>
-            </Animated.View>
-
-            {/* Small nudge dot so the pill reads as "there is more here". */}
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                styles.levelDot,
-                {
-                  opacity: badgePulse.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0.35, 1],
-                  }),
-                },
-              ]}
-            />
-          </TouchableOpacity>
-        ) : null}
-        </View>
-
         <Animated.View
           style={[
             styles.profileHeader,
@@ -811,6 +686,13 @@ export default function ProfileScreen() {
               { transform: [{ scale: avatarScale }], opacity: avatarAnim },
             ]}
           >
+            {/* Tapping the avatar (or its pencil) opens Edit Profile. */}
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={openEditProfile}
+              accessibilityRole="button"
+              accessibilityLabel="Edit profile"
+            >
             <View style={styles.avatarRing}>
               <View style={styles.avatarInner}>
                 {user?.gender === "Female" ? (
@@ -834,6 +716,10 @@ export default function ProfileScreen() {
                 )}
               </View>
             </View>
+            <View style={styles.editBadge}>
+              <MaterialCommunityIcons name="pencil" size={ms(14)} color="#FFFFFF" />
+            </View>
+            </TouchableOpacity>
           </Animated.View>
 
           <Animated.View style={{ opacity: avatarAnim, alignItems: "center" }}>
@@ -883,49 +769,6 @@ export default function ProfileScreen() {
           ))}
         </View>
 
-        {streak != 0 && (
-          <Animated.View
-            style={[
-              styles.streakBanner,
-              {
-                opacity: headerAnim,
-                transform: [
-                  {
-                    translateY: headerAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [16, 0],
-                    }),
-                  },
-                ],
-              },
-            ]}
-          >
-            <View style={styles.streakLeft}>
-              <Text style={styles.streakFire}>🔥</Text>
-              <View>
-                <Text style={styles.streakTitle}>{streak} Day Streak</Text>
-                <Text style={styles.streakSub}>
-                  {streak === 7
-                    ? "Amazing! You hit a 7 day streak! 🎉"
-                    : `${streak} day${streak !== 1 ? "s" : ""} strong — keep showing up!`}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.streakBar}>
-              {Array.from({ length: 7 }, (_, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.streakDot,
-                    i < Math.min(streak, 7) && styles.streakDotActive,
-                  ]}
-                />
-              ))}
-            </View>
-          </Animated.View>
-        )}
-
         {MENU_SECTIONS.map((section, sIdx) => (
           <View key={section.title} style={styles.section}>
             <Text style={styles.sectionTitle}>{section.title}</Text>
@@ -933,7 +776,12 @@ export default function ProfileScreen() {
               {section.items.map((item, iIdx) => (
                 <MenuRow
                   key={item.key}
-                  item={item}
+                  item={
+                    // Anyone who isn't Female tracks a partner's cycle.
+                    item.key === "water" && isPartnerMode(user?.gender)
+                      ? { ...item, subtitle: "Hydration reminders & track your partner's period cycle" }
+                      : item
+                  }
                   delay={500 + sIdx * 100 + iIdx * 50}
                   isLast={iIdx === section.items.length - 1}
                   setPrivacyVisible={setPrivacyVisible}
@@ -943,7 +791,6 @@ export default function ProfileScreen() {
                   setStatsVisible={setStatsVisible}
                   setWidgetGuideVisible={setWidgetGuideVisible}
                   setSupportVisible={setSupportVisible}
-                  setWaterVisible={setWaterVisible}
                   setNotificationDialog={setNotificationDialog}
                 />
               ))}
@@ -1026,13 +873,6 @@ export default function ProfileScreen() {
         />
       ) : null}
 
-      {waterVisible ? (
-        <WaterReminderModal
-          visible={waterVisible}
-          setVisible={setWaterVisible}
-        />
-      ) : null}
-
       <NotificationDialog
         visible={notificationDialog.visible}
         type={notificationDialog.type}
@@ -1098,59 +938,6 @@ const styles = StyleSheet.create({
     opacity: 0.07,
   },
 
-  levelRow: {
-    alignItems: "flex-end",
-    paddingRight: scaling().scaleWidth(14),
-    paddingTop: scaling().scaleHeight(6),
-  },
-  levelBadge: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  levelHalo: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    borderRadius: scaling().moderateScale(16),
-    backgroundColor: colors.primary,
-  },
-  levelPill: {
-    alignItems: "center",
-    justifyContent: "center",
-    minWidth: scaling().moderateScale(62),
-    paddingHorizontal: scaling().moderateScale(9),
-    paddingVertical: scaling().moderateScale(6),
-    borderRadius: scaling().moderateScale(14),
-    backgroundColor: "#F8FAFC",
-    borderWidth: 1,
-    borderColor: "#EEF0F4",
-  },
-  levelPillImage: {
-    width: scaling().moderateScale(24),
-    height: scaling().moderateScale(24),
-    resizeMode: "contain",
-  },
-  levelPillEmoji: { fontSize: scaling().moderateScale(19) },
-  levelPillText: {
-    fontFamily: "OpenSans_800ExtraBold",
-    fontSize: scaling().moderateScale(9.5),
-    color: colors.primary,
-    marginTop: scaling().moderateScale(2),
-  },
-  levelDot: {
-    position: "absolute",
-    top: -scaling().moderateScale(2),
-    right: -scaling().moderateScale(2),
-    width: scaling().moderateScale(9),
-    height: scaling().moderateScale(9),
-    borderRadius: scaling().moderateScale(5),
-    backgroundColor: colors.primary,
-    borderWidth: 1.5,
-    borderColor: "#FFFFFF",
-  },
-
   glowLeft: {
     position: "absolute",
     left: ms(-200),
@@ -1180,6 +967,7 @@ const styles = StyleSheet.create({
   // ── Profile header
   profileHeader: {
     alignItems: "center",
+    marginTop: ms(14),
   },
   avatarContainer: {
     marginBottom: ms(10),
@@ -1211,16 +999,24 @@ const styles = StyleSheet.create({
   },
   editBadge: {
     position: "absolute",
-    bottom: 4,
-    right: 4,
+    bottom: 0,
+    right: -2,
     width: ms(28),
     height: ms(28),
     borderRadius: ms(14),
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
-    borderColor: colors.background,
+    borderWidth: 2.5,
+    borderColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    // On Android, elevation decides draw order: the avatar ring is at 12, so
+    // anything lower is painted underneath it. 16 keeps the pencil on top.
+    elevation: 16,
+    zIndex: 2,
   },
   name: {
     fontFamily: "OpenSans_700Bold",
@@ -1267,50 +1063,6 @@ const styles = StyleSheet.create({
     marginBottom: ms(14),
   },
 
-  // ── Streak banner
-  streakBanner: {
-    marginHorizontal: ms(16),
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    padding: ms(14),
-    borderWidth: 0.5,
-    borderColor: colors.grey,
-    marginBottom: ms(24),
-    marginTop: ms(8),
-  },
-  streakLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: ms(10),
-    marginBottom: ms(12),
-  },
-  streakFire: {
-    fontSize: ms(28),
-  },
-  streakTitle: {
-    fontFamily: "OpenSans_700Bold",
-    fontSize: ms(15),
-    color: colors.text,
-  },
-  streakSub: {
-    fontFamily: "OpenSans_400Regular",
-    fontSize: ms(11),
-    color: colors.muted,
-    marginTop: 2,
-  },
-  streakBar: {
-    flexDirection: "row",
-    gap: ms(6),
-  },
-  streakDot: {
-    flex: 1,
-    height: ms(6),
-    borderRadius: ms(3),
-    backgroundColor: colors.grey,
-  },
-  streakDotActive: {
-    backgroundColor: colors.primary,
-  },
 
   // ── Menu sections
   section: {
