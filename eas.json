@@ -27,6 +27,10 @@
         "buildType": "apk"
       }
     },
+    "indus": {
+      "extends": "production",
+      "android": { "buildType": "apk" }
+    },
     // ✅ Local AAB build — for Play Store upload
     "production-local": {
       "autoIncrement": false,

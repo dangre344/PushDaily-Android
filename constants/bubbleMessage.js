@@ -26,6 +26,41 @@ export const registerBubbleVisibility = (fn) => {
   };
 };
 
+// ─── Step aside while scrolling ──────────────────────────────────────────────
+// The bubble floats over content, so while a list is moving it fades out and
+// stops taking touches; it comes back shortly after scrolling settles.
+let scrollListener = null;
+let settleTimer = null;
+const SETTLE_MS = 700;
+
+export const registerBubbleScroll = (fn) => {
+  scrollListener = fn;
+  return () => {
+    if (scrollListener === fn) scrollListener = null;
+  };
+};
+
+const scrollingNow = () => {
+  clearTimeout(settleTimer);
+  scrollListener?.(true);
+};
+const settleSoon = () => {
+  clearTimeout(settleTimer);
+  settleTimer = setTimeout(() => scrollListener?.(false), SETTLE_MS);
+};
+
+/**
+ * Spread onto any ScrollView / FlatList / SectionList:
+ *   <ScrollView {...bubbleScrollFade}>
+ * A drag fades the bubble; it returns once the drag (and any fling) ends.
+ */
+export const bubbleScrollFade = {
+  onScrollBeginDrag: scrollingNow,
+  onMomentumScrollBegin: scrollingNow,
+  onScrollEndDrag: settleSoon,
+  onMomentumScrollEnd: settleSoon,
+};
+
 /** TrainerBubble registers itself here on mount. */
 export const registerBubbleListener = (fn) => {
   listener = fn;

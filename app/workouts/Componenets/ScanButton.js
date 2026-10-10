@@ -1,14 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
-import {
-  Animated,
-  Easing,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { useEffect, useRef } from "react";
+import { Animated, Easing, StyleSheet, TouchableOpacity, View } from "react-native";
 
 import { colors } from "../../../constants/colors";
 import { tapHaptic } from "../../../constants/haptics";
@@ -17,12 +10,9 @@ import { scaling } from "../../../constants/useScaling";
 
 const ms = (n) => scaling().moderateScale(n);
 
-// Cycled under the icon so the button explains itself without extra chrome.
-const ROLL = ["Packet food", "Check sugar", "Find allergens", "Is it healthy?"];
-const ROLL_MS = 2000;
-
 /**
- * Compact "Scan" launcher for the Workouts header.
+ * Compact, icon-only "Scan" launcher for the Workouts header. The moving scan
+ * line and halo say "scanner" without any text under it.
  *
  * The icon is drawn with a sweeping scan line rather than a Lottie file — drop
  * a `scan.json` into assets/animations and swap the inner <View> for a
@@ -31,29 +21,8 @@ const ROLL_MS = 2000;
 export default function ScanButton() {
   const router = useRouter();
 
-  const [word, setWord] = useState(0);
-  const wordFade = useRef(new Animated.Value(1)).current;
   const sweep = useRef(new Animated.Value(0)).current;
   const ring = useRef(new Animated.Value(0)).current;
-
-  // Rolling caption.
-  useEffect(() => {
-    const id = setInterval(() => {
-      Animated.timing(wordFade, {
-        toValue: 0,
-        duration: 220,
-        useNativeDriver: true,
-      }).start(() => {
-        setWord((i) => (i + 1) % ROLL.length);
-        Animated.timing(wordFade, {
-          toValue: 1,
-          duration: 220,
-          useNativeDriver: true,
-        }).start();
-      });
-    }, ROLL_MS);
-    return () => clearInterval(id);
-  }, [wordFade]);
 
   // Scan line + halo, so it reads as a live scanner.
   useEffect(() => {
@@ -100,6 +69,9 @@ export default function ScanButton() {
     <TouchableOpacity
       style={styles.wrap}
       activeOpacity={0.85}
+      hitSlop={6}
+      accessibilityRole="button"
+      accessibilityLabel="Scan a food label"
       onPress={() => {
         tapHaptic();
         trackEvent("Food Scan Opened", { from: "workouts" });
@@ -148,25 +120,16 @@ export default function ScanButton() {
           ]}
         />
       </View>
-
-      <Text style={styles.label}>Scan</Text>
-
-      <Animated.Text
-        style={[styles.roll, { opacity: wordFade }]}
-        numberOfLines={1}
-      >
-        {ROLL[word]}
-      </Animated.Text>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { alignItems: "center", width: ms(60) },
+  wrap: { alignItems: "center", justifyContent: "center" },
   iconBox: {
-    width: ms(32),
-    height: ms(32),
-    borderRadius: ms(11),
+    width: ms(36),
+    height: ms(36),
+    borderRadius: ms(12),
     backgroundColor: colors.primary + "14",
     alignItems: "center",
     justifyContent: "center",
@@ -174,9 +137,9 @@ const styles = StyleSheet.create({
   },
   ring: {
     position: "absolute",
-    width: ms(32),
-    height: ms(32),
-    borderRadius: ms(11),
+    width: ms(36),
+    height: ms(36),
+    borderRadius: ms(12),
     backgroundColor: colors.primary,
   },
   sweepLine: {
@@ -186,19 +149,5 @@ const styles = StyleSheet.create({
     height: 1.5,
     borderRadius: 1,
     backgroundColor: colors.primary,
-  },
-  label: {
-    fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(9),
-    color: colors.primary,
-    marginTop: ms(1),
-    lineHeight: ms(12),
-  },
-  roll: {
-    fontFamily: "OpenSans_600SemiBold",
-    fontSize: ms(7),
-    lineHeight: ms(9),
-    color: colors.textLight,
-    marginTop: 0,
   },
 });

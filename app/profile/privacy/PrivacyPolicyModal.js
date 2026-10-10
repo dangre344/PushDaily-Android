@@ -14,51 +14,51 @@ import { AD_UNIT_IDS } from "../../../ads/Admobmanager";
 import { colors } from "../../../constants/colors";
 import { scaling } from "../../../constants/useScaling";
 
+// Short in-app summary of docs/privacy-policy.md — keep the two in sync.
 const PRIVACY_SECTIONS = [
   {
     title: "1. Information We Collect",
-    body: "Push Daily collects only the information you enter directly into the app. This may include your name, optional email address, age, gender, height, weight, workout experience, fitness goal, selected workout days, preferred workout time, workout sessions, exercise names, calories, body part targets, and difficulty levels.",
-  },
-  // {
-  //   title: "2. Optional Email Address",
-  //   body: "Providing an email address is optional. If you choose to provide it, we may use it to identify your profile, help with account or support requests, communicate important app-related or security updates, and improve your experience within the app. You can use the app without providing an email address.",
-  // },
-  {
-    title: "2. How We Use Your Data",
-    body: "Your data is used solely to personalize your workout experience, display your workout history, progress statistics, weekly attendance, reminders, and saved fitness preferences. We do not use your data for advertising, profiling, or selling to third parties.",
+    body: "Your profile: name, gender, age, height, weight, fitness level, goal, workout days and reminder time. Health and fitness data you log: workouts, water intake and (optionally) period dates. Usage data collected automatically: device type, app version, screens and features used, crash reports, and how you found the app. We never ask for your email, phone number or password.",
   },
   {
-    title: "3. Data Storage",
-    body: "Your workout and profile data is stored locally on your device using SQLite, unless a future version of the app clearly informs you about cloud-based features. Uninstalling the app may permanently delete locally stored data from your device.",
+    title: "2. Data That Stays On Your Phone",
+    body: "Period tracking (start dates, cycle length, delay history), workout history and water intake are stored only on your device. Period data is never uploaded to our servers, never sent to analytics and never shared with anyone. Camera images used to count push-ups are processed on your device in real time and are never recorded or uploaded.",
   },
   {
-    title: "4. Notifications",
-    body: "If you grant notification permissions, Push Daily may send workout reminders, progress reminders, or important app-related updates. Workout reminders are used only to help you stay consistent with your fitness routine.",
+    title: "3. Data That Leaves Your Phone",
+    body: "• Analytics (Mixpanel): app usage and your profile details, including height, weight, age and gender.\n• AI trainer (Google Gemini / Groq via our server): your chat messages, profile details and, if you ask for a progress review, a workout summary. Never period data.\n• Food scanner: a nutrition-label photo is sent to our AI service to read it, and is not kept. Barcodes are looked up in Open Food Facts.\n• Push-up leaderboard: your display name, push-up count and country are stored and shown publicly to other users.\n• Firebase: crash reports and the notification token.",
   },
   {
-    title: "5. Third-Party Services",
-    body: "Push Daily does not sell your personal information. If third-party services are added in the future, such as analytics, crash reporting, authentication, or cloud backup, this Privacy Policy will be updated to explain what data is shared and why.",
+    title: "4. Advertising",
+    body: "The app shows ads through Google AdMob, which may use your device's advertising ID to show personalized ads. You can reset it or opt out in Android Settings → Google → Ads. Health data, including period data, is never shared with advertisers.",
   },
   {
-    title: "6. Children's Privacy",
-    body: "Push Daily is not directed at children under the age of 13. We do not knowingly collect personal information from children under 13. If we become aware that such information has been collected, we will take reasonable steps to delete it.",
+    title: "5. Notifications",
+    body: "With your permission we send workout, water and period reminders and daily fitness updates. Period reminders are scheduled on your device and never show dates or cycle details on your lock screen. Turn them off in the app or in your device settings.",
   },
   {
-    title: "7. Changes to This Policy",
-    body: "We may update this Privacy Policy from time to time. Any changes will be reflected within the app with an updated date shown above.",
-  },
-
-  {
-    title: "8. Health Disclaimer",
-    body: "Push Daily provides general fitness and workout guidance only. It is not medical advice. Please consult a healthcare professional before starting any new workout program, especially if you have any medical condition, injury, or health concern.",
+    title: "6. Payments",
+    body: "Buy Me a Coffee contributions are optional and are handled by your UPI app or by Buy Me a Coffee on their secure pages. We never see or store card details, UPI PINs or bank details.",
   },
   {
-    title: "9. Children's Privacy",
-    body: "Push Daily is not directed at children under the age of 13. Users must be at least 13 years old to use the app because the app provides fitness and workout guidance that may not be suitable for younger children without parent or guardian supervision. We do not knowingly collect personal information from children under 13. If we become aware that such information has been collected, we will take reasonable steps to delete it.",
+    title: "7. We Do Not Sell Your Data",
+    body: "We do not sell your personal data. We share it only with the service providers above, for the purposes described, or when required by law.",
   },
   {
-    title: "10. Contact",
-    body: "If you have any questions about this Privacy Policy or your data, please contact us at supportflexicoach@gmail.com",
+    title: "8. Deleting Your Data",
+    body: "Delete period entries in Period Tracking. Clear all on-device data via Settings → Apps → Push Daily → Storage → Clear data, or by uninstalling. To delete leaderboard scores or analytics data, email us with your profile name — we respond within 30 days.",
+  },
+  {
+    title: "9. Health Disclaimer",
+    body: "Push Daily provides general fitness guidance only. Period predictions are estimates, not medical advice or contraception. Please consult a healthcare professional about any health concern, and before starting a new workout program.",
+  },
+  {
+    title: "10. Children's Privacy",
+    body: "Push Daily is not intended for children under 13. We do not knowingly collect data from children under 13; if we learn that we have, we will delete it.",
+  },
+  {
+    title: "11. Changes & Contact",
+    body: "We may update this policy; changes appear here with a new date. Questions or data requests: supportflexicoach@gmail.com",
   },
 ];
 
@@ -97,7 +97,7 @@ export const PrivacyPolicyModal = ({ privacyVisible, setPrivacyVisible }) => (
           </TouchableOpacity>
         </View>
 
-        <Text style={modalStyles.lastUpdated}>Last updated: March 2026</Text>
+        <Text style={modalStyles.lastUpdated}>Last updated: October 2026</Text>
 
         <ScrollView
           style={modalStyles.scroll}

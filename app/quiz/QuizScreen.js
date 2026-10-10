@@ -18,6 +18,8 @@ import { Toast } from "toastify-react-native";
 import { InterstitialAdManager } from "../../ads/Admobmanager";
 import QuizFeedback from "./QuizFeedback";
 import { praiseQuiz, sayFromJack } from "../../constants/bubbleMessage";
+import { Image } from "expo-image";
+
 import BrandGradient from "../../components/ui/BrandGradient";
 import { colors } from "../../constants/colors";
 import {
@@ -28,6 +30,7 @@ import {
 import { trackEvent, trackScreen } from "../../constants/mixpanel";
 import { getSessionQuestions } from "../../constants/quizDaily";
 import { scheduleQuizReminder } from "../../constants/quizNotifications";
+import { msUntilUtcReset } from "../../constants/leaderboard";
 import { getCategoryMeta } from "../../constants/quizQuestions";
 import {
   getQuizSummary,
@@ -39,6 +42,7 @@ import {
 } from "../../constants/quizStore";
 import { useUser } from "../../constants/UserContext";
 import { scaling } from "../../constants/useScaling";
+import { EXPRESSION_IMAGES } from "../../constants/widgetPromo";
 
 const ms = (n) => scaling().moderateScale(n);
 const { width: SCREEN_W } = Dimensions.get("window");
@@ -47,13 +51,6 @@ const SKIPPED = -1;
 
 // Bonus XP per correct answer once a 3-in-a-row combo is running.
 const COMBO_BONUS_XP = 5;
-
-const MOTIVATION = [
-  "Consistency beats intensity — you showed up today. 💪",
-  "Knowledge is the cheapest performance upgrade there is. 🧠",
-  "Small daily reps — in the gym and in your head. 🔁",
-  "Today's learning is tomorrow's better workout. 🚀",
-];
 
 export default function QuizScreen() {
   const router = useRouter();
@@ -78,6 +75,18 @@ export default function QuizScreen() {
   // Feedback is asked at most once per app session, never repeatedly.
   const [feedbackDone, setFeedbackDone] = useState(false);
   const [feedbackVisible, setFeedbackVisible] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  // Questions reset at UTC midnight (quizStore's day key), same as the board.
+  const [resetIn, setResetIn] = useState(msUntilUtcReset());
+  useEffect(() => {
+    const id = setInterval(() => setResetIn(msUntilUtcReset()), 30000);
+    return () => clearInterval(id);
+  }, []);
+  const resetLabel = (() => {
+    const h = Math.floor(resetIn / 3600000);
+    const m = Math.floor((resetIn % 3600000) / 60000);
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  })();
 
   const advanceTimer = useRef(null);
   const adTimer = useRef(null);
@@ -113,7 +122,6 @@ export default function QuizScreen() {
 
   const confetti = useRef(null);
   const xpAnim = useRef(new Animated.Value(0)).current;
-  const barAnim = useRef(new Animated.Value(0)).current;
   const scoreAnim = useRef(new Animated.Value(0)).current;
   const achieveAnim = useRef(new Animated.Value(0)).current;
 
@@ -167,22 +175,11 @@ export default function QuizScreen() {
     }).start();
   }, [summary?.totalXp]);
 
-  useEffect(() => {
-    if (phase !== "playing" || questions.length === 0) return;
-    Animated.timing(barAnim, {
-      toValue: (qIndex + 1) / questions.length,
-      duration: 380,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
-    }).start();
-  }, [qIndex, phase, questions.length]);
-
   const correctCount = questions.reduce(
     (n, q, i) => n + (selected[i] === q.correct ? 1 : 0),
     0,
   );
   const skippedCount = selected.filter((v) => v === SKIPPED).length;
-  const sessionXp = correctCount * XP_PER_CORRECT;
 
   const startQuiz = async ({ auto = false } = {}) => {
     const s = await refresh();
@@ -215,7 +212,6 @@ export default function QuizScreen() {
     comboRef.current = 0;
     setLastBonus(0);
     setGainedXp(0);
-    barAnim.setValue(0);
     cardX.setValue(0);
     cardOpacity.setValue(1);
     shake.setValue(0);
@@ -381,6 +377,7 @@ export default function QuizScreen() {
     }
 
     setPhase("result");
+    setReviewOpen(false);
     advancingRef.current = false;
     scoreAnim.setValue(0);
     Animated.spring(scoreAnim, {
@@ -436,8 +433,6 @@ export default function QuizScreen() {
   // directly beneath it. Only the result takes over the full screen.
   if (phase === "home") {
     const locked = (summary?.remaining ?? 1) <= 0;
-    const dayIdx = new Date().getDate();
-    const motivation = MOTIVATION[dayIdx % MOTIVATION.length];
     const dayAcc =
       (summary?.todayCorrect ?? 0) + (summary?.todayWrong ?? 0) > 0
         ? Math.round(
@@ -451,50 +446,34 @@ export default function QuizScreen() {
       <View style={styles.screen}>
         <BrandGradient style={styles.hero}>
           <View style={styles.heroTop}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.heroTitle}>Fitness Quiz 🧠</Text>
-              <Text style={styles.heroSub}>
-                {QUESTIONS_PER_QUIZ} cards · +{XP_PER_CORRECT} XP per correct
+            <Text style={styles.heroTitle}>Fitness Quiz</Text>
+            <View style={styles.rankPill}>
+              <Text style={styles.rankText}>
+                {rank.emoji} {rank.title}
               </Text>
-            </View>
-            <View style={styles.heroRight}>
-              {summary?.dayStreak > 0 ? (
-                <View style={styles.dayStreakPill}>
-                  <Text style={styles.dayStreakEmoji}>🔥</Text>
-                  <Text style={styles.dayStreakText}>
-                    {summary.dayStreak} day
-                    {summary.dayStreak === 1 ? "" : "s"}
-                  </Text>
-                </View>
-              ) : null}
-              <View style={styles.rankBadge}>
-                <Text style={styles.rankEmoji}>{rank.emoji}</Text>
-                <Text style={styles.rankTitle}>{rank.title}</Text>
-              </View>
             </View>
           </View>
 
-          <View style={styles.xpCard}>
-            <View style={styles.xpRow}>
-              <View style={styles.xpLeft}>
-                <Ionicons name="flash" size={ms(16)} color="#FDE047" />
-                <Animated.Text style={styles.xpValue}>
-                  {xpAnim.interpolate({
-                    inputRange: [0, Math.max(summary?.totalXp || 1, 1)],
-                    outputRange: ["0", String(summary?.totalXp || 0)],
-                  })}
-                </Animated.Text>
-                <Text style={styles.xpLabel}>XP</Text>
-              </View>
-              <Text style={styles.xpNext}>
-                {rank.next ? `${rank.toNext} XP to ${rank.next.title}` : "Max rank!"}
+          {/* Slim XP bar with a single caption. */}
+          <View style={styles.xpTrack}>
+            <View style={[styles.xpFill, { width: `${rank.progress * 100}%` }]} />
+          </View>
+          <View style={styles.xpCaptionRow}>
+            <Text style={styles.xpCaption}>
+              <Animated.Text>
+                {xpAnim.interpolate({
+                  inputRange: [0, Math.max(summary?.totalXp || 1, 1)],
+                  outputRange: ["0", String(summary?.totalXp || 0)],
+                })}
+              </Animated.Text>
+              {" XP"}
+              {rank.next ? ` · ${rank.toNext} to ${rank.next.title}` : " · Max rank"}
+            </Text>
+            {summary?.dayStreak > 0 ? (
+              <Text style={styles.xpCaption}>
+                🔥 {summary.dayStreak}-day streak
               </Text>
-            </View>
-            <View style={styles.xpTrack}>
-              <View
-                style={[styles.xpFill, { width: `${rank.progress * 100}%` }]}
-              />
-            </View>
+            ) : null}
           </View>
         </BrandGradient>
 
@@ -511,11 +490,12 @@ export default function QuizScreen() {
             </View>
           ) : locked ? (
             <View style={[styles.card, styles.doneCard]}>
-              <Text style={styles.doneEmoji}>🎉</Text>
-              <Text style={styles.doneTitle}>All quizzes completed!</Text>
-              <Text style={styles.doneText}>
-                New questions will be available tomorrow.
-              </Text>
+              <Image
+                source={EXPRESSION_IMAGES.proud}
+                style={styles.doneMascot}
+                contentFit="contain"
+              />
+              <Text style={styles.doneTitle}>All done for today</Text>
 
               <View style={styles.dayReport}>
                 <View style={styles.dayStat}>
@@ -539,8 +519,6 @@ export default function QuizScreen() {
                   <Text style={styles.dayLabel}>Accuracy</Text>
                 </View>
               </View>
-
-              <Text style={styles.motivation}>{motivation}</Text>
             </View>
           ) : null}
 
@@ -568,10 +546,8 @@ export default function QuizScreen() {
               </>
             ) : locked ? (
               <View style={styles.tomorrowWrap}>
-                <Ionicons name="moon" size={ms(18)} color={colors.primary} />
-                <Text style={styles.tomorrowText}>
-                  All done for today — new questions tomorrow!
-                </Text>
+                <Ionicons name="hourglass-outline" size={ms(16)} color={colors.primary} />
+                <Text style={styles.tomorrowText}>New questions in {resetLabel}</Text>
               </View>
             ) : (
               // Reachable only after the user leaves a session early.
@@ -596,14 +572,20 @@ export default function QuizScreen() {
     const perfect = correctCount === total && total > 0;
     const pct = Math.round((correctCount / total) * 100);
     const tier = perfect
-      ? { emoji: "🏆", title: "Perfect score!", msg: "Flawless — you know your stuff." }
+      ? { jack: "proud", title: "Perfect score!" }
       : pct >= 80
-        ? { emoji: "🔥", title: "Excellent!", msg: "Almost perfect — keep going." }
+        ? { jack: "cheer", title: "Excellent!" }
         : pct >= 60
-          ? { emoji: "💪", title: "Well done!", msg: "Solid knowledge, room to grow." }
-          : pct >= 40
-            ? { emoji: "🌱", title: "Good start!", msg: "Read the tips and try again." }
-            : { emoji: "📚", title: "Keep learning!", msg: "Every tip makes you sharper." };
+          ? { jack: "wink", title: "Well done!" }
+          : { jack: "think", title: pct >= 40 ? "Good start!" : "Keep learning!" };
+    const wrongCount = total - correctCount - skippedCount;
+    // Wrong answers first when the review is opened.
+    const reviewOrder = questions
+      .map((q, i) => ({ q, i, pick: selected[i] }))
+      .sort((a, b) => {
+        const order = (r) => (r.pick === r.q.correct ? 2 : r.pick === SKIPPED ? 1 : 0);
+        return order(a) - order(b);
+      });
 
     return (
       <View style={styles.screen}>
@@ -626,57 +608,56 @@ export default function QuizScreen() {
               { opacity: scoreAnim, transform: [{ scale: scoreAnim }] },
             ]}
           >
-            <Text style={styles.resultEmoji}>{tier.emoji}</Text>
+            <Image
+              source={EXPRESSION_IMAGES[tier.jack]}
+              style={styles.resultMascot}
+              contentFit="contain"
+            />
             <Text style={styles.resultTitle}>{tier.title}</Text>
-            <Text style={styles.resultMsg}>{tier.msg}</Text>
 
-            <View style={styles.scoreRing}>
-              <Text style={styles.scoreValue}>
-                {correctCount}
-                <Text style={styles.scoreTotal}>/{total}</Text>
-              </Text>
-              <Text style={styles.scorePct}>{pct}% correct</Text>
-            </View>
+            <Text style={styles.scoreValue}>
+              {correctCount}
+              <Text style={styles.scoreTotal}>/{total}</Text>
+            </Text>
+            <Text style={styles.resultLine}>
+              {pct}% · <Text style={styles.resultXp}>+{gainedXp} XP</Text>
+              {skippedCount > 0 ? ` · ${skippedCount} skipped` : ""}
+            </Text>
 
-            <View style={styles.xpEarned}>
-              <Ionicons name="flash" size={ms(16)} color="#B45309" />
-              <Text style={styles.xpEarnedText}>+{gainedXp} XP earned</Text>
-            </View>
-
-            {skippedCount > 0 && (
-              <Text style={styles.skipNote}>
-                {skippedCount} question{skippedCount > 1 ? "s" : ""} skipped
-              </Text>
-            )}
+            {/* A perfect run earns its badge right here, not in a second card. */}
+            {perfect ? (
+              <Animated.View
+                style={[
+                  styles.flawlessBadge,
+                  { opacity: achieveAnim, transform: [{ scale: achieveAnim }] },
+                ]}
+              >
+                <Text style={styles.flawlessText}>🧠 Flawless Mind unlocked</Text>
+              </Animated.View>
+            ) : null}
           </Animated.View>
 
-          {perfect && (
-            <Animated.View
-              style={[
-                styles.achieveCard,
-                { opacity: achieveAnim, transform: [{ scale: achieveAnim }] },
-              ]}
-            >
-              <LottieView
-                source={require("../../assets/animations/trophy.json")}
-                autoPlay
-                loop
-                style={styles.achieveLottie}
-              />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.achieveEyebrow}>ACHIEVEMENT UNLOCKED</Text>
-                <Text style={styles.achieveTitle}>Flawless Mind 🧠</Text>
-                <Text style={styles.achieveText}>
-                  All {total} answers correct in one quiz. Outstanding!
-                </Text>
-              </View>
-            </Animated.View>
-          )}
-
+          {/* Review stays folded until asked for; wrong answers come first. */}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Review</Text>
-            {questions.map((q, i) => {
-              const pick = selected[i];
+            <TouchableOpacity
+              style={styles.reviewHead}
+              activeOpacity={0.7}
+              onPress={() => {
+                tapHaptic();
+                setReviewOpen((v) => !v);
+              }}
+            >
+              <Text style={styles.cardTitle}>Review answers</Text>
+              <Text style={styles.reviewCount}>
+                {wrongCount > 0 ? `${wrongCount} wrong` : "all correct"}
+              </Text>
+              <Ionicons
+                name={reviewOpen ? "chevron-up" : "chevron-down"}
+                size={ms(16)}
+                color={colors.textLight}
+              />
+            </TouchableOpacity>
+            {reviewOpen && reviewOrder.map(({ q, pick }) => {
               const isSkipped = pick === SKIPPED;
               const right = pick === q.correct;
               return (
@@ -724,14 +705,15 @@ export default function QuizScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.homeBtn}
-            activeOpacity={0.85}
+            style={styles.homeLink}
+            activeOpacity={0.6}
+            hitSlop={8}
             onPress={() => {
               tapHaptic();
               setPhase("home");
             }}
           >
-            <Text style={styles.homeText}>Back to Quiz home</Text>
+            <Text style={styles.homeText}>Back to quiz home</Text>
           </TouchableOpacity>
         </View>
 
@@ -773,51 +755,38 @@ export default function QuizScreen() {
     <View style={styles.screen}>
       {/* One compact bar instead of hero + status row, so the whole question
           card fits on screen without scrolling. */}
+      {/* One compact bar: a segment per card (done · current · upcoming) and,
+          only while it's running, the answer combo. */}
       <BrandGradient style={styles.playHero}>
         <View style={styles.playHeroRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.playHeroTitle}>
-              Card {qIndex + 1} of {questions.length}
-            </Text>
-            <Text style={styles.playHeroSub}>
-              {sessionXp} XP this round
-            </Text>
+          <View
+            style={styles.segments}
+            accessibilityLabel={`Card ${qIndex + 1} of ${questions.length}`}
+          >
+            {questions.map((_, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.segment,
+                  i < qIndex || (i === qIndex && answered)
+                    ? styles.segmentDone
+                    : i === qIndex
+                      ? styles.segmentCurrent
+                      : null,
+                ]}
+              />
+            ))}
           </View>
 
-          {summary?.dayStreak > 0 ? (
-            <View style={styles.playDayPill}>
-              <Text style={styles.playDayEmoji}>🔥</Text>
-              <Text style={styles.playDayText}>{summary.dayStreak}d</Text>
-            </View>
+          {streak >= 2 ? (
+            <Animated.View
+              style={[styles.comboPill, { transform: [{ scale: streakPulse }] }]}
+            >
+              <Text style={styles.comboText}>🔥 {streak} in a row</Text>
+            </Animated.View>
           ) : null}
-
-          <Animated.View
-            style={[
-              styles.streakPill,
-              streak >= 3 && styles.streakPillHot,
-              { transform: [{ scale: streakPulse }] },
-            ]}
-          >
-            <Ionicons name="flame" size={ms(13)} color="#F97316" />
-            <Text style={styles.streakText}>{streak}</Text>
-            {streak >= 3 ? <Text style={styles.comboTag}>COMBO</Text> : null}
-          </Animated.View>
         </View>
       </BrandGradient>
-
-      <View style={styles.playTrack}>
-        <Animated.View
-          style={[
-            styles.playFill,
-            {
-              width: barAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: ["0%", "100%"],
-              }),
-            },
-          ]}
-        />
-      </View>
 
       {/* ── One always-mounted card: slides out left, next slides in right ── */}
       <View style={styles.deckWrap}>
@@ -830,17 +799,10 @@ export default function QuizScreen() {
             },
           ]}
         >
-          <View style={styles.qHeadRow}>
-            <View style={[styles.catChip, { backgroundColor: meta.color + "16" }]}>
-              <Ionicons name={meta.icon} size={ms(12)} color={meta.color} />
-              <Text style={[styles.catText, { color: meta.color }]}>
-                {meta.label}
-              </Text>
-            </View>
-            <View style={styles.diffChip}>
-              <Text style={styles.diffText}>{q?.difficulty}</Text>
-            </View>
-          </View>
+          <Text style={styles.qMeta}>
+            <Text style={{ color: meta.color }}>{meta.label}</Text>
+            {q?.difficulty ? ` · ${q.difficulty}` : ""}
+          </Text>
 
           <View style={styles.qScroll}>
             <Text style={styles.qEmoji}>{q?.emoji}</Text>
@@ -944,33 +906,29 @@ export default function QuizScreen() {
               <View style={styles.actionRow}>
                 {!tipOpen ? (
                   <TouchableOpacity
-                    style={[styles.tipBtn, styles.rowBtn]}
-                    activeOpacity={0.85}
+                    style={styles.linkBtn}
+                    activeOpacity={0.6}
+                    hitSlop={8}
                     onPress={() => {
                       tapHaptic();
                       setTipOpen(true);
                     }}
                   >
-                    <Ionicons
-                      name="bulb-outline"
-                      size={ms(14)}
-                      color="#B45309"
-                    />
-                    <Text style={styles.tipBtnText}>Hint</Text>
+                    <Ionicons name="bulb-outline" size={ms(15)} color="#B45309" />
+                    <Text style={styles.hintLink}>Hint</Text>
                   </TouchableOpacity>
-                ) : null}
+                ) : (
+                  <View />
+                )}
 
                 <TouchableOpacity
-                  style={[styles.skipBtn, styles.rowBtn]}
-                  activeOpacity={0.85}
+                  style={styles.linkBtn}
+                  activeOpacity={0.6}
+                  hitSlop={8}
                   onPress={skipQuestion}
                 >
-                  <Text style={styles.skipText}>Skip</Text>
-                  <Ionicons
-                    name="play-skip-forward"
-                    size={ms(13)}
-                    color={colors.textLight}
-                  />
+                  <Text style={styles.skipLink}>Skip</Text>
+                  <Ionicons name="chevron-forward" size={ms(14)} color={colors.textLight} />
                 </TouchableOpacity>
               </View>
             ) : (
@@ -1053,31 +1011,6 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: ms(18),
   },
   playHeroRow: { flexDirection: "row", alignItems: "center", gap: ms(8) },
-  playHeroTitle: {
-    fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(14),
-    color: "#FFFFFF",
-  },
-  playHeroSub: {
-    fontFamily: "OpenSans_500Medium",
-    fontSize: ms(10.5),
-    color: "rgba(255,255,255,0.85)",
-  },
-  playDayPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: ms(3),
-    backgroundColor: "rgba(255,255,255,0.22)",
-    borderRadius: 999,
-    paddingHorizontal: ms(8),
-    paddingVertical: ms(4),
-  },
-  playDayEmoji: { fontSize: ms(10) },
-  playDayText: {
-    fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(10),
-    color: "#FFFFFF",
-  },
   heroTop: {
     flexDirection: "row",
     alignItems: "center",
@@ -1088,64 +1021,29 @@ const styles = StyleSheet.create({
     fontSize: ms(21),
     color: "#FFFFFF",
   },
-  heroSub: {
-    fontFamily: "OpenSans_500Medium",
-    fontSize: ms(11),
-    color: "rgba(255,255,255,0.8)",
-    marginTop: ms(3),
+  rankPill: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 999,
+    paddingHorizontal: ms(10),
+    paddingVertical: ms(4),
   },
-  rankBadge: {
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.18)",
-    borderRadius: ms(14),
-    paddingHorizontal: ms(11),
-    paddingVertical: ms(7),
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.28)",
-  },
-  rankEmoji: { fontSize: ms(20) },
-  rankTitle: {
-    fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(9.5),
-    color: "#FFFFFF",
-    marginTop: ms(2),
-  },
-  xpCard: {
-    marginTop: ms(14),
-    backgroundColor: "rgba(255,255,255,0.16)",
-    borderRadius: ms(16),
-    padding: ms(13),
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.24)",
-  },
-  xpRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: ms(9),
-  },
-  xpLeft: { flexDirection: "row", alignItems: "center", gap: ms(5) },
-  xpValue: {
-    fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(19),
-    color: "#FFFFFF",
-  },
-  xpLabel: {
-    fontFamily: "OpenSans_700Bold",
-    fontSize: ms(11),
-    color: "rgba(255,255,255,0.85)",
-    marginTop: ms(4),
-  },
-  xpNext: {
-    fontFamily: "OpenSans_600SemiBold",
-    fontSize: ms(10.5),
-    color: "rgba(255,255,255,0.85)",
-  },
+  rankText: { fontFamily: "OpenSans_800ExtraBold", fontSize: ms(12), color: "#FFFFFF" },
   xpTrack: {
-    height: ms(7),
+    height: ms(6),
     borderRadius: 999,
     backgroundColor: "rgba(255,255,255,0.25)",
     overflow: "hidden",
+    marginTop: ms(14),
+  },
+  xpCaptionRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: ms(6),
+  },
+  xpCaption: {
+    fontFamily: "OpenSans_700Bold",
+    fontSize: ms(11.5),
+    color: "rgba(255,255,255,0.92)",
   },
   xpFill: { height: "100%", borderRadius: 999, backgroundColor: "#FDE047" },
 
@@ -1159,20 +1057,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#EEF0F4",
   },
-  doneCard: { alignItems: "center", paddingVertical: ms(22) },
-  doneEmoji: { fontSize: ms(42) },
+  doneCard: { alignItems: "center", paddingVertical: ms(20) },
+  doneMascot: { width: ms(96), height: ms(96) },
   doneTitle: {
     fontFamily: "OpenSans_800ExtraBold",
     fontSize: ms(18),
     color: colors.text,
-    marginTop: ms(6),
-  },
-  doneText: {
-    fontFamily: "OpenSans_500Medium",
-    fontSize: ms(12.5),
-    color: colors.textLight,
-    textAlign: "center",
-    lineHeight: ms(19),
     marginTop: ms(6),
   },
   dayReport: {
@@ -1195,14 +1085,6 @@ const styles = StyleSheet.create({
     marginTop: ms(2),
   },
   dayDivider: { width: 1, height: ms(30), backgroundColor: "#E2E8F0" },
-  motivation: {
-    fontFamily: "OpenSans_700Bold",
-    fontSize: ms(12.5),
-    color: colors.primary,
-    textAlign: "center",
-    marginTop: ms(16),
-    lineHeight: ms(19),
-  },
 
   ctaWrap: {
     position: "absolute",
@@ -1262,86 +1144,6 @@ const styles = StyleSheet.create({
   },
 
   // ── Playing ──
-  playTop: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: ms(14),
-    paddingTop: ms(12),
-    paddingBottom: ms(10),
-    backgroundColor: "#FFFFFF",
-  },
-  playCenter: { flex: 1, alignItems: "center" },
-  playCount: {
-    fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(13),
-    color: colors.text,
-  },
-  sessionXpPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: ms(3),
-    marginTop: ms(3),
-    backgroundColor: "#FFFBEB",
-    borderRadius: 999,
-    paddingHorizontal: ms(8),
-    paddingVertical: ms(2),
-    borderWidth: 1,
-    borderColor: "#FDE68A",
-  },
-  sessionXpText: {
-    fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(10),
-    color: "#B45309",
-  },
-  streakPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: ms(4),
-    backgroundColor: "#FFF7ED",
-    borderRadius: 999,
-    paddingHorizontal: ms(10),
-    paddingVertical: ms(6),
-    borderWidth: 1,
-    borderColor: "#FED7AA",
-  },
-  streakPillHot: { backgroundColor: "#FFEDD5", borderColor: "#FB923C" },
-  heroRight: { alignItems: "flex-end", gap: ms(6) },
-  dayStreakPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: ms(4),
-    backgroundColor: "rgba(255,255,255,0.22)",
-    borderRadius: 999,
-    paddingHorizontal: ms(9),
-    paddingVertical: ms(4),
-  },
-  dayStreakEmoji: { fontSize: ms(11) },
-  dayStreakText: {
-    fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(10),
-    color: "#FFFFFF",
-  },
-  comboTag: {
-    fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(8),
-    letterSpacing: 0.6,
-    color: "#C2410C",
-  },
-  streakText: {
-    fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(12),
-    color: "#EA580C",
-  },
-  playTrack: {
-    marginHorizontal: ms(18),
-    marginTop: ms(12),
-    height: ms(5),
-    borderRadius: 999,
-    backgroundColor: "#EEF1F5",
-    overflow: "hidden",
-  },
-  playFill: { height: "100%", backgroundColor: colors.primary },
 
   deckWrap: {
     flex: 1,
@@ -1364,33 +1166,6 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   qScroll: { paddingBottom: ms(8) },
-  qHeadRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: ms(10),
-  },
-  catChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: ms(5),
-    borderRadius: 999,
-    paddingHorizontal: ms(10),
-    paddingVertical: ms(5),
-  },
-  catText: { fontFamily: "OpenSans_800ExtraBold", fontSize: ms(10.5) },
-  diffChip: {
-    backgroundColor: "#F2F4F7",
-    borderRadius: 999,
-    paddingHorizontal: ms(9),
-    paddingVertical: ms(4),
-  },
-  diffText: {
-    fontFamily: "OpenSans_700Bold",
-    fontSize: ms(9.5),
-    color: colors.textLight,
-    textTransform: "capitalize",
-  },
   qEmoji: { fontSize: ms(28), textAlign: "center", marginTop: ms(4) },
   qText: {
     fontFamily: "OpenSans_800ExtraBold",
@@ -1402,8 +1177,41 @@ const styles = StyleSheet.create({
   },
 
   options: { marginTop: ms(14), gap: ms(9) },
-  actionRow: { flexDirection: "row", gap: ms(10), marginTop: ms(14) },
-  rowBtn: { flex: 1, marginTop: 0 },
+  // Hint (left) and Skip (right) as plain text links.
+  actionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: ms(14),
+    paddingHorizontal: ms(2),
+  },
+  linkBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: ms(6) },
+  hintLink: { fontFamily: "OpenSans_700Bold", fontSize: ms(13), color: "#B45309" },
+  skipLink: { fontFamily: "OpenSans_700Bold", fontSize: ms(13), color: colors.textLight },
+
+  // Playing header: one segment per card, plus the combo while it runs.
+  segments: { flex: 1, flexDirection: "row", gap: ms(5) },
+  segment: {
+    flex: 1,
+    height: ms(6),
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.28)",
+  },
+  segmentCurrent: { backgroundColor: "rgba(255,255,255,0.6)" },
+  segmentDone: { backgroundColor: "#FFFFFF" },
+  comboPill: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 999,
+    paddingHorizontal: ms(9),
+    paddingVertical: ms(4),
+  },
+  comboText: { fontFamily: "OpenSans_800ExtraBold", fontSize: ms(11.5), color: "#EA580C" },
+  qMeta: {
+    fontFamily: "OpenSans_700Bold",
+    fontSize: ms(12),
+    color: colors.textLight,
+    marginBottom: ms(4),
+  },
   option: {
     flexDirection: "row",
     alignItems: "center",
@@ -1443,23 +1251,6 @@ const styles = StyleSheet.create({
   optionTextCorrect: { color: "#15803D", fontFamily: "OpenSans_800ExtraBold" },
   optionTextWrong: { color: "#B91C1C", fontFamily: "OpenSans_800ExtraBold" },
 
-  tipBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: ms(6),
-    marginTop: ms(10),
-    height: ms(42),
-    borderRadius: ms(13),
-    backgroundColor: "#FFFBEB",
-    borderWidth: 1.5,
-    borderColor: "#FDE68A",
-  },
-  tipBtnText: {
-    fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(12.5),
-    color: "#B45309",
-  },
   tipCard: {
     marginTop: ms(12),
     backgroundColor: "#FFFBEB",
@@ -1497,23 +1288,6 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
   },
 
-  skipBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: ms(6),
-    marginTop: ms(10),
-    height: ms(42),
-    borderRadius: ms(13),
-    backgroundColor: "#F8FAFC",
-    borderWidth: 1.5,
-    borderColor: "#E2E8F0",
-  },
-  skipText: {
-    fontFamily: "OpenSans_700Bold",
-    fontSize: ms(13),
-    color: colors.textLight,
-  },
   nextBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -1578,97 +1352,46 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 3,
   },
-  resultEmoji: { fontSize: ms(46) },
   resultTitle: {
     fontFamily: "OpenSans_800ExtraBold",
     fontSize: ms(20),
     color: colors.text,
     marginTop: ms(6),
   },
-  resultMsg: {
-    fontFamily: "OpenSans_500Medium",
-    fontSize: ms(12.5),
-    color: colors.textLight,
-    textAlign: "center",
-    marginTop: ms(4),
-  },
-  scoreRing: {
-    width: ms(140),
-    height: ms(140),
-    borderRadius: ms(70),
-    borderWidth: ms(8),
-    borderColor: colors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: ms(18),
-    backgroundColor: colors.primary + "0A",
-  },
   scoreValue: {
     fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(40),
+    fontSize: ms(44),
     color: colors.primary,
+    marginTop: ms(2),
   },
-  scoreTotal: { fontSize: ms(20), color: colors.textLight },
-  scorePct: {
+  resultMascot: { width: ms(110), height: ms(110), marginBottom: ms(2) },
+  resultLine: {
     fontFamily: "OpenSans_600SemiBold",
-    fontSize: ms(11.5),
-    color: colors.textLight,
-  },
-  xpEarned: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: ms(6),
-    marginTop: ms(16),
-    backgroundColor: "#FFFBEB",
-    borderRadius: 999,
-    paddingHorizontal: ms(14),
-    paddingVertical: ms(8),
-    borderWidth: 1,
-    borderColor: "#FDE68A",
-  },
-  xpEarnedText: {
-    fontFamily: "OpenSans_800ExtraBold",
     fontSize: ms(13),
-    color: "#B45309",
-  },
-  skipNote: {
-    fontFamily: "OpenSans_600SemiBold",
-    fontSize: ms(11),
     color: colors.textLight,
-    marginTop: ms(10),
   },
-
-  achieveCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: ms(10),
-    backgroundColor: "#FFFBEB",
-    borderRadius: ms(20),
-    padding: ms(14),
-    marginBottom: ms(14),
-    borderWidth: 1.5,
-    borderColor: "#FCD34D",
+  resultXp: { fontFamily: "OpenSans_800ExtraBold", color: "#B45309" },
+  flawlessBadge: {
+    marginTop: ms(12),
+    backgroundColor: "#FFF7ED",
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#FDE3C4",
+    paddingHorizontal: ms(12),
+    paddingVertical: ms(6),
   },
-  achieveLottie: { width: ms(58), height: ms(58) },
-  achieveEyebrow: {
-    fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(9),
-    letterSpacing: 1.2,
-    color: "#B45309",
+  flawlessText: { fontFamily: "OpenSans_800ExtraBold", fontSize: ms(12.5), color: "#B45309" },
+  cardTitle: { fontFamily: "OpenSans_800ExtraBold", fontSize: ms(14.5), color: colors.text },
+  reviewHead: { flexDirection: "row", alignItems: "center", gap: ms(8) },
+  reviewCount: {
+    flex: 1,
+    textAlign: "right",
+    fontFamily: "OpenSans_700Bold",
+    fontSize: ms(12),
+    color: colors.textLight,
   },
-  achieveTitle: {
-    fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(16),
-    color: "#78350F",
-    marginTop: ms(2),
-  },
-  achieveText: {
-    fontFamily: "OpenSans_500Medium",
-    fontSize: ms(11.5),
-    color: "#92400E",
-    marginTop: ms(2),
-    lineHeight: ms(16),
-  },
+  homeLink: { alignItems: "center", paddingVertical: ms(12) },
+  scoreTotal: { fontSize: ms(20), color: colors.textLight },
 
   reviewRow: {
     flexDirection: "row",
@@ -1710,7 +1433,6 @@ const styles = StyleSheet.create({
     fontSize: ms(15),
     color: "#FFFFFF",
   },
-  homeBtn: { paddingVertical: ms(12), alignItems: "center" },
   homeText: {
     fontFamily: "OpenSans_700Bold",
     fontSize: ms(12.5),

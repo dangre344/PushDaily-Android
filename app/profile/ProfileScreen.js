@@ -1,4 +1,4 @@
-import { Ionicons, MaterialCommunityIcons, Octicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { nativeApplicationVersion, nativeBuildVersion } from "expo-application";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Notifications from "expo-notifications";
@@ -7,7 +7,6 @@ import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
-  Dimensions,
   Linking,
   Platform,
   Share,
@@ -22,6 +21,7 @@ import { AD_UNIT_IDS, BannerAdSize } from "../../ads/Admobmanager";
 import { FemaleIcon, ManIconSVG } from "../../assets/AllSvgs";
 import NotificationDialog from "../../components/ui/NotificationDialog";
 import { maybeAskForReview } from "../../constants/appReview";
+import { bubbleScrollFade } from "../../constants/bubbleMessage";
 import { colors } from "../../constants/colors";
 import { tapHaptic } from "../../constants/haptics";
 import { Logger } from "../../constants/Logger";
@@ -46,32 +46,22 @@ import WidgetGuideModal from "./WidgetGuideModal";
 import { AboutModal } from "./privacy/AboutModal";
 import { PrivacyPolicyModal } from "./privacy/PrivacyPolicyModal";
 
-const { width } = Dimensions.get("window");
 const ms = (n) => scaling().moderateScale(n);
 
 const appVersion = nativeApplicationVersion ?? "1.0.0";
 const buildVersion = nativeBuildVersion ?? "1";
 
-const STATS = [
-  {
-    label: "Workouts",
-    value: "124",
-    icon: "barbell-outline",
-    color: colors.primary,
-  },
-  {
-    label: "Total Calories",
-    value: "18.4k",
-    icon: "flame-outline",
-    color: colors.secondary,
-  },
-  {
-    label: "Active Days",
-    value: "47",
-    icon: "calendar-outline",
-    color: colors.green,
-  },
-];
+// One icon style for every menu row (Instagram keeps its brand gradient).
+const ROW_TINT = colors.primary;
+const ROW_TINT_BG = "#FFF1E8";
+
+// 18400 → "18.4k", so four numbers fit side by side.
+const compact = (n) => {
+  const v = Number(n) || 0;
+  if (v >= 10000) return `${Math.round(v / 1000)}k`;
+  if (v >= 1000) return `${(v / 1000).toFixed(1).replace(/.0$/, "")}k`;
+  return String(v);
+};
 
 // ── Rate the App
 const handleRateApp = () => {
@@ -146,151 +136,74 @@ const handleOpenInstagram = async () => {
 // ─── Menu sections ────────────────────────────────────────────────────────────
 const MENU_SECTIONS = [
   {
-    title: "Account",
+    title: "Progress",
+    items: [{ label: "Milestones", icon: "trophy-outline", key: "milestones" }],
+  },
+  {
+    title: "Health & reminders",
     items: [
-      {
-        label: "Add home screen widget",
-        subtitle: "A daily nudge where you'll actually see it",
-        icon: "grid-outline",
-        color: "#0EA5E9",
-        key: "widget",
-      },
-
-      {
-        label: "Buy me a coffee",
-        subtitle: "Help improve app quality & build new features",
-        icon: "cafe-outline",
-        color: "#F59E0B",
-        key: "support",
-      },
-
-      {
-        label: "Stats",
-        subtitle: "Calories, body-part focus & progress charts",
-        icon: "stats-chart-outline",
-        color: "#7C3AED",
-        key: "stats",
-      },
-
-      {
-        label: "Milestones",
-        icon: "trophy-outline",
-        color: colors.primary,
-        key: "milestones",
-      },
-
       {
         label: "Water Reminder & Period Tracking",
         subtitle: "Hydration reminders & track your period cycle",
         icon: "water-outline",
-        color: "#2E90FA",
         key: "water",
       },
-
-      {
-        label: "Notifications",
-        icon: "notifications-outline",
-        color: colors.green,
-        key: "notifs",
-      },
+      { label: "Notifications", icon: "notifications-outline", key: "notifs" },
     ],
   },
-
   {
-    title: "Community",
+    title: "More",
     items: [
+      { label: "Home-screen widget", icon: "grid-outline", key: "widget" },
       {
         label: "Follow on Instagram",
-        subtitle: "Daily form tips, quick workouts & member wins 💪",
         icon: "logo-instagram",
-        color: "#D62976",
         gradient: INSTAGRAM_GRADIENT,
         key: "instagram",
       },
     ],
   },
-
-  {
-    title: "Support & Legal",
-    items: [
-      {
-        label: "Privacy Policy",
-        icon: "shield-checkmark-outline",
-        color: colors.green,
-        key: "privacy",
-      },
-
-      {
-        label: "Rate the App",
-        icon: "star-outline",
-        color: colors.primary,
-        key: "rate",
-      },
-      {
-        label: "Share App",
-        icon: "share-social-outline",
-        color: colors.primary,
-        key: "share",
-      },
-
-      {
-        label: "About",
-        icon: "information-circle-outline",
-        color: colors.dim,
-        key: "about",
-      },
-    ],
-  },
 ];
+// Stats → the stats strip. Rate / Share → one two-button card. Buy me a
+// coffee → its own card. Privacy / About → footer links. See ProfileScreen.
 
 // ═════════════════════════════════════════════════════════════════════════════
-// STAT CARD
+// STATS STRIP — one card, four numbers. Tapping it opens the Stats sheet
+// (which is why there is no separate "Stats" menu row any more).
 // ═════════════════════════════════════════════════════════════════════════════
-const StatCard = ({ index, item, delay, stats }) => {
-  const anim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.spring(anim, {
-      toValue: 1,
-      delay,
-      tension: 60,
-      friction: 8,
-      useNativeDriver: true,
-    }).start();
-  }, []);
-
+const StatsStrip = ({ stats, bmi, bmiColor, onPress }) => {
+  const cols = [
+    { value: compact(stats.totalWorkouts), label: "Workouts" },
+    { value: compact(stats.totalCalories), label: "kcal" },
+    { value: compact(stats.activeDays), label: "Active days" },
+    { value: bmi || "—", label: "BMI", dot: bmi ? bmiColor : null },
+  ];
   return (
-    <Animated.View
-      style={[
-        statStyles.card,
-        {
-          opacity: anim,
-          transform: [
-            { scale: anim },
-            {
-              translateY: anim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [20, 0],
-              }),
-            },
-          ],
-        },
-      ]}
+    <TouchableOpacity
+      style={statStyles.strip}
+      activeOpacity={0.85}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel="Open detailed stats"
     >
-      <View
-        style={[statStyles.iconWrap, { backgroundColor: item.color + "20" }]}
-      >
-        <Ionicons name={item.icon} size={ms(18)} color={item.color} />
-      </View>
-      <Text style={statStyles.value}>
-        {index === 0
-          ? stats.totalWorkouts
-          : index === 1
-            ? stats.totalCalories
-            : stats.activeDays}
-      </Text>
-      <Text style={statStyles.label}>{item.label}</Text>
-    </Animated.View>
+      {cols.map((c, i) => (
+        <View key={c.label} style={statStyles.colWrap}>
+          {i > 0 ? <View style={statStyles.divider} /> : null}
+          <View style={statStyles.col}>
+            <Text style={statStyles.value} numberOfLines={1} adjustsFontSizeToFit>
+              {c.value}
+            </Text>
+            <View style={statStyles.labelRow}>
+              {c.dot ? <View style={[statStyles.dot, { backgroundColor: c.dot }]} /> : null}
+              <Text style={statStyles.label} numberOfLines={1}>
+                {c.label}
+              </Text>
+            </View>
+          </View>
+        </View>
+      ))}
+      <Ionicons name="chevron-forward" size={ms(14)} color={colors.dim} style={statStyles.chevron} />
+    </TouchableOpacity>
   );
 };
 
@@ -299,7 +212,6 @@ const StatCard = ({ index, item, delay, stats }) => {
 // ═════════════════════════════════════════════════════════════════════════════
 const MenuRow = ({
   item,
-  delay,
   isLast,
   setPrivacyVisible,
   setAboutVisible,
@@ -310,19 +222,9 @@ const MenuRow = ({
   setSupportVisible,
   setNotificationDialog,
 }) => {
-  const anim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
-  useEffect(() => {
-    Animated.timing(anim, {
-      toValue: 1,
-      duration: 350,
-      delay,
-      useNativeDriver: true,
-    }).start();
-  }, []);
-
-  const onPressIn = (item) => {
+  const onPressIn = () => {
     Animated.spring(scaleAnim, {
       toValue: 0.97,
       useNativeDriver: true,
@@ -394,23 +296,10 @@ const MenuRow = ({
   };
 
   return (
-    <Animated.View
-      style={{
-        opacity: anim,
-        transform: [
-          {
-            translateX: anim.interpolate({
-              inputRange: [0, 1],
-              outputRange: [-24, 0],
-            }),
-          },
-          { scale: scaleAnim },
-        ],
-      }}
-    >
+    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
       <TouchableOpacity
         style={menuStyles.row}
-        onPressIn={onPressIn(item)}
+        onPressIn={onPressIn}
         onPressOut={onPressOut}
         activeOpacity={1}
         onPress={() => {
@@ -464,16 +353,14 @@ const MenuRow = ({
             <Ionicons name={item.icon} size={ms(18)} color="#FFFFFF" />
           </LinearGradient>
         ) : (
-          <View
-            style={[menuStyles.iconWrap, { backgroundColor: item.color + "18" }]}
-          >
-            <Ionicons name={item.icon} size={ms(18)} color={item.color} />
+          <View style={[menuStyles.iconWrap, { backgroundColor: ROW_TINT_BG }]}>
+            <Ionicons name={item.icon} size={ms(18)} color={ROW_TINT} />
           </View>
         )}
         <View style={menuStyles.labelWrap}>
           <Text style={menuStyles.label}>{item.label}</Text>
           {item.subtitle ? (
-            <Text style={menuStyles.subtitle} numberOfLines={2}>
+            <Text style={menuStyles.subtitle} numberOfLines={1}>
               {item.subtitle}
             </Text>
           ) : null}
@@ -617,14 +504,6 @@ export default function ProfileScreen() {
     return bmi.toFixed(1);
   };
 
-  const getBMILabel = (bmi) => {
-    if (!bmi) return "";
-    const value = parseFloat(bmi);
-    if (value < 18.5) return "Underweight";
-    if (value < 25) return "Healthy";
-    if (value < 30) return "Overweight";
-    return "Obese";
-  };
 
   const getBMIColor = (bmi) => {
     if (!bmi) return colors.muted;
@@ -649,19 +528,14 @@ export default function ProfileScreen() {
   });
 
   const bmi = getBMI(user?.weight, user?.height);
-  const bmiLabel = getBMILabel(bmi);
   const bmiColor = getBMIColor(bmi);
+  const profileLine = [user?.experience, user?.goal].filter(Boolean).join(" · ");
 
   return (
     <SafeAreaView style={styles.screen}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
-      <View style={styles.glowTop} pointerEvents="none" />
-
-      <View style={styles.glowRight} pointerEvents="none" />
-
-      <View style={styles.glowLeft} pointerEvents="none" />
-
       <Animated.ScrollView
+        {...bubbleScrollFade}
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
@@ -693,114 +567,137 @@ export default function ProfileScreen() {
               accessibilityRole="button"
               accessibilityLabel="Edit profile"
             >
-            <View style={styles.avatarRing}>
-              <View style={styles.avatarInner}>
-                {user?.gender === "Female" ? (
-                  <FemaleIcon
-                    width={scaling().scaleWidth(80)}
-                    height={scaling().scaleHeight(80)}
-                    color={colors.primary}
-                  />
-                ) : user?.gender === "Male" ? (
-                  <ManIconSVG
-                    width={scaling().scaleWidth(80)}
-                    height={scaling().scaleHeight(80)}
-                    color={colors.primary}
-                  />
-                ) : (
-                  <FemaleIcon
-                    width={scaling().scaleWidth(80)}
-                    height={scaling().scaleHeight(80)}
-                    color={colors.primary}
-                  />
-                )}
+              <View style={styles.avatarRing}>
+                <View style={styles.avatarInner}>
+                  {user?.gender === "Male" ? (
+                    <ManIconSVG
+                      width={scaling().scaleWidth(66)}
+                      height={scaling().scaleHeight(66)}
+                      color={colors.primary}
+                    />
+                  ) : (
+                    <FemaleIcon
+                      width={scaling().scaleWidth(66)}
+                      height={scaling().scaleHeight(66)}
+                      color={colors.primary}
+                    />
+                  )}
+                </View>
               </View>
-            </View>
-            <View style={styles.editBadge}>
-              <MaterialCommunityIcons name="pencil" size={ms(14)} color="#FFFFFF" />
-            </View>
+              <View style={styles.editBadge}>
+                <MaterialCommunityIcons name="pencil" size={ms(13)} color="#FFFFFF" />
+              </View>
             </TouchableOpacity>
           </Animated.View>
 
           <Animated.View style={{ opacity: avatarAnim, alignItems: "center" }}>
             <Text style={styles.name}>{user?.name || "User"}</Text>
-
-            <View style={styles.pillRow}>
-              <View style={styles.pill}>
-                <MaterialCommunityIcons
-                  name="lightning-bolt"
-                  size={ms(11)}
-                  color={colors.primary}
-                />
-                <Text style={styles.pillText}>{user?.experience}</Text>
-              </View>
-
-              <View style={styles.pill}>
-                <Octicons name="goal" size={ms(11)} color={colors.muted} />
-                <Text style={styles.pillText}>{user?.goal}</Text>
-              </View>
-
-              {bmi && (
-                <View style={[styles.pill, { borderColor: bmiColor }]}>
-                  <MaterialCommunityIcons
-                    name="scale-bathroom"
-                    size={ms(11)}
-                    color={bmiColor}
-                  />
-                  <Text style={[styles.pillText, { color: bmiColor }]}>
-                    BMI {bmi} · {bmiLabel}
-                  </Text>
-                </View>
-              )}
-            </View>
+            {/* One quiet line instead of three coloured pills; BMI moved into
+                the stats strip, where it reads as a number. */}
+            {profileLine ? <Text style={styles.subline}>{profileLine}</Text> : null}
           </Animated.View>
         </Animated.View>
 
-        {/* ── Stats Grid ── */}
-        <View style={styles.statsGrid}>
-          {STATS.map((s, i) => (
-            <StatCard
-              index={i}
-              key={s.label}
-              item={s}
-              delay={300 + i * 80}
-              stats={stats}
-            />
-          ))}
-        </View>
+        {/* Everything below fades in once, together — no per-row slide-ins. */}
+        <Animated.View style={{ opacity: headerAnim }}>
+          <StatsStrip
+            stats={stats}
+            bmi={bmi}
+            bmiColor={bmiColor}
+            onPress={() => {
+              tapHaptic();
+              setStatsVisible(true);
+            }}
+          />
 
-        {MENU_SECTIONS.map((section, sIdx) => (
-          <View key={section.title} style={styles.section}>
-            <Text style={styles.sectionTitle}>{section.title}</Text>
-            <View style={styles.sectionCard}>
-              {section.items.map((item, iIdx) => (
-                <MenuRow
-                  key={item.key}
-                  item={
-                    // Anyone who isn't Female tracks a partner's cycle.
-                    item.key === "water" && isPartnerMode(user?.gender)
-                      ? { ...item, subtitle: "Hydration reminders & track your partner's period cycle" }
-                      : item
-                  }
-                  delay={500 + sIdx * 100 + iIdx * 50}
-                  isLast={iIdx === section.items.length - 1}
-                  setPrivacyVisible={setPrivacyVisible}
-                  setAboutVisible={setAboutVisible}
-                  setOpenBadgeModal={setOpenBadgeModal}
-                  setMilestonesVisible={setMilestonesVisible}
-                  setStatsVisible={setStatsVisible}
-                  setWidgetGuideVisible={setWidgetGuideVisible}
-                  setSupportVisible={setSupportVisible}
-                  setNotificationDialog={setNotificationDialog}
-                />
-              ))}
+          {MENU_SECTIONS.map((section) => (
+            <View key={section.title} style={styles.section}>
+              <Text style={styles.sectionTitle}>{section.title}</Text>
+              <View style={styles.sectionCard}>
+                {section.items.map((item, iIdx) => (
+                  <MenuRow
+                    key={item.key}
+                    item={
+                      // Anyone who isn't Female tracks a partner's cycle.
+                      item.key === "water" && isPartnerMode(user?.gender)
+                        ? { ...item, subtitle: "Hydration reminders & track your partner's period cycle" }
+                        : item
+                    }
+                    isLast={iIdx === section.items.length - 1}
+                    setPrivacyVisible={setPrivacyVisible}
+                    setAboutVisible={setAboutVisible}
+                    setOpenBadgeModal={setOpenBadgeModal}
+                    setMilestonesVisible={setMilestonesVisible}
+                    setStatsVisible={setStatsVisible}
+                    setWidgetGuideVisible={setWidgetGuideVisible}
+                    setSupportVisible={setSupportVisible}
+                    setNotificationDialog={setNotificationDialog}
+                  />
+                ))}
+              </View>
             </View>
-          </View>
-        ))}
+          ))}
 
-        <Text style={styles.version}>
-          Push Daily v{appVersion} ({buildVersion})
-        </Text>
+          {/* Rate + Share: two small actions, one card. */}
+          <View style={styles.duoCard}>
+            <TouchableOpacity
+              style={styles.duoBtn}
+              activeOpacity={0.7}
+              onPress={() => {
+                tapHaptic();
+                handleRateApp();
+              }}
+            >
+              <Ionicons name="star" size={ms(16)} color="#F59E0B" />
+              <Text style={styles.duoText}>Rate app</Text>
+            </TouchableOpacity>
+            <View style={styles.duoDivider} />
+            <TouchableOpacity
+              style={styles.duoBtn}
+              activeOpacity={0.7}
+              onPress={() => {
+                tapHaptic();
+                handleShareApp();
+              }}
+            >
+              <Ionicons name="share-social" size={ms(16)} color={colors.primary} />
+              <Text style={styles.duoText}>Share app</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Support lives in its own friendly card, not among the settings. */}
+          <TouchableOpacity
+            style={styles.coffeeCard}
+            activeOpacity={0.85}
+            onPress={() => {
+              tapHaptic();
+              trackEvent("Support Sheet Opened", { from: "profile" });
+              setSupportVisible(true);
+            }}
+          >
+            <Text style={styles.coffeeEmoji}>☕</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.coffeeTitle}>Enjoying Push Daily?</Text>
+              <Text style={styles.coffeeSub}>Buy me a coffee — it funds new features</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={ms(16)} color="#B45309" />
+          </TouchableOpacity>
+
+          {/* Footer: the legal bits, as quiet links. */}
+          <View style={styles.footer}>
+            <Text style={styles.footerLink} onPress={() => setPrivacyVisible(true)}>
+              Privacy
+            </Text>
+            <Text style={styles.footerDot}>·</Text>
+            <Text style={styles.footerLink} onPress={() => setAboutVisible(true)}>
+              About
+            </Text>
+            <Text style={styles.footerDot}>·</Text>
+            <Text style={styles.version}>
+              v{appVersion} ({buildVersion})
+            </Text>
+          </View>
+        </Animated.View>
       </Animated.ScrollView>
 
       <View style={styles.bannerContainer}>
@@ -926,40 +823,6 @@ const styles = StyleSheet.create({
     minHeight: ms(52),
   },
 
-  glowRight: {
-    position: "absolute",
-    right: ms(-200),
-    top: ms(110),
-    alignSelf: "center",
-    width: width * 0.7,
-    height: ms(180),
-    borderRadius: 999,
-    backgroundColor: colors.primary,
-    opacity: 0.07,
-  },
-
-  glowLeft: {
-    position: "absolute",
-    left: ms(-200),
-    top: ms(30),
-    alignSelf: "center",
-    width: width * 0.7,
-    height: ms(180),
-    borderRadius: 999,
-    backgroundColor: colors.primary,
-    opacity: 0.07,
-  },
-  glowTop: {
-    position: "absolute",
-    top: ms(-100),
-    alignSelf: "center",
-    width: width * 0.7,
-    height: ms(180),
-    borderRadius: 999,
-    backgroundColor: colors.primary,
-    opacity: 0.07,
-    // blur not available in RN without library — glow via opacity is sufficient
-  },
   scroll: {
     paddingBottom: ms(48),
   },
@@ -972,21 +835,16 @@ const styles = StyleSheet.create({
   avatarContainer: {
     marginBottom: ms(10),
   },
+  // ~15% smaller than before and no glow — a clean ring is enough.
   avatarRing: {
-    width: ms(90),
-    height: ms(90),
-    borderRadius: ms(45),
-    borderWidth: 2.5,
+    width: ms(76),
+    height: ms(76),
+    borderRadius: ms(38),
+    borderWidth: 2,
     borderColor: colors.primary,
     padding: 2,
     alignItems: "center",
     justifyContent: "center",
-    // Double ring effect
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 16,
-    elevation: 12,
   },
   avatarInner: {
     width: "100%",
@@ -1001,9 +859,9 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 0,
     right: -2,
-    width: ms(28),
-    height: ms(28),
-    borderRadius: ms(14),
+    width: ms(26),
+    height: ms(26),
+    borderRadius: ms(13),
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
@@ -1019,54 +877,22 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   name: {
-    fontFamily: "OpenSans_700Bold",
-    fontSize: scaling().moderateScale(18),
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: ms(18),
     color: colors.text,
-    letterSpacing: 0.3,
   },
-  handle: {
-    fontFamily: "OpenSans_400Regular",
+  subline: {
+    fontFamily: "OpenSans_600SemiBold",
     fontSize: ms(12),
-    color: colors.muted,
-    marginTop: 3,
-    marginBottom: ms(12),
-  },
-  pillRow: {
-    flexDirection: "row",
-    gap: ms(8),
-    marginTop: ms(8),
-  },
-  pill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: colors.white,
-    borderRadius: 20,
-    paddingHorizontal: ms(10),
-    paddingVertical: ms(4),
-    borderWidth: 0.5,
-    borderColor: colors.grey,
-  },
-  pillText: {
-    fontFamily: "OpenSans_500Medium",
-    fontSize: ms(10),
-    color: colors.muted,
+    color: colors.textLight,
+    marginTop: 2,
   },
 
   // ── Stats
-  statsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    paddingHorizontal: ms(16),
-    gap: ms(10),
-    marginTop: ms(12),
-    marginBottom: ms(14),
-  },
-
 
   // ── Menu sections
   section: {
-    marginBottom: ms(20),
+    marginTop: ms(20),
     paddingHorizontal: ms(16),
   },
   sectionTitle: {
@@ -1081,72 +907,99 @@ const styles = StyleSheet.create({
   sectionCard: {
     backgroundColor: colors.white,
     borderRadius: 16,
-    borderWidth: 0.5,
-    borderColor: colors.grey,
+    borderWidth: 1,
+    borderColor: "#EEF0F4",
     overflow: "hidden",
   },
 
-  // ── Sign out
-  signOutBtn: {
+  // ── Rate / Share
+  duoCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: ms(16),
+    marginTop: ms(20),
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#EEF0F4",
+  },
+  duoBtn: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: ms(8),
-    marginHorizontal: ms(16),
-    marginTop: ms(8),
-    marginBottom: ms(20),
+    gap: ms(7),
     paddingVertical: ms(14),
-    borderRadius: 14,
-    backgroundColor: "#EF444412",
+  },
+  duoDivider: { width: 1, height: ms(22), backgroundColor: "#EEF0F4" },
+  duoText: { fontFamily: "OpenSans_700Bold", fontSize: ms(13.5), color: colors.text },
+
+  // ── Buy me a coffee
+  coffeeCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: ms(12),
+    marginHorizontal: ms(16),
+    marginTop: ms(12),
+    paddingHorizontal: ms(14),
+    paddingVertical: ms(12),
+    borderRadius: 16,
+    backgroundColor: "#FFF7ED",
     borderWidth: 1,
-    borderColor: "#EF444430",
+    borderColor: "#FDE3C4",
   },
-  signOutText: {
+  coffeeEmoji: { fontSize: ms(24) },
+  coffeeTitle: { fontFamily: "OpenSans_800ExtraBold", fontSize: ms(13.5), color: colors.text },
+  coffeeSub: { fontFamily: "OpenSans_500Medium", fontSize: ms(11.5), color: "#92400E", marginTop: 1 },
+
+  // ── Footer
+  footer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: ms(6),
+    marginTop: ms(22),
+  },
+  footerLink: {
     fontFamily: "OpenSans_600SemiBold",
-    fontSize: ms(14),
-    color: "#EF4444",
+    fontSize: ms(11.5),
+    color: colors.textLight,
+    paddingVertical: 4,
   },
+  footerDot: { fontSize: ms(11.5), color: colors.dim },
+
+  // ── Sign out
 
   // ── Version
   version: {
     fontFamily: "OpenSans_400Regular",
-    fontSize: ms(11),
+    fontSize: ms(11.5),
     color: colors.dim,
-    textAlign: "center",
   },
 });
 
-// ── Stat card styles ──────────────────────────────────────────────────────────
+// ── Stats strip ───────────────────────────────────────────────────────────────
 const statStyles = StyleSheet.create({
-  card: {
-    width: (width - ms(16) * 2 - ms(10) * 2) / 3, // 2 gaps between 3 cards
+  strip: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: ms(16),
+    marginTop: ms(18),
+    paddingVertical: ms(14),
+    paddingRight: ms(14),
     backgroundColor: colors.white,
     borderRadius: 16,
-    padding: ms(12),
-    borderWidth: 0.5,
-    borderColor: colors.grey,
-    alignItems: "flex-start",
+    borderWidth: 1,
+    borderColor: "#EEF0F4",
   },
-  iconWrap: {
-    width: ms(30),
-    height: ms(30),
-    borderRadius: ms(10),
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: ms(10),
-  },
-  value: {
-    fontFamily: "OpenSans_700Bold",
-    fontSize: ms(20),
-    color: colors.text,
-    lineHeight: ms(26),
-  },
-  label: {
-    fontFamily: "OpenSans_400Regular",
-    fontSize: ms(10),
-    color: colors.muted,
-    marginTop: ms(2),
-  },
+  colWrap: { flex: 1, flexDirection: "row", alignItems: "center" },
+  divider: { width: 1, height: ms(28), backgroundColor: "#EEF0F4" },
+  col: { flex: 1, alignItems: "center", paddingHorizontal: 4 },
+  value: { fontFamily: "OpenSans_800ExtraBold", fontSize: ms(17), color: colors.text },
+  labelRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 1 },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  label: { fontFamily: "OpenSans_600SemiBold", fontSize: ms(10.5), color: colors.textLight },
+  chevron: { position: "absolute", right: ms(8) },
 });
 
 const menuStyles = StyleSheet.create({

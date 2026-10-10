@@ -14,6 +14,7 @@ import {
 
 import {
   registerBubbleListener,
+  registerBubbleScroll,
   registerBubbleVisibility,
 } from "../constants/bubbleMessage";
 import { getChatContext } from "../constants/chatContext";
@@ -26,7 +27,8 @@ const TRAINER_AVATAR = require("../assets/images/trainer.png");
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 
-const SIZE = ms(62);
+// Smaller than it used to be (62) — it floats over content on every screen.
+const SIZE = ms(52);
 const MARGIN = ms(10);
 const MIN_Y = ms(70);
 const MAX_Y = SCREEN_H - ms(190);
@@ -77,6 +79,24 @@ export default function TrainerBubble() {
 
   const hidden =
     suppressed || HIDDEN_ON.some((p) => pathname?.startsWith(p));
+
+  // Fades out while a list is scrolling (see bubbleScrollFade), so it never
+  // sits on top of the content being read; back once scrolling settles.
+  // JS driver: this is the PanResponder node, which must stay JS-driven.
+  const presence = useRef(new Animated.Value(1)).current;
+  const [scrolling, setScrolling] = useState(false);
+  useEffect(
+    () =>
+      registerBubbleScroll((isScrolling) => {
+        setScrolling(isScrolling);
+        Animated.timing(presence, {
+          toValue: isScrolling ? 0 : 1,
+          duration: isScrolling ? 160 : 280,
+          useNativeDriver: false,
+        }).start();
+      }),
+    [presence],
+  );
 
   // Cross-fade the rotating hint. Paused while hidden so it costs nothing.
   useEffect(() => {
@@ -233,9 +253,16 @@ export default function TrainerBubble() {
     // to native and every drag then throws — the breathe lives one level down.
     <Animated.View
       {...panResponder.panHandlers}
+      pointerEvents={scrolling ? "none" : "auto"}
       style={[
         styles.wrap,
-        { transform: [...pan.getTranslateTransform(), { scale }] },
+        {
+          opacity: presence,
+          transform: [
+            ...pan.getTranslateTransform(),
+            { scale: Animated.multiply(scale, presence.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] })) },
+          ],
+        },
       ]}
     >
       {message ? (
@@ -353,19 +380,19 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    bottom: ms(5),
+    bottom: ms(4),
     alignItems: "center",
   },
   name: {
     fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(9.5),
-    lineHeight: ms(12),
+    fontSize: ms(8.5),
+    lineHeight: ms(11),
     color: "#FFFFFF",
   },
   hint: {
     fontFamily: "OpenSans_600SemiBold",
-    fontSize: ms(7.5),
-    lineHeight: ms(10),
+    fontSize: ms(7),
+    lineHeight: ms(9),
     color: "#FFD9C7",
   },
 
@@ -416,10 +443,10 @@ const styles = StyleSheet.create({
 
   onlineDot: {
     position: "absolute",
-    right: ms(4),
-    top: ms(4),
-    width: ms(11),
-    height: ms(11),
+    right: ms(3),
+    top: ms(3),
+    width: ms(10),
+    height: ms(10),
     borderRadius: ms(6),
     backgroundColor: "#22C55E",
     borderWidth: ms(1.5),

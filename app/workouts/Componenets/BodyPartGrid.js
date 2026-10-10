@@ -1,14 +1,19 @@
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { MotiView } from "moti";
 import { useRef } from "react";
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { colors } from "../../../constants/colors";
 import { tapHaptic } from "../../../constants/haptics";
 import { scaling } from "../../../constants/useScaling";
 
 const ms = (n) => scaling().moderateScale(n);
 
+/**
+ * Photo-first tile: the image IS the tile, with the name on a soft dark fade
+ * at the bottom. No card, border or shadow around it — six framed boxes in a
+ * grid read as clutter; six photos read as a menu.
+ */
 function Tile({ item, index, onPress }) {
   const scale = useRef(new Animated.Value(1)).current;
   const spring = (to) =>
@@ -16,9 +21,9 @@ function Tile({ item, index, onPress }) {
 
   return (
     <MotiView
-      from={{ opacity: 0, translateY: 14 }}
+      from={{ opacity: 0, translateY: 12 }}
       animate={{ opacity: 1, translateY: 0 }}
-      transition={{ type: "timing", duration: 300, delay: 80 + index * 55 }}
+      transition={{ type: "timing", duration: 280, delay: 60 + index * 45 }}
       style={styles.cell}
     >
       <Pressable
@@ -32,16 +37,20 @@ function Tile({ item, index, onPress }) {
         accessibilityLabel={`${item.bodyPart} workouts`}
       >
         <Animated.View style={[styles.tile, { transform: [{ scale }] }]}>
-          <View style={styles.imageWrap}>
-            <Image
-              source={item.image}
-              style={styles.image}
-              contentFit="cover"
-              // these photos are framed head-first; keep the upper body in view
-              contentPosition={{ top: "18%", left: "50%" }}
-              transition={200}
-            />
-          </View>
+          <Image
+            source={item.image}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            // these photos are framed head-first; keep the upper body in view
+            contentPosition={{ top: "18%", left: "50%" }}
+            transition={200}
+          />
+          <LinearGradient
+            colors={["transparent", "rgba(0,0,0,0.15)", "rgba(0,0,0,0.72)"]}
+            locations={[0.45, 0.65, 1]}
+            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+          />
           <Text style={styles.label} numberOfLines={1}>
             {item.bodyPart}
           </Text>
@@ -62,29 +71,31 @@ export default function BodyPartGrid({ items, onSelect }) {
   );
 }
 
+const GAP = 10;
+
 const styles = StyleSheet.create({
-  grid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: 15, marginTop: 12 },
-  cell: { width: "33.333%", padding: 5 },
-  tile: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
-    padding: 6,
-    paddingBottom: 9,
-    borderWidth: 1,
-    borderColor: "#EEF0F4",
-    shadowColor: "#0F172A",
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginHorizontal: 20 - GAP / 2,
+    marginTop: 12,
   },
-  imageWrap: { aspectRatio: 1, borderRadius: 15, overflow: "hidden", backgroundColor: "#111" },
-  image: { width: "100%", height: "100%" },
+  cell: { width: "33.333%", padding: GAP / 2 },
+  tile: {
+    aspectRatio: 1,
+    borderRadius: 16,
+    overflow: "hidden",
+    backgroundColor: "#1F2937",
+    justifyContent: "flex-end",
+  },
   label: {
-    marginTop: 7,
-    textAlign: "center",
+    paddingHorizontal: 10,
+    paddingBottom: 9,
     fontSize: ms(13),
     fontFamily: "OpenSans_800ExtraBold",
-    color: colors.text,
+    color: "#FFFFFF",
+    textShadowColor: "rgba(0,0,0,0.35)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
 });

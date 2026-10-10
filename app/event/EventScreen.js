@@ -18,6 +18,7 @@ import {
 import Share from "react-native-share";
 import { RewardedAdManager } from "../../ads/Admobmanager";
 import {
+  bubbleScrollFade,
   leaderboardNudge,
   sayOncePerSession,
 } from "../../constants/bubbleMessage";
@@ -330,24 +331,6 @@ export default function EventScreen() {
     }
   };
 
-  // What it takes to climb: the gap to the next spot up, in push-ups.
-  const chase = (() => {
-    const me = board.me;
-    if (loadingBoard) return null;
-    if (board.top.length === 0) return { icon: "flag", text: "Log a session and claim #1 today" };
-    if (!me.best) return { icon: "flag", text: "One session puts you on today's board" };
-    if (me.rank === 1) return { icon: "trophy", text: "You're #1 today — defend your crown 👑" };
-    const target =
-      board.top.find((r) => r.rank === me.rank - 1) || (me.rank > 5 ? board.top[board.top.length - 1] : null);
-    if (!target) return null;
-    const need = Math.max(1, (target.pushups || 0) - me.best + 1);
-    const who = displayName(target, user?.name).split(" ")[0] || `#${target.rank}`;
-    return {
-      icon: "trending-up",
-      text: `${need} more push-up${need === 1 ? "" : "s"} to pass ${who} (#${target.rank})`,
-    };
-  })();
-
   return (
     <View style={styles.screen}>
       {/* Hero header */}
@@ -368,7 +351,7 @@ export default function EventScreen() {
           <View style={styles.heroRow}>
             <Image source={EXPRESSION_IMAGES.flex} style={styles.heroMascot} contentFit="contain" />
             <View style={{ flex: 1 }}>
-              <Text style={styles.heroTitle}>Daily Push-Up Challenge</Text>
+              <Text style={styles.heroTitle}>Push-Up Challenge</Text>
               <View style={styles.resetPill}>
                 <Ionicons name="time-outline" size={ms(11)} color="#FFFFFF" />
                 <Text style={styles.resetText}>Resets in {resetLabel}</Text>
@@ -388,12 +371,12 @@ export default function EventScreen() {
           <View style={styles.meCard}>
             <View style={styles.meStat}>
               <Text style={styles.meValue}>{board.me.best}</Text>
-              <Text style={styles.meLabel}>Today&apos;s best</Text>
+              <Text style={styles.meLabel}>Best today</Text>
             </View>
             <View style={styles.meDivider} />
             <View style={styles.meStat}>
               <Text style={styles.meValue}>{board.me.rank ? `#${board.me.rank}` : "—"}</Text>
-              <Text style={styles.meLabel}>Your rank</Text>
+              <Text style={styles.meLabel}>Rank</Text>
             </View>
             <View style={styles.meDivider} />
             <View style={styles.meStat}>
@@ -401,19 +384,11 @@ export default function EventScreen() {
               <Text style={styles.meLabel}>All-time</Text>
             </View>
           </View>
-
-          {chase ? (
-            <View style={styles.chasePill}>
-              <Ionicons name={chase.icon} size={ms(13)} color={colors.primary} />
-              <Text style={styles.chaseText} numberOfLines={1}>
-                {chase.text}
-              </Text>
-            </View>
-          ) : null}
         </BrandGradient>
       </Animated.View>
 
       <ScrollView
+        {...bubbleScrollFade}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -426,39 +401,29 @@ export default function EventScreen() {
         }
       >
         <View style={styles.sectionHead}>
-          <View>
-            <Text style={styles.sectionLabel}>Today&apos;s top 5</Text>
-            <Text style={styles.sectionNote}>Global leaderboard · pull down to refresh</Text>
-          </View>
+          <Text style={styles.sectionLabel}>Today&apos;s top 5</Text>
           <View style={styles.livePill}>
             <View style={styles.liveDot} />
             <Text style={styles.liveText}>LIVE</Text>
           </View>
         </View>
 
-        {/* ── Podium chart (top 5, #1 centered) + the full ranked list ── */}
+        {/* ── Podium chart: top 5, #1 centered. Tap a name to see it in full. ── */}
         <View style={styles.chartCard}>
           {loadingBoard ? (
             // Contained in the chart card only — the hero and Start button stay
             // usable while the board loads.
             <View style={styles.chartLoading}>
               <ActivityIndicator size="small" color={colors.primary} />
-              <Text style={styles.chartLoadingText}>
-                Loading today&apos;s leaderboard…
-              </Text>
             </View>
           ) : podium.length === 0 ? (
             <View style={styles.emptyChart}>
               <Image source={EXPRESSION_IMAGES.wink} style={styles.emptyMascot} contentFit="contain" />
-              <Text style={styles.emptyTitle}>Become the first champion!</Text>
-              <Text style={styles.emptyText}>
-                No push-ups logged yet today. Finish one session and the top
-                spot is yours.
-              </Text>
+              <Text style={styles.emptyTitle}>Be #1 today</Text>
+              <Text style={styles.emptyText}>No one has logged yet. The top spot is yours.</Text>
             </View>
           ) : (
-            <>
-              <View style={styles.chartRow}>
+            <View style={styles.chartRow}>
                 {podium.map((row, i) => (
                   <ChartBar
                     key={`${row.rank}-${row.name}`}
@@ -469,55 +434,8 @@ export default function EventScreen() {
                     onShowName={showNameTip}
                   />
                 ))}
-              </View>
-
-              <View style={styles.rankList}>
-                {top5.map((row) => {
-                  const name = displayName(row, user?.name) || "Anonymous";
-                  return (
-                    <View
-                      key={`row-${row.rank}-${row.name}`}
-                      style={[styles.rankRow, row.isUser && styles.rankRowUser]}
-                    >
-                      <Text style={styles.rankNum}>{MEDALS[row.rank] || `#${row.rank}`}</Text>
-                      <View style={[styles.avatar, { backgroundColor: barColorFor(row) + "26" }]}>
-                        <Text style={[styles.avatarText, { color: row.isUser ? colors.primary : colors.text }]}>
-                          {name.charAt(0).toUpperCase()}
-                        </Text>
-                      </View>
-                      <Text style={[styles.rankName, row.isUser && styles.rankNameUser]} numberOfLines={1}>
-                        {name}
-                        {row.isUser ? "  · You" : ""}
-                      </Text>
-                      <Text style={styles.rankScore}>
-                        {row.pushups}
-                        <Text style={styles.rankUnit}> reps</Text>
-                      </Text>
-                    </View>
-                  );
-                })}
-              </View>
-            </>
-          )}
-        </View>
-
-        {/* ── How it works — three steps, no reading required ── */}
-        <View style={styles.howCard}>
-          {[
-            { icon: "phone-portrait-outline", text: "Prop your phone up" },
-            { icon: "scan-outline", text: "AI camera counts every rep" },
-            { icon: "podium-outline", text: "Climb today's board" },
-          ].map((s, i) => (
-            <View key={s.text} style={styles.howStep}>
-              <View style={styles.howIcon}>
-                <Ionicons name={s.icon} size={ms(17)} color={colors.primary} />
-                <View style={styles.howNum}>
-                  <Text style={styles.howNumText}>{i + 1}</Text>
-                </View>
-              </View>
-              <Text style={styles.howText}>{s.text}</Text>
             </View>
-          ))}
+          )}
         </View>
       </ScrollView>
 
@@ -658,23 +576,6 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
 
-  chasePill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: ms(6),
-    marginTop: ms(10),
-    backgroundColor: "#FFFFFF",
-    borderRadius: ms(12),
-    paddingHorizontal: ms(12),
-    paddingVertical: ms(8),
-  },
-  chaseText: {
-    flex: 1,
-    fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(12),
-    color: colors.text,
-  },
-
   // ── Body ──
   listContent: {
     paddingHorizontal: ms(16),
@@ -693,12 +594,6 @@ const styles = StyleSheet.create({
     fontSize: ms(15),
     color: colors.text,
   },
-  sectionNote: {
-    fontFamily: "OpenSans_500Medium",
-    fontSize: ms(11),
-    color: colors.textLight,
-    marginTop: 1,
-  },
   livePill: {
     flexDirection: "row",
     alignItems: "center",
@@ -716,12 +611,12 @@ const styles = StyleSheet.create({
     color: "#DC2626",
   },
 
-  // ── Chart + ranked list ──
+  // ── Podium chart ──
   chartCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: ms(20),
-    paddingTop: ms(16),
-    paddingBottom: ms(8),
+    paddingTop: ms(18),
+    paddingBottom: ms(16),
     paddingHorizontal: ms(6),
     borderWidth: 1,
     borderColor: "#EEF0F4",
@@ -766,11 +661,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: ms(10),
     paddingVertical: ms(44),
-  },
-  chartLoadingText: {
-    fontFamily: "OpenSans_600SemiBold",
-    fontSize: ms(11.5),
-    color: colors.textLight,
   },
   emptyTitle: {
     fontFamily: "OpenSans_800ExtraBold",
@@ -824,90 +714,6 @@ const styles = StyleSheet.create({
   barNameUser: {
     fontFamily: "OpenSans_800ExtraBold",
     color: colors.primary,
-  },
-
-  rankList: {
-    marginTop: ms(14),
-    marginHorizontal: ms(6),
-    borderTopWidth: 1,
-    borderTopColor: "#F1F3F6",
-    paddingTop: ms(6),
-  },
-  rankRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: ms(10),
-    paddingVertical: ms(8),
-    paddingHorizontal: ms(8),
-    borderRadius: ms(12),
-  },
-  rankRowUser: { backgroundColor: colors.primary + "12" },
-  rankNum: {
-    width: ms(26),
-    textAlign: "center",
-    fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(13),
-    color: colors.textLight,
-  },
-  avatar: {
-    width: ms(30),
-    height: ms(30),
-    borderRadius: ms(15),
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarText: { fontFamily: "OpenSans_800ExtraBold", fontSize: ms(13) },
-  rankName: {
-    flex: 1,
-    fontFamily: "OpenSans_700Bold",
-    fontSize: ms(13),
-    color: colors.text,
-  },
-  rankNameUser: { color: colors.primary, fontFamily: "OpenSans_800ExtraBold" },
-  rankScore: { fontFamily: "OpenSans_800ExtraBold", fontSize: ms(14), color: colors.text },
-  rankUnit: { fontFamily: "OpenSans_600SemiBold", fontSize: ms(10), color: colors.textLight },
-
-  // ── How it works ──
-  howCard: {
-    flexDirection: "row",
-    marginTop: ms(14),
-    backgroundColor: "#FFFFFF",
-    borderRadius: ms(18),
-    paddingVertical: ms(14),
-    paddingHorizontal: ms(6),
-    borderWidth: 1,
-    borderColor: "#EEF0F4",
-  },
-  howStep: { flex: 1, alignItems: "center", paddingHorizontal: ms(4) },
-  howIcon: {
-    width: ms(40),
-    height: ms(40),
-    borderRadius: ms(14),
-    backgroundColor: colors.primary + "12",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  howNum: {
-    position: "absolute",
-    top: -ms(5),
-    right: -ms(5),
-    width: ms(17),
-    height: ms(17),
-    borderRadius: ms(9),
-    backgroundColor: colors.primary,
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  howNumText: { fontFamily: "OpenSans_800ExtraBold", fontSize: ms(8.5), color: "#FFFFFF" },
-  howText: {
-    fontFamily: "OpenSans_700Bold",
-    fontSize: ms(11),
-    lineHeight: ms(15),
-    color: colors.text,
-    textAlign: "center",
-    marginTop: ms(8),
   },
 
   // ── Pinned CTA ──

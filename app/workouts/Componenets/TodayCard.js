@@ -26,8 +26,6 @@ import useTrainToday from "./useTrainToday";
 const ms = (n) => scaling().moderateScale(n);
 
 const DAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"];
-const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
-const WEEKDAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
 // Local calendar day, so a 11pm workout counts for that evening — same rule
 // the streak query uses ('localtime').
@@ -119,24 +117,6 @@ function WeekDot({ day, index, showLabels }) {
   );
 }
 
-function Stat({ value, label, index }) {
-  return (
-    <MotiView
-      from={{ opacity: 0, translateY: 8 }}
-      animate={{ opacity: 1, translateY: 0 }}
-      transition={{ type: "timing", duration: 300, delay: 260 + index * 70 }}
-      style={styles.stat}
-    >
-      <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>
-        {value}
-      </Text>
-      <Text style={styles.statLabel} numberOfLines={1}>
-        {label}
-      </Text>
-    </MotiView>
-  );
-}
-
 /** White button with a soft breathing pulse — the one primary action here. */
 function PlanButton({ label, busy, onPress }) {
   const pulse = useRef(new Animated.Value(1)).current;
@@ -196,7 +176,7 @@ const toneOf = (result) => {
 function ResultIcon({ tone, icon }) {
   return (
     <View style={[styles.resultIcon, tone !== "go" && styles.resultIconCalm]}>
-      <Ionicons name={icon} size={ms(16)} color={tone === "go" ? colors.primary : "#4F46E5"} />
+      <Ionicons name={icon} size={ms(16)} color={tone === "go" ? colors.primary : "#B45309"} />
     </View>
   );
 }
@@ -364,7 +344,6 @@ export default function TodayCard({
   streak = 0,
   daysSinceLast = -1,
   history = [],
-  stats = {},
   onStart,
 }) {
   const week = useWeek(history);
@@ -403,9 +382,7 @@ export default function TodayCard({
     return () => loop.stop();
   }, [bob]);
 
-  const now = new Date();
-  const dateLine = `TODAY · ${WEEKDAYS[now.getDay()]} ${now.getDate()} ${MONTHS[now.getMonth()]}`;
-  const hasHistory = (stats.totalWorkouts || 0) > 0;
+  const hasHistory = history.length > 0;
 
   return (
     <MotiView
@@ -417,14 +394,22 @@ export default function TodayCard({
       <BrandGradient style={styles.card}>
         <View style={styles.top}>
           <View style={{ flex: 1, paddingRight: 8 }}>
-            <Text style={styles.eyebrow}>{dateLine}</Text>
+            {/* The streak is the one number worth keeping on this card; the
+                date is already on the phone and highlighted in the week strip. */}
+            {streak > 0 ? (
+              <View style={styles.streakChip}>
+                <Text style={styles.streakText}>🔥 {streak}-day streak</Text>
+              </View>
+            ) : null}
             <MotiView
               key={shown.text}
               from={{ opacity: 0, translateY: 4 }}
               animate={{ opacity: 1, translateY: 0 }}
               transition={{ type: "timing", duration: 260 }}
             >
-              <Text style={styles.message}>{shown.text}</Text>
+              <Text style={styles.message} numberOfLines={2}>
+                {shown.text}
+              </Text>
             </MotiView>
           </View>
           <Pressable onPress={pokeMascot} hitSlop={6} accessibilityLabel="Tap Jack for another message">
@@ -456,14 +441,6 @@ export default function TodayCard({
             <WeekDot key={i} day={d} index={i} showLabels={showLabels} />
           ))}
         </View>
-
-        {hasHistory ? (
-          <View style={styles.stats}>
-            <Stat index={0} value={`🔥 ${streak}`} label="day streak" />
-            <Stat index={1} value={String(stats.totalWorkouts || 0)} label="workouts" />
-            <Stat index={2} value={Number(stats.totalCalories || 0).toLocaleString("en-IN")} label="kcal burned" />
-          </View>
-        ) : null}
 
         <AnimatePresence exitBeforeEnter>
           {/* AnimatePresence only for button → plan (once). Collapse/expand
@@ -513,13 +490,21 @@ const styles = StyleSheet.create({
   card: { borderRadius: 22, paddingHorizontal: 16, paddingVertical: 14 },
 
   top: { flexDirection: "row", alignItems: "center" },
-  eyebrow: { fontSize: ms(9.5), fontFamily: "OpenSans_800ExtraBold", letterSpacing: 1.4, color: "rgba(255,255,255,0.85)" },
+  streakChip: {
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(0,0,0,0.14)",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginBottom: 5,
+  },
+  streakText: { fontSize: ms(10.5), fontFamily: "OpenSans_800ExtraBold", color: "#FFFFFF" },
   message: {
-    fontSize: ms(16),
+    fontSize: ms(15),
     fontFamily: "OpenSans_800ExtraBold",
     color: "#FFFFFF",
-    lineHeight: ms(21),
-    marginTop: 3,
+    lineHeight: ms(20),
+    marginTop: 0,
     letterSpacing: -0.2,
   },
   mascot: { width: ms(64), height: ms(64), marginRight: -4, marginVertical: -4 },
@@ -543,18 +528,6 @@ const styles = StyleSheet.create({
   dotToday: { borderWidth: 2, borderColor: "#FFFFFF", backgroundColor: "rgba(255,255,255,0.14)" },
   dotMiss: { backgroundColor: "rgba(255,255,255,0.18)" },
   todayPip: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#FFFFFF" },
-
-  stats: { flexDirection: "row", gap: 6, marginTop: 10 },
-  stat: {
-    flex: 1,
-    backgroundColor: "rgba(255,255,255,0.18)",
-    borderRadius: 12,
-    paddingVertical: 5,
-    paddingHorizontal: 6,
-    alignItems: "center",
-  },
-  statValue: { fontSize: ms(14), lineHeight: ms(18), fontFamily: "OpenSans_800ExtraBold", color: "#FFFFFF" },
-  statLabel: { fontSize: ms(9.5), lineHeight: ms(13), fontFamily: "OpenSans_700Bold", color: "rgba(255,255,255,0.9)" },
 
   planWrap: { marginTop: 10 },
   planBtn: {
@@ -581,7 +554,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  resultIconCalm: { backgroundColor: "#EEF2FF" },
+  resultIconCalm: { backgroundColor: "#FFF4E5" },
   resultEyebrow: { fontSize: ms(9.5), fontFamily: "OpenSans_800ExtraBold", letterSpacing: 1.1, color: colors.textLight },
   resultTitle: { fontSize: ms(18), fontFamily: "OpenSans_800ExtraBold", color: colors.text },
   resultSummary: { fontSize: ms(11.5), fontFamily: "OpenSans_500Medium", color: colors.textLight, marginTop: 8 },
@@ -615,11 +588,11 @@ const styles = StyleSheet.create({
     gap: 9,
     padding: 12,
     borderRadius: 14,
-    backgroundColor: "#EEF2FF",
+    backgroundColor: "#FFF7ED",
     marginBottom: 10,
   },
   restEmoji: { fontSize: ms(18) },
-  restText: { flex: 1, fontSize: ms(11.5), fontFamily: "OpenSans_600SemiBold", color: "#3730A3", lineHeight: ms(16) },
+  restText: { flex: 1, fontSize: ms(11.5), fontFamily: "OpenSans_600SemiBold", color: "#9A3412", lineHeight: ms(16) },
   again: {
     flexDirection: "row",
     alignItems: "center",

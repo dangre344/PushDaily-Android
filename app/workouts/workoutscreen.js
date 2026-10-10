@@ -9,11 +9,11 @@ import { Animated, FlatList, Pressable, ScrollView, StyleSheet, Text, View } fro
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { maybeAskForReview } from "../../constants/appReview";
+import { bubbleScrollFade } from "../../constants/bubbleMessage";
 import { colors } from "../../constants/colors";
 import { tapHaptic } from "../../constants/haptics";
 import { bodyParts, workoutListGlobal } from "../../constants/Constants";
 import { registerLevelPicker } from "../../constants/levelPicker";
-import { SESSION_QUOTE } from "../../constants/quotes";
 import { useUser } from "../../constants/UserContext";
 import { scaling } from "../../constants/useScaling";
 import {
@@ -31,13 +31,13 @@ import {
 import BadgeLevelUpModal from "../home/BadgeLevelUpModal";
 import WorkoutBadgeInfo, { BADGE_DETAILS, BADGE_ORDER, getUserBadge } from "../home/WorkoutBadgeInfo";
 import BodyPartGrid from "./Componenets/BodyPartGrid";
-import HIITCard from "./Componenets/HIITCard";
+import HIITCard, { HIIT_CARD_GAP, HIIT_CARD_WIDTH } from "./Componenets/HIITCard";
 import ScanButton from "./Componenets/ScanButton";
 import TodayCard from "./Componenets/TodayCard";
 import WaterPromptModal from "./Componenets/WaterPromptModal";
 import WorkoutLevelModal from "./Componenets/WorkoutLevelModal";
 
-const { scaleHeight, scaleWidth, moderateScale: ms } = scaling();
+const { scaleHeight, moderateScale: ms } = scaling();
 
 // Shown in the same order people tend to think about training.
 const BODY_PART_ORDER = ["Chest", "Abs", "Legs", "Arms", "Shoulder", "Back"];
@@ -90,12 +90,6 @@ export default function WorkoutScreen() {
   // Same inputs the home-screen widget is given.
   const [mascot, setMascot] = useState({ streak: 0, daysSinceLast: -1 });
 
-  const [stats, setStats] = useState({
-    totalWorkouts: 0,
-    totalCalories: 0,
-    activeDays: 0,
-  });
-
   const loadData = async () => {
     try {
       await initDB();
@@ -103,8 +97,6 @@ export default function WorkoutScreen() {
       const data = await getProfileStats();
 
       Logger.log("Profile stats--->", data);
-
-      setStats(data);
 
       // Nudge for a Play Store in-app review once the habit is forming
       // (uses the count we just fetched — no extra query).
@@ -294,7 +286,12 @@ export default function WorkoutScreen() {
           },
         ]}
       >
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          // Jack's floating bubble steps aside while the list is moving.
+          {...bubbleScrollFade}
+        >
           {/* HEADER — greeting, level, scan. The quote is one quiet line. */}
           <View style={styles.header}>
             <View style={styles.headerText}>
@@ -333,10 +330,6 @@ export default function WorkoutScreen() {
             </View>
           </View>
 
-          <Text style={styles.quote} numberOfLines={1}>
-            “{SESSION_QUOTE}”
-          </Text>
-
           {/* One card for today: mascot, the last 7 days, totals and the
               "plan my session" flow — previously three separate cards. */}
           <TodayCard
@@ -346,14 +339,13 @@ export default function WorkoutScreen() {
             streak={mascot.streak}
             daysSinceLast={mascot.daysSinceLast}
             history={allWorkouts}
-            stats={stats}
             onStart={openWorkoutLevelModal}
           />
 
-          <SectionHeader title={t("trainByBodyPart")} subtitle={t("trainByBodyPartSub")} delay={120} />
+          <SectionHeader title={t("trainByBodyPart")} delay={120} />
           <BodyPartGrid items={orderedBodyParts} onSelect={openWorkoutLevelModal} />
 
-          <SectionHeader title={t("quickStarts")} subtitle={t("quickStartsSub")} delay={200} />
+          <SectionHeader title={t("quickStarts")} delay={200} />
           {/* The original banner cards, unchanged — the posters carry their
               own artwork and text, so they're shown whole. */}
           <FlatList
@@ -371,14 +363,16 @@ export default function WorkoutScreen() {
               />
             )}
             contentContainerStyle={styles.hiitListContent}
-            snapToInterval={scaleWidth(300)}
-            snapToAlignment="center"
+            // Snap card-by-card from the left edge, so the next banner always
+            // peeks in on the right — "swipe for more" without any text.
+            snapToInterval={HIIT_CARD_WIDTH + HIIT_CARD_GAP}
+            snapToAlignment="start"
             decelerationRate="fast"
             bounces={false}
             pagingEnabled={false}
             getItemLayout={(data, index) => ({
-              length: scaleWidth(300) + 20,
-              offset: (scaleWidth(300) + 20) * index,
+              length: HIIT_CARD_WIDTH + HIIT_CARD_GAP,
+              offset: (HIIT_CARD_WIDTH + HIIT_CARD_GAP) * index,
               index,
             })}
           />
@@ -440,13 +434,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingTop: ms(6),
+    paddingTop: ms(10),
   },
   headerText: { flex: 1, paddingRight: 10 },
-  hello: { fontSize: ms(11.5), lineHeight: ms(15), fontFamily: "OpenSans_600SemiBold", color: colors.textLight },
+  hello: { fontSize: ms(11), lineHeight: ms(15), fontFamily: "OpenSans_600SemiBold", color: colors.textLight },
   name: {
-    fontSize: ms(19),
-    lineHeight: ms(24),
+    fontSize: ms(18),
+    lineHeight: ms(23),
     fontFamily: "OpenSans_800ExtraBold",
     color: colors.text,
     letterSpacing: -0.4,
@@ -464,23 +458,18 @@ const styles = StyleSheet.create({
   },
   levelEmoji: { fontSize: ms(12) },
   levelText: { fontSize: ms(11), fontFamily: "OpenSans_800ExtraBold", color: colors.primary },
-  quote: {
-    marginTop: ms(2),
-    paddingHorizontal: 20,
-    fontSize: ms(11.5),
-    fontFamily: "OpenSans_600SemiBold",
-    fontStyle: "italic",
-    color: "#8A939B",
-  },
 
-  section: { paddingHorizontal: 20, marginTop: ms(20) },
-  sectionTitle: { fontSize: ms(16.5), fontFamily: "OpenSans_800ExtraBold", color: colors.text, letterSpacing: -0.3 },
+  // 24 between sections, everywhere on this screen.
+  section: { paddingHorizontal: 20, marginTop: ms(24) },
+  sectionTitle: { fontSize: ms(17), fontFamily: "OpenSans_800ExtraBold", color: colors.text, letterSpacing: -0.3 },
   sectionSub: { fontSize: ms(11.5), fontFamily: "OpenSans_600SemiBold", color: colors.textLight, marginTop: 1 },
 
   // Original banner list spacing, plus a little top room under the new header.
+  // Same 20 side margin as everything above; the trailing card gap already
+  // gives the last banner its right-hand space.
   hiitListContent: {
-    paddingLeft: ms(20),
-    paddingRight: ms(20),
+    paddingLeft: 20,
+    paddingRight: 20 - HIIT_CARD_GAP,
     paddingTop: 12,
     paddingBottom: ms(30),
   },
