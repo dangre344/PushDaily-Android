@@ -203,7 +203,7 @@ export default function WaterPanel({ visible = true }) {
 
   const handleStart = async () => {
     setLoading(true);
-    const res = await startWaterTracking(goal.glasses);
+    const res = await startWaterTracking(goal.glasses, user?.name);
     setLoading(false);
     if (res.ok) {
       setEnabled(true);

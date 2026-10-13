@@ -51,7 +51,6 @@
           "backgroundColor": "#ffffff"
         }
       ],
-
       [
         "expo-camera",
         {
@@ -68,7 +67,13 @@
       [
         "expo-notifications",
         {
-          "color": "#FF6B35"
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#FF6B35",
+          "sounds": [
+            "./assets/sounds/jack_ping.wav",
+            "./assets/sounds/jack_cheer.wav",
+            "./assets/sounds/jack_drop.wav"
+          ]
         }
       ],
       "expo-sqlite",
@@ -89,7 +94,10 @@
       "@react-native-firebase/crashlytics",
       "./plugins/withProguardRules",
       "./plugins/withWidget",
-      ["react-native-share", {}]
+      [
+        "react-native-share",
+        {}
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

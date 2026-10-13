@@ -12,6 +12,8 @@
  *   APP_TOKEN     — shared string the app sends in X-App-Token
  */
 
+import { JACK_PNG } from "./jackImages.js";
+
 const GEMINI_MODEL = "gemini-2.5-flash"; // free-tier flash model
 const GROQ_MODEL = "llama-3.3-70b-versatile"; // Groq free-tier model
 // Vision fallback for label reading — separate quota from Gemini.
@@ -475,35 +477,44 @@ const FCM_TOPIC = "daily_updates";
 const QUIZ_CRON = "10 3 * * *";
 
 // Sent when somebody already holds the top spot today.
+// `jack` = the mascot mood shown as the notification picture (/jack/<mood>.png).
 const LEADER_MESSAGES = [
-  { title: "👑 New champion today!", body: "{name} just hit {count} push-ups. Think you can beat that?" },
-  { title: "🔥 {name} is on top!", body: "{count} push-ups and counting. The crown is still up for grabs." },
-  { title: "💪 Record to beat", body: "{name} set today's bar at {count} push-ups. Your move." },
-  { title: "🏆 {count} push-ups!", body: "{name} leads the global board today. Can you take #1?" },
-  { title: "⚡ Someone's flying today", body: "{name} pushed out {count} reps. Beat it before midnight!" },
-  { title: "🚨 Leaderboard shake-up", body: "{name} is #1 with {count} push-ups. Fight back!" },
-  { title: "😤 {name} took the lead", body: "{count} push-ups. You've still got hours to reclaim the top spot." },
-  { title: "🥇 Today's number one", body: "{name} is at {count}. How many can you do right now?" },
-  { title: "🎯 Target: {count} push-ups", body: "That's {name}'s score today. Drop and prove you're stronger." },
-  { title: "💥 {count} and counting", body: "{name} owns the board. Every rep gets you closer." },
-  { title: "🌍 Global leader alert", body: "{name} tops today's challenge with {count}. Join in!" },
-  { title: "⏳ The crown is warm", body: "{name} holds #1 with {count} push-ups. Nobody said it's permanent." },
+  { title: "👑 {name} just took the crown", body: "{count} push-ups today. Jack thinks you can beat that 😏", jack: "wow" },
+  { title: "🔥 {name} is on fire!", body: "{count} push-ups and counting. The crown is still up for grabs.", jack: "wow" },
+  { title: "💪 New record to beat", body: "{name} set today's bar at {count}. Your move, champ.", jack: "flex" },
+  { title: "🏆 {count} push-ups?!", body: "{name} leads the world today. Tap to take #1 back.", jack: "wow" },
+  { title: "⚡ Someone's flying today", body: "{name} pushed out {count} reps. Beat it before midnight!", jack: "dumbbell" },
+  { title: "🚨 Leaderboard shake-up!", body: "{name} is #1 with {count}. Jack says fight back 👊", jack: "flex" },
+  { title: "😤 {name} stole the lead", body: "{count} push-ups. You've still got hours to snatch it back.", jack: "wink" },
+  { title: "🥇 Today's number one", body: "{name} is at {count}. How many can YOU do right now?", jack: "think" },
+  { title: "🎯 Target locked: {count}", body: "That's {name}'s score. Drop and prove you're stronger 💥", jack: "dumbbell" },
+  { title: "💥 {count} and climbing", body: "{name} owns the board… for now. Every rep gets you closer.", jack: "flex" },
+  { title: "🌍 Global leader alert", body: "{name} tops today's challenge with {count}. Jump in!", jack: "cheer" },
+  { title: "⏳ The crown is still warm", body: "{name} holds #1 with {count}. Nobody said it's permanent 😏", jack: "wink" },
 ];
 
 // Sent when the board is still empty — nobody has logged a push-up today.
 const FIRST_MOVER_MESSAGES = [
-  { title: "🥇 Be the first today!", body: "Nobody has logged a push-up yet. Claim rank #1 in seconds." },
-  { title: "🌍 The global board is empty", body: "Be the first athlete to rank today. One set is all it takes." },
-  { title: "👑 #1 is unclaimed", body: "No push-ups logged yet today. Take the top spot before anyone else." },
-  { title: "💪 An empty leaderboard!", body: "Be the first to score today and set the target for everyone." },
-  { title: "🚀 First mover advantage", body: "Zero push-ups on the board. Log yours and lead the world today." },
-  { title: "⏰ Board resets daily", body: "Nobody has claimed today yet. Be the one everyone chases." },
+  { title: "🥇 #1 is up for grabs!", body: "Nobody has logged a push-up yet. Claim the crown in seconds.", jack: "cheer" },
+  { title: "🌍 The world board is empty", body: "Be today's first athlete. One set is all it takes 💪", jack: "hi" },
+  { title: "👑 The throne is empty…", body: "No push-ups yet today. Jack saved the top spot for you 😏", jack: "wink" },
+  { title: "💪 Fresh board, fresh chance", body: "Score first and set the target everyone else has to chase.", jack: "flex" },
+  { title: "🚀 First mover advantage", body: "Zero push-ups on the board. Log yours and lead the world.", jack: "cheer" },
+  { title: "⏰ Today's board just reset", body: "Nobody has claimed it yet. Be the one everyone chases.", jack: "dumbbell" },
 ];
 
 const fillMessage = (msg, name, count) => ({
   title: msg.title.replace(/\{name\}/g, name).replace(/\{count\}/g, count),
   body: msg.body.replace(/\{name\}/g, name).replace(/\{count\}/g, count),
+  jack: msg.jack || "flex",
 });
+
+// Where this Worker is reachable, for the notification picture URL. Set the
+// PUBLIC_URL var if the Worker moves; this default is the current address.
+const publicBase = (env) =>
+  (env.PUBLIC_URL || "https://push-daily-trainer.pushdaily.workers.dev").replace(/\/$/, "");
+
+const base64ToBytes = (b64) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
 
 // ── Google OAuth for FCM HTTP v1 (service-account JWT, signed with WebCrypto) ─
 let cachedToken = null; // { token, expiresAt }
@@ -586,7 +597,7 @@ async function getGoogleAccessToken(env) {
 }
 
 /** One HTTP call → every subscribed device. */
-async function sendTopicNotification(env, { title, body }) {
+async function sendTopicNotification(env, { title, body, jack = "flex" }) {
   const token = await getGoogleAccessToken(env);
   if (!token) return "no-credentials";
 
@@ -602,11 +613,14 @@ async function sendTopicNotification(env, { title, body }) {
       body: JSON.stringify({
         message: {
           topic: FCM_TOPIC,
-          notification: { title, body },
-          data: { type: "pushup_event", screen: "event" },
+          // `image`: Jack's face — a thumbnail when collapsed, big when expanded.
+          notification: { title, body, image: `${publicBase(env)}/jack/${jack}.png` },
+          data: { type: "pushup_event", screen: "event", jack },
           android: {
             priority: "high",
-            notification: { channel_id: "default", sound: "default" },
+            // Channel + tune created by the app (constants/jackNotifications.js).
+            // Older app versions without them fall back to the default channel.
+            notification: { channel_id: "jack-events", sound: "jack_cheer" },
           },
         },
       }),
@@ -930,6 +944,19 @@ export default {
   },
 
   async fetch(request, env) {
+    // Public, cacheable: Jack's pictures for push notifications.
+    if (request.method === "GET") {
+      const m = new URL(request.url).pathname.match(/^\/jack\/([a-z]+)\.png$/);
+      if (m && JACK_PNG[m[1]]) {
+        return new Response(base64ToBytes(JACK_PNG[m[1]]), {
+          headers: {
+            "Content-Type": "image/png",
+            "Cache-Control": "public, max-age=604800, immutable",
+          },
+        });
+      }
+    }
+
     if (request.method !== "POST") {
       return json({ error: "method_not_allowed" }, 405);
     }

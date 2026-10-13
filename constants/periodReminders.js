@@ -1,7 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
-import { Linking, Platform } from "react-native";
+import { Linking } from "react-native";
 
+import { cancelJack, scheduleJack } from "./jackNotifications";
 import { Logger } from "./Logger";
 import { averageCycle, fromKey, loadPeriodData } from "./periodTracker";
 
@@ -26,7 +27,6 @@ import { averageCycle, fromKey, loadPeriodData } from "./periodTracker";
 // lock screen.
 
 export const PERIOD_TYPE = "period";
-const CHANNEL = "period-reminders";
 const K_OFF = "period_reminders_off"; // "true" = user switched them off
 const K_ANCHOR = "period_reminder_anchor"; // ms; start of the 15-day rhythm
 const K_ASKED = "period_reminder_primer_shown";
@@ -38,18 +38,19 @@ const HOUR = 10; // 10:00 local — awake, not intrusive
 /** Anyone whose profile isn't Female is tracking a partner's cycle. */
 export const isPartnerMode = (gender) => String(gender || "").trim().toLowerCase() !== "female";
 
+// [title, body, Jack's mood] — gentle, never alarming.
 const COPY = {
   self: {
-    before: ["Your period may start tomorrow 🌸", "Keep the essentials handy. Tap to see your cycle."],
-    due: ["Did your period start? 🩸", "Log it in one tap so your next prediction stays accurate."],
-    late: ["Still waiting? 🤍", "If it has started, log the date — a few days late is common."],
-    every: ["Add your period date 🩸", "Logging it keeps your cycle predictions accurate. Takes 5 seconds."],
+    before: ["Your period may start tomorrow 🌸", "Heat pad, snacks, comfy clothes — Jack's got your back. Tap to see your cycle.", "hi"],
+    due: ["Did your period start? 🩸", "Log it in one tap and your next prediction gets even sharper.", "think"],
+    late: ["Still waiting? 🤍", "A few days late is common. If it has started, log the date here.", "hi"],
+    every: ["Add your period date 🩸", "Takes 5 seconds and keeps your cycle predictions spot on.", "think"],
   },
   partner: {
-    before: ["Her period may start tomorrow 🌸", "A little extra care goes a long way. Tap to see her cycle."],
-    due: ["Did her period start? 🩸", "Log it in one tap so the next prediction stays accurate."],
-    late: ["Still waiting? 🤍", "If it has started, log the date — a few days late is common."],
-    every: ["Add her period date 🩸", "Logging it keeps her cycle predictions accurate. Takes 5 seconds."],
+    before: ["Her period may start tomorrow 🌸", "A little extra care goes a long way. Tap to see her cycle.", "hi"],
+    due: ["Did her period start? 🩸", "Log it in one tap so the next prediction stays accurate.", "think"],
+    late: ["Still waiting? 🤍", "A few days late is common. If it has started, log the date here.", "hi"],
+    every: ["Add her period date 🩸", "Takes 5 seconds and keeps her cycle predictions spot on.", "think"],
   },
 };
 
@@ -59,27 +60,7 @@ const at = (date, hour = HOUR) => {
   return d;
 };
 
-const ensureChannel = async () => {
-  if (Platform.OS !== "android") return;
-  await Notifications.setNotificationChannelAsync(CHANNEL, {
-    name: "Period reminders",
-    importance: Notifications.AndroidImportance.DEFAULT,
-    sound: "default",
-  });
-};
-
-export const cancelPeriodReminders = async () => {
-  try {
-    const all = await Notifications.getAllScheduledNotificationsAsync();
-    await Promise.all(
-      all
-        .filter((n) => n?.content?.data?.type === PERIOD_TYPE)
-        .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier).catch(() => {})),
-    );
-  } catch (e) {
-    Logger.log("[PeriodReminder] cancel failed:", String(e));
-  }
-};
+export const cancelPeriodReminders = () => cancelJack(PERIOD_TYPE);
 
 export const arePeriodRemindersOff = async () =>
   (await AsyncStorage.getItem(K_OFF).catch(() => null)) === "true";
@@ -94,7 +75,7 @@ export const hasNotificationPermission = async () => {
 
 /**
  * The reminder plan for a given state — pure, so it can be tested.
- * Returns [{ date, title, body }] in the future, soonest first.
+ * Returns [{ date, title, body, jack }] in the future, soonest first.
  */
 export const planPeriodReminders = (
   data,
@@ -102,8 +83,8 @@ export const planPeriodReminders = (
 ) => {
   const c = partner ? COPY.partner : COPY.self;
   const out = [];
-  const add = (date, title, body) => {
-    if (date.getTime() > now.getTime() + 60000) out.push({ date, title, body });
+  const add = (date, title, body, jack) => {
+    if (date.getTime() > now.getTime() + 60000) out.push({ date, title, body, jack });
   };
 
   if (data?.cycles?.length) {
@@ -156,16 +137,15 @@ export const syncPeriodReminders = async ({ gender } = {}) => {
       partner: isPartnerMode(gender),
     });
 
-    await ensureChannel();
     await cancelPeriodReminders();
     for (const r of plan) {
-      await Notifications.scheduleNotificationAsync({
-        content: { title: r.title, body: r.body, sound: "default", data: { type: PERIOD_TYPE } },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DATE,
-          date: r.date,
-          channelId: CHANNEL,
-        },
+      await scheduleJack({
+        type: PERIOD_TYPE,
+        channel: "period",
+        title: r.title,
+        body: r.body,
+        jack: r.jack,
+        when: { kind: "date", date: r.date },
       });
     }
     Logger.log(`[PeriodReminder] scheduled ${plan.length}`, plan.map((p) => p.date.toISOString()));

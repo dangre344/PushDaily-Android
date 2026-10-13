@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 import { Logger } from "./Logger";
+import { fillName, WATER_COPY } from "./notificationCopy";
 import { isPeriodSetUp } from "./periodTracker";
 
 // One "session"/glass = 250 ml.
@@ -12,6 +13,12 @@ const K_IDS = "water_notification_ids";
 const K_CONSUMED = "water_consumed"; // { date: "YYYY-MM-DD", glasses }
 const K_GOAL = "water_goal_glasses"; // remembered so the notification action can cap
 const K_PROMPT = "water_prompt_state"; // { opens, lastShown, declines }
+const K_VERSION = "water_reminders_version";
+const K_NAME = "water_reminder_name";
+// v2 = new copy + droplet tune. Older installs are rebuilt once on launch.
+const WATER_VERSION = "2";
+// A channel's sound is fixed when it's created, so the tune needs a new id.
+const WATER_CHANNEL = "water-reminders-v2";
 
 // Notification action buttons wired via a category:
 //   • LOG     → "Yes, I drank water" (increments the count from the shade)
@@ -57,25 +64,14 @@ const WATER_SLOTS = [
   { h: 21, m: 30 },
 ];
 
-const WATER_MESSAGES = [
-  { title: "💧 Hydration time!", body: "Grab a glass of water and refresh yourself." },
-  { title: "🚰 Stay hydrated", body: "A glass of water now keeps your energy up." },
-  { title: "💦 Water break!", body: "Your body needs water — take a sip now." },
-  { title: "🥤 Time to drink", body: "Sip some water to stay focused and sharp." },
-  { title: "🌊 Refuel with water", body: "Keep your plant (and you) happy — drink up!" },
-  { title: "💧 Don't forget water", body: "A glass now beats feeling sluggish later." },
-  { title: "🚰 Hydrate & thrive", body: "Drinking water boosts mood and metabolism." },
-  { title: "💦 Quick water check", body: "How about a refreshing glass of water?" },
-  { title: "🥤 Sip sip hooray", body: "Almost done for the day — finish strong!" },
-  { title: "🌙 Last call for water", body: "One more glass to hit today's goal." },
-];
+// Copy lives in constants/notificationCopy.js (WATER_COPY), one line per slot.
 
 export const ensureWaterChannel = async () => {
   if (Platform.OS === "android") {
-    await Notifications.setNotificationChannelAsync("water-reminders", {
+    await Notifications.setNotificationChannelAsync(WATER_CHANNEL, {
       name: "Water Reminders",
       importance: Notifications.AndroidImportance.HIGH,
-      sound: "default",
+      sound: "jack_drop.wav",
       vibrationPattern: [0, 200, 100, 200],
     });
   }
@@ -119,7 +115,7 @@ export const getGoalGlasses = async () => {
  * `goalGlasses` is stored so the notification action can cap the count.
  * Returns { ok, reason?, count? }.
  */
-export const startWaterTracking = async (goalGlasses = 8) => {
+export const startWaterTracking = async (goalGlasses = 8, name) => {
   const { status: existing } = await Notifications.getPermissionsAsync();
   let finalStatus = existing;
   if (existing !== "granted") {
@@ -133,6 +129,8 @@ export const startWaterTracking = async (goalGlasses = 8) => {
   await ensureWaterChannel();
   await registerWaterCategory();
   await AsyncStorage.setItem(K_GOAL, String(goalGlasses));
+  if (name) await AsyncStorage.setItem(K_NAME, String(name)).catch(() => {});
+  const who = name || (await AsyncStorage.getItem(K_NAME).catch(() => null));
 
   // Clear any previous water reminders first to avoid duplicates.
   await stopWaterTracking(false);
@@ -140,7 +138,7 @@ export const startWaterTracking = async (goalGlasses = 8) => {
   const ids = [];
   for (let i = 0; i < WATER_SLOTS.length; i++) {
     const slot = WATER_SLOTS[i];
-    const msg = WATER_MESSAGES[i % WATER_MESSAGES.length];
+    const msg = WATER_COPY[i % WATER_COPY.length];
     // A DAILY repeating notification's text is fixed at schedule time, so we
     // can't show the live count. Instead show the pace target for this slot —
     // i.e. roughly how many of the total you should have had by now.
@@ -148,13 +146,13 @@ export const startWaterTracking = async (goalGlasses = 8) => {
       1,
       Math.min(goalGlasses, Math.round(((i + 1) / WATER_SLOTS.length) * goalGlasses)),
     );
-    const body = `${msg.body}\n🎯 Goal: about ${target} of ${goalGlasses} glasses by now.`;
+    const body = `${msg.body}\n🎯 About ${target} of ${goalGlasses} glasses by now.`;
     try {
       const id = await Notifications.scheduleNotificationAsync({
         content: {
-          title: msg.title,
+          title: fillName(msg.title, who),
           body,
-          sound: "default",
+          sound: "jack_drop.wav",
           data: { type: "water" },
           // Attaches the "I drank a glass" action button.
           categoryIdentifier: WATER_CATEGORY,
@@ -163,7 +161,7 @@ export const startWaterTracking = async (goalGlasses = 8) => {
           type: Notifications.SchedulableTriggerInputTypes.DAILY,
           hour: slot.h,
           minute: slot.m,
-          channelId: "water-reminders",
+          channelId: WATER_CHANNEL,
         },
       });
       ids.push(id);
@@ -174,6 +172,7 @@ export const startWaterTracking = async (goalGlasses = 8) => {
 
   await AsyncStorage.setItem(K_IDS, JSON.stringify(ids));
   await AsyncStorage.setItem(K_ENABLED, "true");
+  await AsyncStorage.setItem(K_VERSION, WATER_VERSION);
   Logger.log(`[Water] scheduled ${ids.length} reminders`);
   return { ok: true, count: ids.length };
 };
@@ -211,6 +210,21 @@ export const stopWaterTracking = async (clearState = true) => {
 
 export const isWaterTrackingEnabled = async () =>
   (await AsyncStorage.getItem(K_ENABLED)) === "true";
+
+/**
+ * On launch: anyone with water reminders on from an older version gets them
+ * rebuilt once with the new copy and tune. Never asks for permission.
+ */
+export const upgradeWaterRemindersIfNeeded = async (name) => {
+  try {
+    if (!(await isWaterTrackingEnabled())) return;
+    if ((await AsyncStorage.getItem(K_VERSION)) === WATER_VERSION) return;
+    if ((await Notifications.getPermissionsAsync()).status !== "granted") return;
+    await startWaterTracking(await getGoalGlasses(), name);
+  } catch (e) {
+    Logger.log("[Water] reminder upgrade failed:", String(e));
+  }
+};
 
 // ─── "Set a water reminder?" nudge gating ─────────────────────────────────────
 // Decides whether to occasionally prompt the user. Rules:

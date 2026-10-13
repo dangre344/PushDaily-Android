@@ -51,6 +51,10 @@ import {
 } from "../constants/appLifecycle";
 import UserProvider from "../constants/UserContext";
 import {
+  listenForJackTaps,
+  openFromNotification,
+} from "../constants/jackNotifications";
+import {
   getGoalGlasses,
   logGlass,
   WATER_ACTION_DETAILS,
@@ -236,45 +240,38 @@ export default function RootLayout() {
           return;
         }
 
-        // Daily quiz reminder → open Home, then switch to the Quiz tab.
-        if (data?.type === "quiz") {
-          dismiss();
-          router.replace("/home");
-          setTimeout(() => switchToTab("Quiz"), 450);
-          return;
-        }
-
-        // Push-up leaderboard broadcast (sent from the Worker cron) → open the
-        // Event tab, which is what the notification is inviting them to.
-        if (data?.type === "pushup_event") {
-          dismiss();
-          router.replace("/home");
-          setTimeout(() => switchToTab("Event"), 450);
-          return;
-        }
-
-        // Period reminder → straight to the Periods tab, where logging is.
-        if (data?.type === "period") {
-          dismiss();
-          router.push("/profile/water?tab=period");
-          return;
-        }
-
-        // "Show me details" action OR tapping the notification body → open the
-        // Water Reminder screen.
-        if (resp.actionIdentifier === WATER_ACTION_DETAILS || data?.type === "water") {
+        // "Show me details" on a water reminder → the Water screen.
+        if (resp.actionIdentifier === WATER_ACTION_DETAILS) {
           dismiss();
           router.push("/profile/water");
-        } else if (data?.screen === "Home" || data?.type === "daily_update") {
+          return;
+        }
+
+        // Everything else: one routing table for every notification source
+        // (workout → Workouts, quiz → Quiz, pushup_event → Event, water,
+        // period, daily_update → Home). See constants/jackNotifications.js.
+        if (openFromNotification((data || {}) as Record<string, string>)) {
           dismiss();
-          router.replace("/home");
         }
       },
     );
 
+    // Taps on Jack's picture notifications (scheduled through Notifee) arrive
+    // through Notifee, not the listener above — same tracking, same routing.
+    const stopJackTaps = listenForJackTaps((data: Record<string, string>) => {
+      trackEvent("Notification Opened", {
+        type: data?.type || "other",
+        action: "tap",
+        source: "jack",
+        ...(data || {}),
+      });
+      openFromNotification(data);
+    });
+
     return () => {
       unsubscribeForeground();
       responseSub.remove();
+      stopJackTaps();
     };
   }, []);
 

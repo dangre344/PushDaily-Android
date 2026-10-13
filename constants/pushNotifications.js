@@ -1,6 +1,7 @@
 import { getMessaging } from "@react-native-firebase/messaging";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
+import { ensureJackChannels, showJackNow } from "./jackNotifications";
 import { Logger } from "./Logger";
 
 // Topic the backend broadcasts to (admin.messaging().send({ topic: ... })).
@@ -45,6 +46,9 @@ export async function ensureAndroidChannel() {
       sound: "default",
       vibrationPattern: [0, 250, 250, 250],
     });
+    // Jack's channels (incl. "jack-events", which the server's push-up
+    // broadcasts target so they play the cheer tune even when the app is closed).
+    await ensureJackChannels();
   }
 }
 
@@ -119,14 +123,17 @@ export function setupForegroundMessageHandler() {
     Logger.log("[Push] foreground message:", title, body);
     if (!title && !body) return;
 
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: title ?? "",
-        body: body ?? "",
-        sound: "default",
-        data: remoteMessage?.data ?? {},
-      },
-      trigger: null,
+    // Same look as Jack's local reminders: his face (the server can pick the
+    // mood via data.jack), the matching tune, and the same tap routing.
+    const data = remoteMessage?.data ?? {};
+    const isEvent = data.type === "pushup_event";
+    await showJackNow({
+      type: data.type,
+      channel: isEvent ? "event" : "general",
+      title: title ?? "",
+      body: body ?? "",
+      jack: data.jack || (isEvent ? "flex" : "hi"),
+      data,
     });
   });
 }

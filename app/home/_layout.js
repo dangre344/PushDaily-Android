@@ -18,6 +18,9 @@ import TabTourOverlay, {
 import { colors } from "../../constants/colors.js";
 import { trackScreen } from "../../constants/mixpanel.js";
 import { syncPeriodReminders } from "../../constants/periodReminders.js";
+import { scheduleQuizReminder } from "../../constants/quizNotifications.js";
+import { upgradeWaterRemindersIfNeeded } from "../../constants/waterReminder.js";
+import { upgradeWorkoutRemindersIfNeeded } from "../../constants/workoutReminders.js";
 import { useUser } from "../../constants/UserContext.js";
 import { registerTabNavigation } from "../../constants/tabNavigation.js";
 import { scaling } from "../../constants/useScaling";
@@ -233,6 +236,18 @@ export default function AppLayout() {
     if (!user) return;
     syncPeriodReminders({ gender: user.gender });
   }, [user?.gender]);
+
+  // Reminders scheduled by an older version (plain text, system sound) are
+  // rebuilt once with Jack's copy, picture and tunes. Each is a no-op when
+  // already current or when notifications aren't allowed — never prompts.
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      await upgradeWorkoutRemindersIfNeeded(user);
+      await upgradeWaterRemindersIfNeeded(user.name);
+      await scheduleQuizReminder();
+    })();
+  }, [user?._id]);
 
   // First app open only: walk the user through the tabs. Delayed slightly so
   // it doesn't collide with the tab bar's own entrance animation.

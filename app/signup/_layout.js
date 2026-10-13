@@ -26,6 +26,7 @@ import {
   applyInstallAttributionToProfile,
   getInstallAttribution,
 } from "../../constants/installAttribution.js";
+import { scheduleWorkoutReminders } from "../../constants/workoutReminders";
 import { registerUser, trackEvent } from "../../constants/mixpanel.js";
 
 import { useUser } from "@/constants/UserContext.js";
@@ -245,145 +246,14 @@ export default function Signup() {
     }
   };
 
-  const scheduleNotification = async (timeValue) => {
-    // Prefer the user's custom reminder time; fall back to the slot default.
-    const custom = form.getValues("reminderTime");
-    let notificationTime = null;
-    if (custom && /^\d{1,2}:\d{2}$/.test(custom)) {
-      const [hh, mm] = custom.split(":").map((n) => parseInt(n, 10));
-      if (Number.isFinite(hh) && Number.isFinite(mm)) {
-        notificationTime = { hour: hh, minute: mm };
-      }
-    }
-    if (!notificationTime) {
-      notificationTime = getNotificationTime(timeValue);
-    }
-    if (!notificationTime) return;
-
-    await Notifications.cancelAllScheduledNotificationsAsync();
-
-    const reminderMinute = notificationTime.minute - 15;
-    const reminderHour =
-      reminderMinute < 0 ? notificationTime.hour - 1 : notificationTime.hour;
-    const adjustedMinute =
-      reminderMinute < 0 ? reminderMinute + 60 : reminderMinute;
-
-    const allContent = [
-      {
-        reminder: {
-          title: "Sunday Prep 🌅",
-          body: "Get ready! Workout in 15 minutes. Start the week strong!",
-        },
-        start: {
-          title: "Start the Week Strong 💪",
-          body: "Sunday sets the tone. Let's crush it!",
-        },
-      },
-      {
-        reminder: {
-          title: "Monday Motivation 🔥",
-          body: "15 minutes to go! Time to make Monday count.",
-        },
-        start: {
-          title: "New Week, New Goals 🚀",
-          body: "Monday energy is unmatched. Let's go!",
-        },
-      },
-      {
-        reminder: {
-          title: "Keep It Going 💥",
-          body: "Workout in 15 minutes. You showed up yesterday — do it again!",
-        },
-        start: {
-          title: "Tuesday Grind 🏋️",
-          body: "Two days in. Consistency is building. Keep pushing!",
-        },
-      },
-      {
-        reminder: {
-          title: "Midweek Check-In ⚡",
-          body: "Halfway through the week! Workout starts in 15 minutes.",
-        },
-        start: {
-          title: "Hump Day Hustle 💦",
-          body: "Wednesday warrior. You're halfway there — finish strong!",
-        },
-      },
-      {
-        reminder: {
-          title: "Almost Friday 🎯",
-          body: "One more push! Your workout begins in 15 minutes.",
-        },
-        start: {
-          title: "Thursday Power 🏃",
-          body: "Don't stop now — the weekend is almost here. Give it everything!",
-        },
-      },
-      {
-        reminder: {
-          title: "Friday Finisher 🙌",
-          body: "End the week right! Workout starts in 15 minutes.",
-        },
-        start: {
-          title: "Finish the Week Strong 🔥",
-          body: "Friday energy hits different. Make this one count!",
-        },
-      },
-      {
-        reminder: {
-          title: "Weekend Warrior 🏆",
-          body: "No rest for the committed! Workout in 15 minutes.",
-        },
-        start: {
-          title: "Saturday Sweat Session 💪",
-          body: "Champions train on weekends too. Let's get it!",
-        },
-      },
-    ];
-
-    // Schedule one WEEKLY notification per day — 7 reminders + 7 starts = 14 total
-    for (let weekday = 0; weekday <= 6; weekday++) {
-      const content = allContent[weekday];
-
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: content.reminder.title,
-          body: content.reminder.body,
-          sound: true,
-          vibrate: [0, 250, 250, 250],
-          autoDismiss: true,
-          data: { screen: "Home" },
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-          weekday: weekday + 1, // expo-notifications: 1 = Sunday, 7 = Saturday
-          hour: reminderHour,
-          minute: adjustedMinute,
-        },
-      });
-
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: content.start.title,
-          body: content.start.body,
-          sound: true,
-          vibrate: [0, 250, 250, 250],
-          autoDismiss: true,
-          data: { screen: "Home" },
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-          weekday: weekday + 1,
-          hour: notificationTime.hour,
-          minute: notificationTime.minute,
-        },
-      });
-    }
-
-    Logger.log(
-      "[Notifications] Scheduled 14 weekly notifications (7 days × 2)",
-    );
-  };
+  // 14 weekly reminders (15 min before + at the workout time) in Jack's voice.
+  // Replaces only workout reminders — water, quiz and period stay scheduled.
+  const scheduleNotification = async (timeValue) =>
+    scheduleWorkoutReminders({
+      time: timeValue,
+      reminderTime: form.getValues("reminderTime"),
+      name: form.getValues("name"),
+    });
 
   // Runs when validation fails inside handleSubmit. Reset the guard so the
   // user can tap "Finish" again instead of being permanently locked out.

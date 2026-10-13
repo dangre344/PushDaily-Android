@@ -1,38 +1,23 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
-import { Platform } from "react-native";
+
+import { cancelJack, scheduleJack } from "./jackNotifications";
 import { Logger } from "./Logger";
+import { QUIZ_COPY } from "./notificationCopy";
 
 // ─── Daily "your quiz is ready" reminder ──────────────────────────────────────
-// Scheduled once (and re-scheduled if the messages change) at 10:00 every day.
-// We never *request* permission here — that would nag; we only schedule when
-// the user has already allowed notifications (signup / water reminder flow).
+// 10:00 every day, a different line (and Jack mood) for each weekday — seven
+// weekly notifications rather than one daily one, so it never reads the same
+// two days running. We never *request* permission here; we only schedule when
+// it's already been granted (signup / water / period flows).
 
-const K_SCHEDULED = "quiz_reminder_v1";
-const CHANNEL = "quiz-reminders";
+// v2 = Jack's copy + picture + tune. Bumping the key makes installs that
+// scheduled the old single reminder replace it once.
+const K_SCHEDULED = "quiz_reminder_v2";
 export const QUIZ_NOTIFICATION_TYPE = "quiz";
+const HOUR = 10;
 
-const MESSAGES = [
-  {
-    title: "🧠 Your daily quiz is ready!",
-    body: "10 fresh fitness questions are waiting. Can you score 5/5 today?",
-  },
-];
-
-const ensureChannel = async () => {
-  if (Platform.OS === "android") {
-    await Notifications.setNotificationChannelAsync(CHANNEL, {
-      name: "Quiz Reminders",
-      importance: Notifications.AndroidImportance.DEFAULT,
-      sound: "default",
-    });
-  }
-};
-
-/**
- * Schedules the repeating daily quiz reminder (idempotent — safe to call on
- * every Quiz screen focus).
- */
+/** Idempotent — safe to call on every Quiz screen focus. */
 export const scheduleQuizReminder = async () => {
   try {
     if ((await AsyncStorage.getItem(K_SCHEDULED)) === "true") return "already";
@@ -40,26 +25,18 @@ export const scheduleQuizReminder = async () => {
     const { status } = await Notifications.getPermissionsAsync();
     if (status !== "granted") return "no-permission";
 
-    await ensureChannel();
-
-    const msg = MESSAGES[0];
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: msg.title,
-        body: msg.body,
-        sound: "default",
-        data: { type: QUIZ_NOTIFICATION_TYPE },
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DAILY,
-        hour: 10,
-        minute: 0,
-        channelId: CHANNEL,
-      },
-    });
+    await cancelJack(QUIZ_NOTIFICATION_TYPE); // includes the old v1 reminder
+    for (let day = 0; day < 7; day++) {
+      await scheduleJack({
+        type: QUIZ_NOTIFICATION_TYPE,
+        channel: "quiz",
+        ...QUIZ_COPY[day],
+        when: { kind: "weekly", weekday: day + 1, hour: HOUR, minute: 0 },
+      });
+    }
 
     await AsyncStorage.setItem(K_SCHEDULED, "true");
-    Logger.log("[Quiz] daily reminder scheduled");
+    Logger.log("[Quiz] weekly reminders scheduled");
     return "scheduled";
   } catch (e) {
     Logger.log("[Quiz] reminder schedule failed:", String(e));
@@ -69,12 +46,7 @@ export const scheduleQuizReminder = async () => {
 
 export const cancelQuizReminder = async () => {
   try {
-    const all = await Notifications.getAllScheduledNotificationsAsync();
-    for (const n of all) {
-      if (n?.content?.data?.type === QUIZ_NOTIFICATION_TYPE) {
-        await Notifications.cancelScheduledNotificationAsync(n.identifier);
-      }
-    }
+    await cancelJack(QUIZ_NOTIFICATION_TYPE);
     await AsyncStorage.removeItem(K_SCHEDULED);
   } catch (e) {
     Logger.log("[Quiz] reminder cancel failed:", String(e));
