@@ -57,7 +57,7 @@ export default function StatsModal({ visible, setVisible }) {
         </View>
 
         <View style={{ flex: 1 }}>
-          <StatsScreen onPickBodyPart={openBodyPart} />
+          <StatsScreen onPickBodyPart={openBodyPart} hideHeader />
         </View>
       </SafeAreaView>
     </Modal>

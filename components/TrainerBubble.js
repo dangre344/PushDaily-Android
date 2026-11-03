@@ -1,11 +1,9 @@
 import { Image } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
 import { usePathname, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
-  Easing,
   PanResponder,
   StyleSheet,
   Text,
@@ -21,9 +19,10 @@ import { getChatContext } from "../constants/chatContext";
 import { trackEvent } from "../constants/mixpanel";
 import { TRAINER_NAME } from "../constants/trainerChat";
 import { scaling } from "../constants/useScaling";
+import { colors } from "../constants/colors";
 
 const { moderateScale: ms } = scaling();
-const TRAINER_AVATAR = require("../assets/images/trainer.png");
+const TRAINER_AVATAR = require("../assets/images/trainer_avatar.webp");
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 
@@ -33,9 +32,8 @@ const MARGIN = ms(10);
 const MIN_Y = ms(70);
 const MAX_Y = SCREEN_H - ms(190);
 
-// Cycled inside the bubble so it advertises what Jack can actually help with.
-const HINTS = ["Diet", "Workouts", "Fat loss", "Protein", "Recovery"];
-const HINT_MS = 2200;
+// Shown in a small pill under the circle, so the photo itself stays clear.
+const ROLE = "Coach";
 
 const HIDDEN_ON = [
   "/trainer",
@@ -48,7 +46,7 @@ const HIDDEN_ON = [
 
 /**
  * Floating chat bubble shown across the app. Draggable, snaps to the nearest
- * edge, and cycles a hint so users learn what to ask without extra chrome.
+ * edge, with a small name/role pill under the photo.
  */
 export default function TrainerBubble() {
   const router = useRouter();
@@ -61,9 +59,6 @@ export default function TrainerBubble() {
   const dragged = useRef(false);
   // PanResponder is memoized once; this keeps it pointing at the latest open().
   const openRef = useRef(null);
-
-  const [hint, setHint] = useState(0);
-  const hintFade = useRef(new Animated.Value(1)).current;
 
   // Congratulation message + which side of the screen the bubble is on, so the
   // speech bubble always opens toward the middle instead of off-screen.
@@ -97,50 +92,6 @@ export default function TrainerBubble() {
       }),
     [presence],
   );
-
-  // Cross-fade the rotating hint. Paused while hidden so it costs nothing.
-  useEffect(() => {
-    if (hidden) return;
-    const id = setInterval(() => {
-      Animated.timing(hintFade, {
-        toValue: 0,
-        duration: 260,
-        useNativeDriver: true,
-      }).start(() => {
-        setHint((i) => (i + 1) % HINTS.length);
-        Animated.timing(hintFade, {
-          toValue: 1,
-          duration: 260,
-          useNativeDriver: true,
-        }).start();
-      });
-    }, HINT_MS);
-    return () => clearInterval(id);
-  }, [hidden, hintFade]);
-
-  // Slow breathing so it reads as live without demanding attention.
-  const breathe = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    if (hidden) return;
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(breathe, {
-          toValue: 1,
-          duration: 1600,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(breathe, {
-          toValue: 0,
-          duration: 1600,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [hidden, breathe]);
 
   // Any screen can call sayFromJack(...) after a workout / quiz / exercise.
   useEffect(() => {
@@ -250,7 +201,7 @@ export default function TrainerBubble() {
   return (
     // Outer node is JS-driven ONLY (PanResponder requires it). Mixing a
     // useNativeDriver:true animation into this same transform moves the node
-    // to native and every drag then throws — the breathe lives one level down.
+    // to native and every drag then throws.
     <Animated.View
       {...panResponder.panHandlers}
       pointerEvents={scrolling ? "none" : "auto"}
@@ -295,48 +246,22 @@ export default function TrainerBubble() {
         </Animated.View>
       ) : null}
 
-      <Animated.View
-        style={[
-          styles.bubble,
-          {
-            transform: [
-              {
-                translateY: breathe.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0, -3],
-                }),
-              },
-            ],
-          },
-        ]}
-        pointerEvents="none"
-      >
+      <View style={styles.bubble} pointerEvents="none">
         <Image
           source={TRAINER_AVATAR}
           style={styles.avatar}
           contentFit="cover"
         />
 
-        {/* Dark gradient so the name + hint stay legible over any photo. */}
-        <LinearGradient
-          colors={["transparent", "rgba(0,0,0,0.35)", "rgba(0,0,0,0.82)"]}
-          style={styles.scrim}
-        />
-
-        <View style={styles.caption}>
-          <Text style={styles.name} numberOfLines={1}>
-            {TRAINER_NAME}
-          </Text>
-          <Animated.Text
-            style={[styles.hint, { opacity: hintFade }]}
-            numberOfLines={1}
-          >
-            {HINTS[hint]}
-          </Animated.Text>
-        </View>
-
         <View style={styles.onlineDot} />
-      </Animated.View>
+      </View>
+
+      {/* Name + role under the circle — nothing printed over Jack's face. */}
+      <View style={styles.caption} pointerEvents="none">
+        <Text style={styles.captionText} numberOfLines={1}>
+          {TRAINER_NAME} · {ROLE}
+        </Text>
+      </View>
     </Animated.View>
   );
 }
@@ -369,31 +294,27 @@ const styles = StyleSheet.create({
   },
   avatar: { width: "100%", height: "100%" },
 
-  scrim: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: "62%",
-  },
+  // Just below the circle (never over the photo); drawn outside the 52pt
+  // wrapper, which has no elevation so Android doesn't clip it.
   caption: {
     position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: ms(4),
+    top: SIZE + ms(3),
+    left: -ms(20),
+    right: -ms(20),
     alignItems: "center",
   },
-  name: {
-    fontFamily: "OpenSans_800ExtraBold",
+  captionText: {
+    fontFamily: "OpenSans_700Bold",
     fontSize: ms(8.5),
     lineHeight: ms(11),
     color: "#FFFFFF",
-  },
-  hint: {
-    fontFamily: "OpenSans_600SemiBold",
-    fontSize: ms(7),
-    lineHeight: ms(9),
-    color: "#FFD9C7",
+    backgroundColor: colors.primary,
+    borderRadius: 999,
+    overflow: "hidden",
+    paddingHorizontal: ms(6),
+    paddingVertical: ms(1.5),
+    borderWidth: 1.5,
+    borderColor: "#FFFFFF",
   },
 
   msg: {

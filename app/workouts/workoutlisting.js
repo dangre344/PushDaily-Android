@@ -7,7 +7,6 @@ import { useTranslation } from "react-i18next";
 import {
   Animated,
   Easing,
-  FlatList,
   Image,
   Modal,
   Pressable,
@@ -47,20 +46,12 @@ const MOTIVATIONS = [
 const MOTIVATION_MS = 6500; // time each line stays on screen
 const MOTIVATION_GAP_MS = 350; // empty beat between lines
 
-export default function WorkoutListingScreen({ route }) {
-  const navigation = useNavigation();
-  const router = useRouter();
-  const { t } = useTranslation();
-
-  const [previewImage, setPreviewImage] = useState(null);
-  const [previewTitle, setPreviewTitle] = useState("");
-
-  const imagePreviewOpacity = useRef(new Animated.Value(0)).current;
-  const imagePreviewScale = useRef(new Animated.Value(0.85)).current;
-
-  const scrollY = useRef(new Animated.Value(0)).current;
-
-  // ── Rotating motivation line above Start ──
+/**
+ * Jack's rotating nudge + the pulsing Start button. Its own component so the
+ * line changing every few seconds re-renders only this, not the whole screen
+ * and its list (which caused hitches mid-scroll).
+ */
+function CoachStart({ label, onStart }) {
   const [motivationIndex, setMotivationIndex] = useState(0);
   const motivationOpacity = useRef(new Animated.Value(0)).current;
   const motivationY = useRef(new Animated.Value(8)).current;
@@ -144,8 +135,88 @@ export default function WorkoutListingScreen({ route }) {
     };
   }, []);
 
+  return (
+    <>
+      {/* Jack + a speech bubble, nudging towards Start. */}
+      <View style={styles.coachRow}>
+        {/* Jack dims and settles while the line swaps, and the new pose
+              cross-dissolves in, so the change never pops. */}
+        <Animated.View
+          style={{
+            opacity: motivationOpacity.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0.45, 1],
+            }),
+            transform: [
+              {
+                translateY: startPulse.interpolate({
+                  inputRange: [1, 1.035],
+                  outputRange: [0, -3],
+                }),
+              },
+              {
+                scale: motivationOpacity.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.92, 1],
+                }),
+              },
+            ],
+          }}
+        >
+          <ExpoImage
+            source={EXPRESSION_IMAGES[MOTIVATIONS[motivationIndex].expression]}
+            style={styles.coachMascot}
+            contentFit="contain"
+            transition={{ duration: 420, effect: "cross-dissolve" }}
+          />
+        </Animated.View>
+
+        <View style={styles.coachBubble}>
+          <View style={styles.coachTail} />
+          <Animated.Text
+            style={[
+              styles.motivationText,
+              {
+                opacity: motivationOpacity,
+                transform: [{ translateY: motivationY }],
+              },
+            ]}
+            numberOfLines={2}
+          >
+            {MOTIVATIONS[motivationIndex].text}
+          </Animated.Text>
+        </View>
+      </View>
+
+      <Animated.View style={{ transform: [{ scale: startPulse }] }}>
+        <Button title={label} style={styles.startButton} onPress={onStart} />
+      </Animated.View>
+    </>
+  );
+}
+
+export default function WorkoutListingScreen({ route }) {
+  const navigation = useNavigation();
+  const router = useRouter();
+  const { t } = useTranslation();
+
+  const [previewImage, setPreviewImage] = useState(null);
+  const [previewTitle, setPreviewTitle] = useState("");
+
+  const imagePreviewOpacity = useRef(new Animated.Value(0)).current;
+  const imagePreviewScale = useRef(new Animated.Value(0.85)).current;
+
+  const scrollY = useRef(new Animated.Value(0)).current;
+
   const { selectedBodyPart } = useLocalSearchParams();
-  const bodyPartObj = selectedBodyPart ? JSON.parse(selectedBodyPart) : null;
+  // The param can arrive from a deep link, so it may not be valid JSON; a null
+  // here lands on the "Workout not found" state below.
+  let bodyPartObj = null;
+  try {
+    bodyPartObj = selectedBodyPart ? JSON.parse(selectedBodyPart) : null;
+  } catch (e) {
+    Logger.warn("[WorkoutListing] Bad selectedBodyPart param:", e?.message);
+  }
 
   Logger.log("Received bodyPart in WorkoutListingScreen:", selectedBodyPart);
 
@@ -187,9 +258,22 @@ export default function WorkoutListingScreen({ route }) {
     return sum + reps;
   }, 0);
 
-  const headerHeight = scrollY.interpolate({
+  // Everything below runs on the native driver (transform/opacity only), so
+  // scrolling never waits on the JS thread. The header used to shrink by
+  // animating its height — a layout change every frame, JS-driven. Now it keeps
+  // its height and slides up by the same distance, leaving the same
+  // HEADER_MIN_HEIGHT strip on screen.
+  const headerTranslateY = scrollY.interpolate({
     inputRange: [0, HEADER_SCROLL_DISTANCE],
-    outputRange: [HEADER_MAX_HEIGHT, HEADER_MIN_HEIGHT],
+    outputRange: [0, -HEADER_SCROLL_DISTANCE],
+    extrapolate: "clamp",
+  });
+
+  // The top back button rides against the slide, so it stays put until the
+  // compact header (with its own back button) fades in.
+  const overlayTranslateY = scrollY.interpolate({
+    inputRange: [0, HEADER_SCROLL_DISTANCE],
+    outputRange: [0, HEADER_SCROLL_DISTANCE],
     extrapolate: "clamp",
   });
 
@@ -205,9 +289,10 @@ export default function WorkoutListingScreen({ route }) {
     extrapolate: "clamp",
   });
 
+  // Gentle parallax: the photo moves up a little slower than the header.
   const imageTranslateY = scrollY.interpolate({
     inputRange: [0, HEADER_SCROLL_DISTANCE],
-    outputRange: [0, -45],
+    outputRange: [0, HEADER_SCROLL_DISTANCE * 0.35],
     extrapolate: "clamp",
   });
 
@@ -232,12 +317,6 @@ export default function WorkoutListingScreen({ route }) {
   const fixedHeaderTranslateY = scrollY.interpolate({
     inputRange: [HEADER_SCROLL_DISTANCE - 60, HEADER_SCROLL_DISTANCE],
     outputRange: [-12, 0],
-    extrapolate: "clamp",
-  });
-
-  const listTranslateY = scrollY.interpolate({
-    inputRange: [0, HEADER_SCROLL_DISTANCE],
-    outputRange: [0, -8],
     extrapolate: "clamp",
   });
 
@@ -306,36 +385,20 @@ export default function WorkoutListingScreen({ route }) {
     });
   };
 
-  const renderWorkoutItem = ({ item, index }) => {
-    const itemOpacity = scrollY.interpolate({
-      inputRange: [
-        0,
-        HEADER_SCROLL_DISTANCE + index * 8,
-        HEADER_SCROLL_DISTANCE + index * 8 + 80,
-      ],
-      outputRange: [1, 1, 1],
-      extrapolate: "clamp",
-    });
-
+  // Rows are plain views: no per-row scroll animation to recompute every
+  // frame. expo-image decodes each photo at thumbnail size, not full size.
+  const renderWorkoutItem = ({ item }) => {
     return (
       <TouchableOpacity
         activeOpacity={0.86}
         onPress={() => openImagePreview(item?.photo, item?.name)}
       >
-        <Animated.View
-          style={[
-            styles.workoutItem,
-            {
-              opacity: itemOpacity,
-              transform: [{ translateY: listTranslateY }],
-            },
-          ]}
-        >
+        <View style={styles.workoutItem}>
           <View style={styles.workoutImageWrapper}>
-            <Image
+            <ExpoImage
               style={styles.workoutImage}
               source={item?.photo}
-              resizeMode="contain"
+              contentFit="contain"
             />
           </View>
 
@@ -373,12 +436,14 @@ export default function WorkoutListingScreen({ route }) {
             color="#C8CDD6"
             style={styles.chevron}
           />
-        </Animated.View>
+        </View>
       </TouchableOpacity>
     );
   };
 
-  const ListHeader = () => (
+  // An element, not a component defined in render: a new component type on
+  // every render made the list unmount and remount its header each time.
+  const listHeader = (
     <View style={styles.listHeaderCard}>
       <View>
         <Text style={styles.totalWorkoutTitle}>{`Total Workouts`}</Text>
@@ -442,7 +507,15 @@ export default function WorkoutListingScreen({ route }) {
         </SafeAreaView>
       </Animated.View>
 
-      <Animated.View style={[styles.header, { height: headerHeight }]}>
+      <Animated.View
+        style={[
+          styles.header,
+          {
+            height: HEADER_MAX_HEIGHT,
+            transform: [{ translateY: headerTranslateY }],
+          },
+        ]}
+      >
         <Animated.Image
           source={workouts?.img}
           style={[
@@ -459,19 +532,26 @@ export default function WorkoutListingScreen({ route }) {
 
         <View style={styles.headerGradient} />
 
-        <SafeAreaView style={styles.imageOverlay} edges={["top"]}>
-          <StatusBar
-            barStyle="dark-content"
-            backgroundColor={colors.background}
-          />
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.imageBackButton}
-            activeOpacity={0.75}
-          >
-            <Ionicons name="arrow-back" size={23} color="#fff" />
-          </TouchableOpacity>
-        </SafeAreaView>
+        <Animated.View
+          style={[
+            styles.imageOverlay,
+            { transform: [{ translateY: overlayTranslateY }] },
+          ]}
+        >
+          <SafeAreaView edges={["top"]}>
+            <StatusBar
+              barStyle="dark-content"
+              backgroundColor={colors.background}
+            />
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={styles.imageBackButton}
+              activeOpacity={0.75}
+            >
+              <Ionicons name="arrow-back" size={23} color="#fff" />
+            </TouchableOpacity>
+          </SafeAreaView>
+        </Animated.View>
 
         <Animated.View
           style={[
@@ -501,82 +581,26 @@ export default function WorkoutListingScreen({ route }) {
         </Animated.View>
       </Animated.View>
 
-      <FlatList
+      <Animated.FlatList
         data={workouts.workoutList}
         renderItem={renderWorkoutItem}
-        ListHeaderComponent={ListHeader}
+        ListHeaderComponent={listHeader}
         keyExtractor={(item, index) => index.toString()}
         contentContainerStyle={[
           styles.listContent,
           { paddingTop: HEADER_MAX_HEIGHT },
         ]}
+        // Native driver: the header follows the scroll on the UI thread.
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: false },
+          { useNativeDriver: true },
         )}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
       />
 
       <View style={styles.bottomBar}>
-        {/* Jack + a speech bubble, nudging towards Start. */}
-        <View style={styles.coachRow}>
-          {/* Jack dims and settles while the line swaps, and the new pose
-              cross-dissolves in, so the change never pops. */}
-          <Animated.View
-            style={{
-              opacity: motivationOpacity.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0.45, 1],
-              }),
-              transform: [
-                {
-                  translateY: startPulse.interpolate({
-                    inputRange: [1, 1.035],
-                    outputRange: [0, -3],
-                  }),
-                },
-                {
-                  scale: motivationOpacity.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0.92, 1],
-                  }),
-                },
-              ],
-            }}
-          >
-            <ExpoImage
-              source={EXPRESSION_IMAGES[MOTIVATIONS[motivationIndex].expression]}
-              style={styles.coachMascot}
-              contentFit="contain"
-              transition={{ duration: 420, effect: "cross-dissolve" }}
-            />
-          </Animated.View>
-
-          <View style={styles.coachBubble}>
-            <View style={styles.coachTail} />
-            <Animated.Text
-              style={[
-                styles.motivationText,
-                {
-                  opacity: motivationOpacity,
-                  transform: [{ translateY: motivationY }],
-                },
-              ]}
-              numberOfLines={2}
-            >
-              {MOTIVATIONS[motivationIndex].text}
-            </Animated.Text>
-          </View>
-        </View>
-
-        <Animated.View style={{ transform: [{ scale: startPulse }] }}>
-          <Button
-            title={t("start")}
-            style={styles.startButton}
-            onPress={handleStartWorkout}
-          />
-        </Animated.View>
+        <CoachStart label={t("start")} onStart={handleStartWorkout} />
 
         <View style={styles.bannerContainer}>
           <BannerAd
@@ -586,7 +610,7 @@ export default function WorkoutListingScreen({ route }) {
               requestNonPersonalizedAdsOnly: false,
             }}
             onAdLoaded={() => {
-              console.log("[AdMob] Banner loaded");
+              Logger.log("[AdMob] Banner loaded");
             }}
             onAdFailedToLoad={(error) => {
               console.warn("[AdMob] Banner failed:", error);

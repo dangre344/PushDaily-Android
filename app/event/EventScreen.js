@@ -17,14 +17,8 @@ import {
 } from "react-native";
 import Share from "react-native-share";
 import { RewardedAdManager } from "../../ads/Admobmanager";
-import {
-  bubbleScrollFade,
-  leaderboardNudge,
-  sayOncePerSession,
-} from "../../constants/bubbleMessage";
-import { Image } from "expo-image";
+import { bubbleScrollFade } from "../../constants/bubbleMessage";
 
-import BrandGradient from "../../components/ui/BrandGradient";
 import { colors } from "../../constants/colors";
 import {
   getLeaderboard,
@@ -34,7 +28,6 @@ import {
 import { trackScreen } from "../../constants/mixpanel";
 import { useUser } from "../../constants/UserContext";
 import { scaling } from "../../constants/useScaling";
-import { EXPRESSION_IMAGES } from "../../constants/widgetPromo";
 
 const PLAY_STORE_URL =
   "https://play.google.com/store/apps/details?id=com.pushdaily.homeworkout.fit";
@@ -148,7 +141,8 @@ export default function EventScreen() {
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      const b = await getLeaderboard(user?._id, user?.name);
+      // Pull-to-refresh always asks the server, skipping the cache.
+      const b = await getLeaderboard(user?._id, user?.name, { force: true });
       setBoard(b);
     } catch {}
     setRefreshing(false);
@@ -194,16 +188,6 @@ export default function EventScreen() {
         .then((b) => {
           if (!active) return;
           setBoard(b);
-
-          // Once the real data is in, Jack reacts to who is actually leading.
-          const top = b?.top?.[0];
-          const lead = top?.isUser
-            ? null // don't tell someone to beat themselves
-            : (top?.name || "").trim().split(" ")[0];
-          setTimeout(
-            () => sayOncePerSession("leaderboard", leaderboardNudge(lead)),
-            900,
-          );
         })
         .finally(() => active && setLoadingBoard(false));
       // Warm up the rewarded ad for extra-session unlocks.
@@ -232,48 +216,14 @@ export default function EventScreen() {
   const top5 = board.top.slice(0, 5);
   const podium = [3, 1, 0, 2, 4].map((i) => top5[i]).filter(Boolean);
 
-  // ── Rotating trash-talk above the Start button (only with records) ──
+  // ── One steady line above Start (it used to rotate every 2.6 s) ──
   const leader = board.top[0];
   const leaderName = leader ? (leader.name || "").trim().split(" ")[0] : "";
-  const taunts = leader?.isUser
-    ? [
-        "You're #1 — defend your crown 👑",
-        "Nobody's caught you yet 🔥",
-        "Keep the throne, champ 💪",
-        "Stay untouchable 😎",
-      ]
-    : [
-        `Are you sure you can beat ${leaderName}? 😤`,
-        `Let's show ${leaderName} who's the real gangsta 😎`,
-        `Let's beat ${leaderName}! 🔥`,
-        `Show them who's worth it 💪`,
-        `Hattkeee!!! move aside ${leaderName} 😏`,
-      ];
-
-  const tauntAnim = useRef(new Animated.Value(1)).current;
-  const [tauntIndex, setTauntIndex] = useState(0);
-  const showTaunts = board.top.length > 0;
-
-  useEffect(() => {
-    if (!showTaunts) return;
-    setTauntIndex(0);
-    const id = setInterval(() => {
-      Animated.timing(tauntAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }).start(() => {
-        setTauntIndex((i) => (i + 1) % taunts.length);
-        Animated.timing(tauntAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }).start();
-      });
-    }, 2600);
-    return () => clearInterval(id);
-    // Restart the cycle when the leader (and thus the taunt set) changes.
-  }, [showTaunts, leaderName, leader?.isUser]);
+  const motivation = !leader
+    ? null
+    : leader.isUser
+      ? "You're #1 — defend your crown 👑"
+      : `Beat ${leaderName || "the leader"}'s ${leader.pushups} push-ups 💪`;
 
   const waitForAd = async (mgr, timeoutMs = 12000) => {
     if (mgr.isLoaded()) return true;
@@ -347,13 +297,12 @@ export default function EventScreen() {
           ],
         }}
       >
-        <BrandGradient style={styles.hero}>
+        <View style={styles.hero}>
           <View style={styles.heroRow}>
-            <Image source={EXPRESSION_IMAGES.flex} style={styles.heroMascot} contentFit="contain" />
             <View style={{ flex: 1 }}>
               <Text style={styles.heroTitle}>Push-Up Challenge</Text>
               <View style={styles.resetPill}>
-                <Ionicons name="time-outline" size={ms(11)} color="#FFFFFF" />
+                <Ionicons name="time-outline" size={ms(12)} color={colors.textLight} />
                 <Text style={styles.resetText}>Resets in {resetLabel}</Text>
               </View>
             </View>
@@ -363,7 +312,7 @@ export default function EventScreen() {
               activeOpacity={0.85}
               accessibilityLabel="Share your score"
             >
-              <Ionicons name="share-social" size={ms(17)} color="#FFFFFF" />
+              <Ionicons name="share-social-outline" size={ms(18)} color={colors.primary} />
             </TouchableOpacity>
           </View>
 
@@ -384,7 +333,7 @@ export default function EventScreen() {
               <Text style={styles.meLabel}>All-time</Text>
             </View>
           </View>
-        </BrandGradient>
+        </View>
       </Animated.View>
 
       <ScrollView
@@ -404,7 +353,7 @@ export default function EventScreen() {
           <Text style={styles.sectionLabel}>Today&apos;s top 5</Text>
           <View style={styles.livePill}>
             <View style={styles.liveDot} />
-            <Text style={styles.liveText}>LIVE</Text>
+            <Text style={styles.liveText}>Live</Text>
           </View>
         </View>
 
@@ -418,7 +367,6 @@ export default function EventScreen() {
             </View>
           ) : podium.length === 0 ? (
             <View style={styles.emptyChart}>
-              <Image source={EXPRESSION_IMAGES.wink} style={styles.emptyMascot} contentFit="contain" />
               <Text style={styles.emptyTitle}>Be #1 today</Text>
               <Text style={styles.emptyText}>No one has logged yet. The top spot is yours.</Text>
             </View>
@@ -481,13 +429,11 @@ export default function EventScreen() {
           },
         ]}
       >
-        {showTaunts && (
-          <Animated.View style={[styles.tauntPill, { opacity: tauntAnim }]}>
-            <Text style={styles.tauntText} numberOfLines={1}>
-              {taunts[tauntIndex]}
-            </Text>
-          </Animated.View>
-        )}
+        {motivation ? (
+          <Text style={styles.tauntText} numberOfLines={1}>
+            {motivation}
+          </Text>
+        ) : null}
 
         <TouchableOpacity
           style={styles.startBtn}
@@ -502,6 +448,10 @@ export default function EventScreen() {
   );
 }
 
+// Soft brand tint for hero cards (same as the home plan card).
+const TINT = "#FFF5F0";
+const TINT_BORDER = "#FFE0D3";
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#F7F8FA" },
 
@@ -512,6 +462,7 @@ const styles = StyleSheet.create({
     paddingBottom: ms(16),
     borderBottomLeftRadius: ms(26),
     borderBottomRightRadius: ms(26),
+    backgroundColor: TINT,
   },
   heroRow: {
     flexDirection: "row",
@@ -522,7 +473,7 @@ const styles = StyleSheet.create({
   heroTitle: {
     fontFamily: "OpenSans_800ExtraBold",
     fontSize: ms(17),
-    color: "#FFFFFF",
+    color: colors.text,
     letterSpacing: -0.2,
   },
   resetPill: {
@@ -530,24 +481,24 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: ms(4),
-    marginTop: ms(4),
-    backgroundColor: "rgba(0,0,0,0.14)",
+    marginTop: ms(2),
+    backgroundColor: "transparent",
     borderRadius: 999,
-    paddingHorizontal: ms(8),
-    paddingVertical: ms(3),
+    paddingHorizontal: 0,
+    paddingVertical: 0,
   },
   resetText: {
-    fontFamily: "OpenSans_700Bold",
-    fontSize: ms(10.5),
-    color: "#FFFFFF",
+    fontFamily: "OpenSans_500Medium",
+    fontSize: ms(12),
+    color: colors.textLight,
   },
   shareBtn: {
     width: ms(38),
     height: ms(38),
     borderRadius: ms(19),
-    backgroundColor: "rgba(255,255,255,0.22)",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.32)",
+    borderColor: TINT_BORDER,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -555,24 +506,24 @@ const styles = StyleSheet.create({
   meCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.16)",
+    backgroundColor: "#FFFFFF",
     borderRadius: ms(16),
     paddingVertical: ms(10),
     marginTop: ms(12),
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.25)",
+    borderColor: TINT_BORDER,
   },
   meStat: { flex: 1, alignItems: "center" },
-  meDivider: { width: 1, height: ms(28), backgroundColor: "rgba(255,255,255,0.25)" },
+  meDivider: { width: 1, height: ms(28), backgroundColor: TINT_BORDER },
   meValue: {
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     fontSize: ms(19),
-    color: "#FFFFFF",
+    color: colors.text,
   },
   meLabel: {
     fontFamily: "OpenSans_600SemiBold",
     fontSize: ms(10.5),
-    color: "rgba(255,255,255,0.85)",
+    color: colors.textLight,
     marginTop: 1,
   },
 
@@ -590,7 +541,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: ms(2),
   },
   sectionLabel: {
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     fontSize: ms(15),
     color: colors.text,
   },
@@ -598,16 +549,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    backgroundColor: "#FDECEC",
+    backgroundColor: "transparent",
     borderRadius: 999,
-    paddingHorizontal: ms(8),
-    paddingVertical: ms(3),
+    paddingHorizontal: 0,
+    paddingVertical: 0,
   },
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#EF4444" },
   liveText: {
-    fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(9.5),
-    letterSpacing: 0.8,
+    fontFamily: "OpenSans_600SemiBold",
+    fontSize: ms(11),
+    letterSpacing: 0,
     color: "#DC2626",
   },
 
@@ -663,7 +614,7 @@ const styles = StyleSheet.create({
     paddingVertical: ms(44),
   },
   emptyTitle: {
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     fontSize: ms(16),
     color: colors.text,
     textAlign: "center",
@@ -681,7 +632,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   barValue: {
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     fontSize: ms(12),
     color: colors.text,
     marginBottom: ms(6),
@@ -699,7 +650,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: ms(4),
   },
   barRank: {
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     fontSize: ms(13),
     color: colors.textLight,
     marginTop: ms(8),
@@ -712,7 +663,7 @@ const styles = StyleSheet.create({
     maxWidth: ms(50),
   },
   barNameUser: {
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     color: colors.primary,
   },
 
@@ -742,10 +693,11 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   tauntText: {
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_600SemiBold",
     fontSize: ms(12.5),
     color: colors.primary,
     textAlign: "center",
+    marginBottom: ms(8),
   },
   startBtn: {
     flexDirection: "row",
@@ -762,7 +714,7 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   startText: {
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     fontSize: ms(16),
     color: "#FFFFFF",
   },

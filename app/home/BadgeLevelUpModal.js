@@ -15,6 +15,7 @@ import { AD_UNIT_IDS } from "../../ads/Admobmanager.js";
 import { colors } from "../../constants/colors.js";
 import { scaling } from "../../constants/useScaling.js";
 import { BADGE_ORDER } from "./WorkoutBadgeInfo.js";
+import { Logger } from "../../constants/Logger";
 
 export default function BadgeLevelUpModal({
   visible,
@@ -313,7 +314,7 @@ export default function BadgeLevelUpModal({
               requestNonPersonalizedAdsOnly: false,
             }}
             onAdLoaded={() => {
-              console.log("[AdMob] Banner loaded");
+              Logger.log("[AdMob] Banner loaded");
             }}
             onAdFailedToLoad={(error) => {
               console.warn("[AdMob] Banner failed:", error);

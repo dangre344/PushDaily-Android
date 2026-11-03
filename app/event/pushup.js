@@ -109,7 +109,7 @@ function CameraWrapper(props) {
   useState(() => {
     try {
       const module = require("@thinksys/react-native-mediapipe");
-      console.log("MediaPipe exports:", Object.keys(module));
+      Logger.log("MediaPipe exports:", Object.keys(module));
       const Cam = module.RNMediapipe;
       if (!Cam) throw new Error("RNMediapipe component not found.");
       setComponent(() => Cam);
@@ -230,7 +230,7 @@ export default function PushupScreen() {
     // One-time dump of the parsed structure so we can confirm the shape.
     if (!loggedStructRef.current) {
       loggedStructRef.current = true;
-      console.log(
+      Logger.log(
         "[Pushup] Parsed payload keys:",
         payload && typeof payload === "object"
           ? Object.keys(payload)
@@ -267,19 +267,19 @@ export default function PushupScreen() {
     // Log sample once.
     if (!loggedSampleRef.current && landmarks.length > 0) {
       loggedSampleRef.current = true;
-      console.log(
+      Logger.log(
         "[Pushup] Landmark sample (index 0):",
         JSON.stringify(landmarks[0]),
       );
-      console.log(
+      Logger.log(
         "[Pushup] Landmark sample (index 11):",
         JSON.stringify(landmarks[L_SHOULDER]),
       );
-      console.log(
+      Logger.log(
         "[Pushup] Landmark sample (index 12):",
         JSON.stringify(landmarks[R_SHOULDER]),
       );
-      console.log("[Pushup] Total landmarks:", landmarks.length);
+      Logger.log("[Pushup] Total landmarks:", landmarks.length);
     }
 
     // 2. Shoulders (depth proxy) + elbows/wrists (angle).
@@ -299,7 +299,7 @@ export default function PushupScreen() {
     const vis = (p) => p?.visibility ?? p?.score ?? p?.confidence ?? 1;
     if (vis(ls) < 0.3 || vis(rs) < 0.3) {
       if (frameCountRef.current % 60 === 0) {
-        console.log("[Pushup] Low shoulder visibility:", vis(ls), vis(rs));
+        Logger.log("[Pushup] Low shoulder visibility:", vis(ls), vis(rs));
       }
       return;
     }
@@ -315,7 +315,7 @@ export default function PushupScreen() {
     const postureOk = vGap != null && vGap < HORIZ_TOL;
 
     if (frameCountRef.current % 10 === 0) {
-      console.log(
+      Logger.log(
         `[Pushup] posture vGap=${vGap != null ? vGap.toFixed(3) : "-"} ` +
           `ok=${postureOk} ready=${readyRef.current}`,
       );
@@ -338,7 +338,7 @@ export default function PushupScreen() {
           setPosture("ready");
           Speech.stop();
           Speech.speak("Start", { rate: 0.95 });
-          console.log("[Pushup] ✅ Posture good — counting started");
+          Logger.log("[Pushup] ✅ Posture good — counting started");
         }
       } else {
         validFramesRef.current = 0;
@@ -438,7 +438,7 @@ export default function PushupScreen() {
     const now = Date.now();
 
     if (frameCountRef.current % 6 === 0) {
-      console.log(
+      Logger.log(
         `[Pushup] dip=${dip.toFixed(3)}/${dipRange.toFixed(3)} ang=${ang ? ang.toFixed(0) : "-"} range=${angRange.toFixed(0)}° ` +
           `arms=${armsBending} depthDown=${depthDown} plank=${postureOk} ` +
           `phase=${repPhaseRef.current} down=${goingDown} up=${goingUp}`,
@@ -452,7 +452,7 @@ export default function PushupScreen() {
     if (repPhaseRef.current === "up" && goingDown) {
       repPhaseRef.current = "down";
       setDown(true);
-      console.log(
+      Logger.log(
         `[Pushup] ↓ DOWN  ang=${ang ? ang.toFixed(0) : "-"}° dip=${dip.toFixed(3)}`,
       );
     } else if (
@@ -464,7 +464,7 @@ export default function PushupScreen() {
       lastRepRef.current = now;
       setDown(false);
       bumpRep();
-      console.log(
+      Logger.log(
         `[Pushup] ↑ UP → ✅ REP COUNTED  ang=${ang ? ang.toFixed(0) : "-"}° dip=${dip.toFixed(3)}`,
       );
     }
@@ -573,7 +573,7 @@ export default function PushupScreen() {
         <View style={styles.onbBody}>
           <View style={styles.onbImageWrap}>
             <Image
-              source={require("../../assets/images/pushupcam.png")}
+              source={require("../../assets/images/pushupcam.webp")}
               style={styles.onbImage}
               contentFit="cover"
             />

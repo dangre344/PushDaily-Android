@@ -17,6 +17,7 @@ import * as Yup from "yup";
 import { Button } from "../../../components/ui/Button.js";
 import { OptionCardController } from "../../../components/ui/OptionCard.js";
 import { colors } from "../../../constants/colors.js";
+import { workoutListGlobal } from "../../../constants/Constants.js";
 import { Logger } from "../../../constants/Logger.js";
 import { scaling } from "../../../constants/useScaling.js";
 
@@ -62,6 +63,17 @@ const WorkoutLevelModal = ({
 
   const selectedExperience = watch("experience");
   const router = useRouter();
+
+  const exerciseCount = (level) =>
+    workoutListGlobal.find(
+      (plan) =>
+        plan.bodyPart === selectedBodyPart?.bodyPart && plan.level === level,
+    )?.workoutList?.length ?? 0;
+  // Shown as a pill next to each level, e.g. "10 exercises".
+  const countLabel = (level) => {
+    const n = exerciseCount(level);
+    return n ? `${n} ${n === 1 ? "exercise" : "exercises"}` : null;
+  };
 
   function next(data) {
     Logger.log("next------>", data.experience);
@@ -115,16 +127,19 @@ const WorkoutLevelModal = ({
                     emoji: "🌱",
                     title: t("beginner"),
                     description: t("beginnerSubWorkoutSelection"),
+                    badge: countLabel("Beginner"),
                   },
                   {
                     emoji: "💪",
                     title: t("intermediate"),
                     description: t("intermediateSubWorkoutSelection"),
+                    badge: countLabel("Intermediate"),
                   },
                   {
                     emoji: "🔥",
                     title: t("advanced"),
                     description: t("advancedSubWorkoutSelection"),
+                    badge: countLabel("Advanced"),
                   },
                 ]}
               />

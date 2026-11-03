@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { AD_UNIT_IDS } from "../../../ads/Admobmanager";
 import { colors } from "../../../constants/colors";
 import { scaling } from "../../../constants/useScaling";
+import { Logger } from "../../../constants/Logger";
 
 // Short in-app summary of docs/privacy-policy.md — keep the two in sync.
 const PRIVACY_SECTIONS = [
@@ -26,11 +27,11 @@ const PRIVACY_SECTIONS = [
   },
   {
     title: "3. Data That Leaves Your Phone",
-    body: "• Analytics (Mixpanel): app usage and your profile details, including height, weight, age and gender.\n• AI trainer (Google Gemini / Groq via our server): your chat messages, profile details and, if you ask for a progress review, a workout summary. Never period data.\n• Food scanner: a nutrition-label photo is sent to our AI service to read it, and is not kept. Barcodes are looked up in Open Food Facts.\n• Push-up leaderboard: your display name, push-up count and country are stored and shown publicly to other users.\n• Firebase: crash reports and the notification token.",
+    body: "• Analytics (Mixpanel): app usage and your profile details, including height, weight, age and gender.\n• AI trainer (Google Gemini / Groq via our server): your chat messages, profile details and, if you ask for a progress review, a workout summary. Never period data.\n• Food scanner: a nutrition-label photo is sent to our AI service to read it, and is not kept. Barcodes are looked up in Open Food Facts.\n• Push-up leaderboard: your display name, push-up count and country are stored and shown publicly to other users.\n• Firebase: crash reports and the notification token.\n• Google Analytics for Firebase: a 'workout completed' signal (number of exercises and how long it took) with your advertising ID, so we can tell which of our ads bring people who actually work out. No period, weight or other body data.",
   },
   {
     title: "4. Advertising",
-    body: "The app shows ads through Google AdMob, which may use your device's advertising ID to show personalized ads. You can reset it or opt out in Android Settings → Google → Ads. Health data, including period data, is never shared with advertisers.",
+    body: "The app shows ads through Google AdMob, which may use your device's advertising ID to show personalized ads. You can reset it or opt out in Android Settings → Google → Ads. Period data and body details (height, weight, age) are never shared with advertisers. The only fitness signal Google receives is the 'workout completed' event described above.",
   },
   {
     title: "5. Notifications",
@@ -130,7 +131,7 @@ export const PrivacyPolicyModal = ({ privacyVisible, setPrivacyVisible }) => (
               requestNonPersonalizedAdsOnly: false,
             }}
             onAdLoaded={() => {
-              console.log("[AdMob] Banner loaded");
+              Logger.log("[AdMob] Banner loaded");
             }}
             onAdFailedToLoad={(error) => {
               console.warn("[AdMob] Banner failed:", error);

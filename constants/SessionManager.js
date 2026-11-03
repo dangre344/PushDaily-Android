@@ -11,7 +11,7 @@ export const saveSession = async (sessionData) => {
   try {
     const jsonValue = JSON.stringify(sessionData);
     await AsyncStorage.setItem(SESSION_KEY, jsonValue);
-    console.log("✅ Session saved:", sessionData);
+    Logger.log("✅ Session saved:", sessionData);
   } catch (e) {
     console.error("❌ Error saving session:", e);
   }
@@ -39,7 +39,7 @@ export const getSession = async () => {
 export const clearSession = async () => {
   try {
     await AsyncStorage.removeItem(SESSION_KEY);
-    console.log("🧹 Session cleared");
+    Logger.log("🧹 Session cleared");
   } catch (e) {
     console.error("❌ Error clearing session:", e);
   }

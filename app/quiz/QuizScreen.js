@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useIsFocused } from "@react-navigation/native";
 import { useFocusEffect, useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -17,10 +18,9 @@ import {
 import { Toast } from "toastify-react-native";
 import { InterstitialAdManager } from "../../ads/Admobmanager";
 import QuizFeedback from "./QuizFeedback";
-import { praiseQuiz, sayFromJack } from "../../constants/bubbleMessage";
+import { praiseQuiz, sayFromJack, setBubbleHidden } from "../../constants/bubbleMessage";
 import { Image } from "expo-image";
 
-import BrandGradient from "../../components/ui/BrandGradient";
 import { colors } from "../../constants/colors";
 import {
   successHaptic,
@@ -152,8 +152,16 @@ export default function QuizScreen() {
     }, [refresh]),
   );
 
+  // Jack's bubble would cover the answer card and its Skip link.
+  const isFocused = useIsFocused();
   useEffect(() => {
-    StatusBar.setBarStyle(phase === "home" ? "light-content" : "dark-content");
+    setBubbleHidden(phase === "playing" && isFocused);
+  }, [phase, isFocused]);
+  useEffect(() => () => setBubbleHidden(false), []);
+
+  useEffect(() => {
+    // The hero is a light tint now, so dark icons on every phase.
+    StatusBar.setBarStyle("dark-content");
   }, [phase]);
 
   // Never let a pending interstitial fire after the user has left the screen.
@@ -444,7 +452,7 @@ export default function QuizScreen() {
 
     return (
       <View style={styles.screen}>
-        <BrandGradient style={styles.hero}>
+        <View style={styles.hero}>
           <View style={styles.heroTop}>
             <Text style={styles.heroTitle}>Fitness Quiz</Text>
             <View style={styles.rankPill}>
@@ -475,7 +483,7 @@ export default function QuizScreen() {
               </Text>
             ) : null}
           </View>
-        </BrandGradient>
+        </View>
 
         <ScrollView
           contentContainerStyle={styles.body}
@@ -757,8 +765,11 @@ export default function QuizScreen() {
           card fits on screen without scrolling. */}
       {/* One compact bar: a segment per card (done · current · upcoming) and,
           only while it's running, the answer combo. */}
-      <BrandGradient style={styles.playHero}>
+      <View style={styles.playHero}>
         <View style={styles.playHeroRow}>
+          <Text style={styles.playCount}>
+            {qIndex + 1}/{questions.length}
+          </Text>
           <View
             style={styles.segments}
             accessibilityLabel={`Card ${qIndex + 1} of ${questions.length}`}
@@ -786,7 +797,7 @@ export default function QuizScreen() {
             </Animated.View>
           ) : null}
         </View>
-      </BrandGradient>
+      </View>
 
       {/* ── One always-mounted card: slides out left, next slides in right ── */}
       <View style={styles.deckWrap}>
@@ -799,10 +810,13 @@ export default function QuizScreen() {
             },
           ]}
         >
-          <Text style={styles.qMeta}>
-            <Text style={{ color: meta.color }}>{meta.label}</Text>
-            {q?.difficulty ? ` · ${q.difficulty}` : ""}
-          </Text>
+          <View style={styles.qMetaRow}>
+            <View style={[styles.qMetaDot, { backgroundColor: meta.color }]} />
+            <Text style={styles.qMeta}>
+              <Text style={{ color: meta.color }}>{meta.label}</Text>
+              {q?.difficulty ? ` · ${q.difficulty}` : ""}
+            </Text>
+          </View>
 
           <View style={styles.qScroll}>
             <Text style={styles.qEmoji}>{q?.emoji}</Text>
@@ -988,7 +1002,29 @@ export default function QuizScreen() {
   );
 }
 
+// Soft brand tint for hero cards (same as the home plan card).
+const TINT = "#FFF5F0";
+const TINT_BORDER = "#FFE0D3";
+
 const styles = StyleSheet.create({
+  playCount: {
+    fontFamily: "OpenSans_700Bold",
+    fontSize: ms(12),
+    color: colors.primary,
+    minWidth: ms(30),
+  },
+  qMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "center",
+    gap: ms(6),
+    marginBottom: ms(4),
+    paddingHorizontal: ms(10),
+    paddingVertical: ms(3),
+    borderRadius: 999,
+    backgroundColor: "#F4F6F8",
+  },
+  qMetaDot: { width: ms(7), height: ms(7), borderRadius: ms(4) },
   screen: { flex: 1, backgroundColor: "#F7F8FA" },
 
   inlineLoading: { alignItems: "center", paddingVertical: ms(48), gap: ms(12) },
@@ -1001,6 +1037,7 @@ const styles = StyleSheet.create({
     paddingBottom: ms(18),
     borderBottomLeftRadius: ms(26),
     borderBottomRightRadius: ms(26),
+    backgroundColor: TINT,
   },
   // Same hero, trimmed of the XP card so the question card gets the height.
   playHero: {
@@ -1009,6 +1046,7 @@ const styles = StyleSheet.create({
     paddingBottom: ms(12),
     borderBottomLeftRadius: ms(18),
     borderBottomRightRadius: ms(18),
+    backgroundColor: TINT,
   },
   playHeroRow: { flexDirection: "row", alignItems: "center", gap: ms(8) },
   heroTop: {
@@ -1019,19 +1057,19 @@ const styles = StyleSheet.create({
   heroTitle: {
     fontFamily: "OpenSans_800ExtraBold",
     fontSize: ms(21),
-    color: "#FFFFFF",
+    color: colors.text,
   },
   rankPill: {
-    backgroundColor: "rgba(255,255,255,0.2)",
+    backgroundColor: "#FFFFFF",
     borderRadius: 999,
     paddingHorizontal: ms(10),
     paddingVertical: ms(4),
   },
-  rankText: { fontFamily: "OpenSans_800ExtraBold", fontSize: ms(12), color: "#FFFFFF" },
+  rankText: { fontFamily: "OpenSans_600SemiBold", fontSize: ms(12), color: colors.primary },
   xpTrack: {
     height: ms(6),
     borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.25)",
+    backgroundColor: TINT_BORDER,
     overflow: "hidden",
     marginTop: ms(14),
   },
@@ -1041,11 +1079,11 @@ const styles = StyleSheet.create({
     marginTop: ms(6),
   },
   xpCaption: {
-    fontFamily: "OpenSans_700Bold",
+    fontFamily: "OpenSans_500Medium",
     fontSize: ms(11.5),
-    color: "rgba(255,255,255,0.92)",
+    color: colors.textLight,
   },
-  xpFill: { height: "100%", borderRadius: 999, backgroundColor: "#FDE047" },
+  xpFill: { height: "100%", borderRadius: 999, backgroundColor: colors.primary },
 
   // ── Home body ──
   body: { padding: ms(16), paddingBottom: ms(170) },
@@ -1060,7 +1098,7 @@ const styles = StyleSheet.create({
   doneCard: { alignItems: "center", paddingVertical: ms(20) },
   doneMascot: { width: ms(96), height: ms(96) },
   doneTitle: {
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     fontSize: ms(18),
     color: colors.text,
     marginTop: ms(6),
@@ -1077,7 +1115,7 @@ const styles = StyleSheet.create({
     borderColor: "#EEF0F4",
   },
   dayStat: { flex: 1, alignItems: "center" },
-  dayValue: { fontFamily: "OpenSans_800ExtraBold", fontSize: ms(20) },
+  dayValue: { fontFamily: "OpenSans_700Bold", fontSize: ms(20) },
   dayLabel: {
     fontFamily: "OpenSans_600SemiBold",
     fontSize: ms(10),
@@ -1101,11 +1139,13 @@ const styles = StyleSheet.create({
     paddingVertical: ms(16),
     paddingHorizontal: ms(16),
     borderRadius: ms(18),
-    backgroundColor: "#EEF2FF",
+    backgroundColor: TINT,
+    borderWidth: 1,
+    borderColor: TINT_BORDER,
   },
   tomorrowText: {
     flex: 1,
-    fontFamily: "OpenSans_700Bold",
+    fontFamily: "OpenSans_600SemiBold",
     fontSize: ms(12.5),
     color: colors.primary,
     lineHeight: ms(18),
@@ -1138,7 +1178,7 @@ const styles = StyleSheet.create({
     elevation: 0,
   },
   startText: {
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     fontSize: ms(16),
     color: "#FFFFFF",
   },
@@ -1168,8 +1208,8 @@ const styles = StyleSheet.create({
   qScroll: { paddingBottom: ms(8) },
   qEmoji: { fontSize: ms(28), textAlign: "center", marginTop: ms(4) },
   qText: {
-    fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(14.5),
+    fontFamily: "OpenSans_600SemiBold",
+    fontSize: ms(15),
     color: colors.text,
     textAlign: "center",
     lineHeight: ms(20),
@@ -1186,8 +1226,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: ms(2),
   },
   linkBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: ms(6) },
-  hintLink: { fontFamily: "OpenSans_700Bold", fontSize: ms(13), color: "#B45309" },
-  skipLink: { fontFamily: "OpenSans_700Bold", fontSize: ms(13), color: colors.textLight },
+  hintLink: { fontFamily: "OpenSans_600SemiBold", fontSize: ms(13), color: "#B45309" },
+  skipLink: { fontFamily: "OpenSans_600SemiBold", fontSize: ms(13), color: colors.textLight },
 
   // Playing header: one segment per card, plus the combo while it runs.
   segments: { flex: 1, flexDirection: "row", gap: ms(5) },
@@ -1195,22 +1235,24 @@ const styles = StyleSheet.create({
     flex: 1,
     height: ms(6),
     borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.28)",
+    backgroundColor: TINT_BORDER,
   },
-  segmentCurrent: { backgroundColor: "rgba(255,255,255,0.6)" },
-  segmentDone: { backgroundColor: "#FFFFFF" },
+  segmentCurrent: { backgroundColor: "#FFB089" },
+  segmentDone: { backgroundColor: colors.primary },
   comboPill: {
     backgroundColor: "#FFFFFF",
     borderRadius: 999,
     paddingHorizontal: ms(9),
     paddingVertical: ms(4),
+    borderWidth: 1,
+    borderColor: TINT_BORDER,
   },
-  comboText: { fontFamily: "OpenSans_800ExtraBold", fontSize: ms(11.5), color: "#EA580C" },
+  comboText: { fontFamily: "OpenSans_700Bold", fontSize: ms(11.5), color: "#EA580C" },
   qMeta: {
-    fontFamily: "OpenSans_700Bold",
+    fontFamily: "OpenSans_600SemiBold",
     fontSize: ms(12),
     color: colors.textLight,
-    marginBottom: ms(4),
+    marginBottom: 0,
   },
   option: {
     flexDirection: "row",
@@ -1237,7 +1279,7 @@ const styles = StyleSheet.create({
   optionLetterCorrect: { backgroundColor: "#16A34A" },
   optionLetterWrong: { backgroundColor: "#DC2626" },
   optionLetterText: {
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     fontSize: ms(12),
     color: colors.textLight,
   },
@@ -1248,8 +1290,8 @@ const styles = StyleSheet.create({
     color: colors.text,
     lineHeight: ms(18),
   },
-  optionTextCorrect: { color: "#15803D", fontFamily: "OpenSans_800ExtraBold" },
-  optionTextWrong: { color: "#B91C1C", fontFamily: "OpenSans_800ExtraBold" },
+  optionTextCorrect: { color: "#15803D", fontFamily: "OpenSans_700Bold" },
+  optionTextWrong: { color: "#B91C1C", fontFamily: "OpenSans_700Bold" },
 
   tipCard: {
     marginTop: ms(12),
@@ -1261,7 +1303,7 @@ const styles = StyleSheet.create({
   },
   tipHead: { flexDirection: "row", alignItems: "center", gap: ms(6) },
   tipTitle: {
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     fontSize: ms(12),
     color: "#B45309",
   },
@@ -1283,7 +1325,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#2E90FA",
   },
   waterCtaText: {
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     fontSize: ms(12),
     color: "#FFFFFF",
   },
@@ -1299,7 +1341,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   nextText: {
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     fontSize: ms(14),
     color: "#FFFFFF",
   },
@@ -1323,7 +1365,7 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   xpPopText: {
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     fontSize: ms(16),
     color: "#FFFFFF",
   },
@@ -1353,7 +1395,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   resultTitle: {
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     fontSize: ms(20),
     color: colors.text,
     marginTop: ms(6),
@@ -1370,7 +1412,7 @@ const styles = StyleSheet.create({
     fontSize: ms(13),
     color: colors.textLight,
   },
-  resultXp: { fontFamily: "OpenSans_800ExtraBold", color: "#B45309" },
+  resultXp: { fontFamily: "OpenSans_700Bold", color: "#B45309" },
   flawlessBadge: {
     marginTop: ms(12),
     backgroundColor: "#FFF7ED",
@@ -1380,13 +1422,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: ms(12),
     paddingVertical: ms(6),
   },
-  flawlessText: { fontFamily: "OpenSans_800ExtraBold", fontSize: ms(12.5), color: "#B45309" },
-  cardTitle: { fontFamily: "OpenSans_800ExtraBold", fontSize: ms(14.5), color: colors.text },
+  flawlessText: { fontFamily: "OpenSans_700Bold", fontSize: ms(12.5), color: "#B45309" },
+  cardTitle: { fontFamily: "OpenSans_700Bold", fontSize: ms(14.5), color: colors.text },
   reviewHead: { flexDirection: "row", alignItems: "center", gap: ms(8) },
   reviewCount: {
     flex: 1,
     textAlign: "right",
-    fontFamily: "OpenSans_700Bold",
+    fontFamily: "OpenSans_600SemiBold",
     fontSize: ms(12),
     color: colors.textLight,
   },
@@ -1429,12 +1471,12 @@ const styles = StyleSheet.create({
     elevation: 7,
   },
   againText: {
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     fontSize: ms(15),
     color: "#FFFFFF",
   },
   homeText: {
-    fontFamily: "OpenSans_700Bold",
+    fontFamily: "OpenSans_600SemiBold",
     fontSize: ms(12.5),
     color: colors.textLight,
   },

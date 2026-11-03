@@ -495,7 +495,7 @@ const SummaryPills = ({ totalCalories, totalWorkouts, activeDays }) => {
 // `onPickBodyPart` lets an embedding screen (Profile → StatsModal) take over the
 // empty-state tap, since router.push() from inside a Modal would be hidden
 // behind it. When omitted, the inline level modal is used as before.
-export default function StatsScreen({ onPickBodyPart }) {
+export default function StatsScreen({ onPickBodyPart, hideHeader = false }) {
   const { t } = useTranslation();
   const [workouts, setWorkouts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -611,6 +611,8 @@ export default function StatsScreen({ onPickBodyPart }) {
           />
         }
       >
+        {/* Hidden inside Profile's Stats sheet, which has its own header. */}
+        {!hideHeader ? (
         <Animated.View
           style={[
             styles.headerCard,
@@ -638,6 +640,7 @@ export default function StatsScreen({ onPickBodyPart }) {
             </Text>
           </View>
         </Animated.View>
+        ) : null}
 
         {workouts && workouts.length > 0 && data ? (
           <View>
@@ -926,7 +929,7 @@ const styles = StyleSheet.create({
     marginBottom: ms(16),
   },
   emptyText: {
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     fontSize: ms(20),
     color: "#0F172A",
     textAlign: "center",

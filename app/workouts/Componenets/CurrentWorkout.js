@@ -1,10 +1,13 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Audio } from "expo-av";
 import { useFocusEffect } from "expo-router";
 import * as Speech from "expo-speech";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useIsFocused } from "@react-navigation/native";
 import {
   AppState,
   Animated,
+  Dimensions,
   Easing,
   Image,
   Modal,
@@ -15,11 +18,32 @@ import {
   View,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
+import ExerciseVideoPlayer, {
+  hasExerciseVideo,
+} from "../../../components/workout/ExerciseVideoPlayer";
 import { colors } from "../../../constants/colors";
 import { Logger } from "../../../constants/Logger";
 import { scaling } from "../../../constants/useScaling";
 
 const { scaleHeight, scaleWidth, moderateScale } = scaling();
+
+// The speaker choice outlives this component: it remounts for every exercise,
+// so muting used to reset on the next one. Kept for the session (module
+// variable) and across launches (AsyncStorage).
+const K_VOICE_MUTED = "workout_voice_muted";
+let sessionVoiceMuted = null; // null = not loaded yet
+AsyncStorage.getItem(K_VOICE_MUTED)
+  .then((v) => {
+    if (sessionVoiceMuted === null) sessionVoiceMuted = v === "true";
+  })
+  .catch(() => {});
+
+// Exercise videos are square: show them in a square box (full width), capped
+// so the timer/controls stay on screen on short phones. The videos' own
+// background is #F5F5F5 — the box matches it.
+const SCREEN = Dimensions.get("window");
+const VIDEO_BOX = Math.round(Math.min(SCREEN.width, SCREEN.height * 0.46));
+const VIDEO_BG = "#F5F5F5";
 
 export default function CurrentWorkout({
   workout,
@@ -30,15 +54,20 @@ export default function CurrentWorkout({
 }) {
   const timerRef = useRef(null);
   const soundRef = useRef(null);
+  const pulseLoopRef = useRef(null); // the timer's breathing animation
   const isActive = useRef(true);
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideUpAnim = useRef(new Animated.Value(50)).current;
   const imageScale = useRef(new Animated.Value(1)).current;
   const timerPulse = useRef(new Animated.Value(1)).current;
 
   const isTimedWorkout = !!workout?.time;
   const isRepsWorkout = !!workout?.reps;
+  // Pause the exercise video while this screen isn't visible.
+  const isFocused = useIsFocused();
+  // Looping exercise video when the exercise has one, else its photo.
+  const [failedVideo, setFailedVideo] = useState(null);
+  const hasVideo =
+    hasExerciseVideo(workout?.video) && failedVideo !== workout?.video;
 
   const getWorkoutSeconds = useCallback(() => {
     if (!workout?.time) return 0;
@@ -69,7 +98,14 @@ export default function CurrentWorkout({
   const pausedByBlurRef = useRef(false);
   const wasSpeakingRef = useRef(false);
   const [showStepsModal, setShowStepsModal] = useState(false);
-  const [isVoiceMuted, setIsVoiceMuted] = useState(false);
+  const [isVoiceMuted, setIsVoiceMuted] = useState(!!sessionVoiceMuted);
+  // Every speech/sound decision reads THIS, not the state: the voice sequence
+  // and the countdown are long-lived callbacks that would otherwise keep the
+  // value from when they started (muting mid-intro kept talking; unmuting did
+  // nothing; muting mid-countdown kept counting out loud).
+  const mutedRef = useRef(!!sessionVoiceMuted);
+  // True once the intro has finished, so unmuting knows whether to add a cue.
+  const introDoneRef = useRef(false);
 
   const delay = useCallback(
     (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
@@ -102,7 +138,8 @@ export default function CurrentWorkout({
   }, [timerPulse]);
 
   const startTimerPulse = useCallback(() => {
-    Animated.loop(
+    pulseLoopRef.current?.stop();
+    pulseLoopRef.current = Animated.loop(
       Animated.sequence([
         Animated.timing(timerPulse, {
           toValue: 1.05,
@@ -117,7 +154,8 @@ export default function CurrentWorkout({
           useNativeDriver: true,
         }),
       ]),
-    ).start();
+    );
+    pulseLoopRef.current.start();
   }, [timerPulse]);
 
   const startTimer = useCallback(() => {
@@ -148,7 +186,7 @@ export default function CurrentWorkout({
           setIsTimerActive(false);
           playTimerComplete();
 
-          if (!isVoiceMuted && isActive.current) {
+          if (!mutedRef.current && isActive.current) {
             Speech.speak("Time's up! Moving to the next exercise.", {
               language: "en-US",
               pitch: 1.1,
@@ -171,7 +209,7 @@ export default function CurrentWorkout({
         }
 
         if (
-          !isVoiceMuted &&
+          !mutedRef.current &&
           isActive.current &&
           (prev === 10 || prev === 5 || prev === 3 || prev === 2 || prev === 1)
         ) {
@@ -187,11 +225,11 @@ export default function CurrentWorkout({
         return prev - 1;
       });
     }, 1000);
-  }, [workout?.time, isVoiceMuted, onNext, playTimerComplete]);
+  }, [workout?.time, onNext, playTimerComplete]);
 
   const playSoundFromAssets = useCallback(
     async (soundFileName) => {
-      if (isVoiceMuted || !isActive.current) return;
+      if (mutedRef.current || !isActive.current) return;
 
       try {
         const soundFiles = {
@@ -233,12 +271,12 @@ export default function CurrentWorkout({
         console.error(`Error playing sound ${soundFileName}:`, error);
       }
     },
-    [isVoiceMuted],
+    [],
   );
 
   const speakText = useCallback(
     (text) => {
-      if (isVoiceMuted || !isActive.current) return Promise.resolve();
+      if (mutedRef.current || !isActive.current) return Promise.resolve();
 
       return new Promise((resolve, reject) => {
         Speech.speak(text, {
@@ -257,11 +295,15 @@ export default function CurrentWorkout({
         });
       });
     },
-    [isVoiceMuted],
+    [],
   );
 
+  // Runs for every exercise, muted or not: speakText/beep are no-ops while
+  // muted, but the timer for a timed exercise must start either way (it used
+  // to never start if the user was muted).
   const startVoiceInstructions = useCallback(async () => {
-    if (!isActive.current || isVoiceMuted) return;
+    if (!isActive.current) return;
+    introDoneRef.current = false;
 
     try {
       const introText = `Starting ${workout.name}. You need to perform ${
@@ -273,21 +315,24 @@ export default function CurrentWorkout({
       await speakText(introText);
       await delay(1000);
 
-      const stepsText = workout.steps
+      const stepsText = (workout.steps ?? [])
         .map((step, stepIndex) => `Step ${stepIndex + 1}: ${step}`)
         .join(". ");
 
-      await speakText(stepsText);
-      await delay(500);
+      if (stepsText) {
+        await speakText(stepsText);
+        await delay(500);
+      }
 
       if (workout.time) {
         const timerText = `Hold this position for ${workout.time}. The timer starts now.`;
         await speakText(timerText);
 
-        if (!isVoiceMuted && isActive.current) {
+        if (!mutedRef.current && isActive.current) {
           await playSoundFromAssets("workout_start.mp3");
         }
 
+        introDoneRef.current = true;
         if (isActive.current) {
           startTimer();
           startTimerPulse();
@@ -296,10 +341,11 @@ export default function CurrentWorkout({
         const readyText = `Get ready to start. Complete ${workout.reps} repetitions. Begin when you hear the beep.`;
         await speakText(readyText);
 
-        if (!isVoiceMuted && isActive.current) {
+        if (!mutedRef.current && isActive.current) {
           await playSoundFromAssets("workout_start.mp3");
         }
 
+        introDoneRef.current = true;
         setIsTimerActive(false);
       }
     } catch (error) {
@@ -307,7 +353,6 @@ export default function CurrentWorkout({
     }
   }, [
     workout,
-    isVoiceMuted,
     speakText,
     playSoundFromAssets,
     delay,
@@ -316,14 +361,32 @@ export default function CurrentWorkout({
   ]);
 
   const toggleVoiceMute = useCallback(() => {
-    if (isVoiceMuted) {
-      setIsVoiceMuted(false);
-      startVoiceInstructions();
-    } else {
-      setIsVoiceMuted(true);
+    const muting = !mutedRef.current;
+    mutedRef.current = muting;
+    sessionVoiceMuted = muting;
+    setIsVoiceMuted(muting);
+    AsyncStorage.setItem(K_VOICE_MUTED, String(muting)).catch(() => {});
+
+    if (muting) {
+      // Silence everything now: the current sentence and the start beep.
       Speech.stop();
+      soundRef.current?.stopAsync?.().catch(() => {});
+      return;
     }
-  }, [isVoiceMuted, startVoiceInstructions]);
+
+    // Unmuted. If the intro is still running it simply carries on out loud
+    // from its next line. If it has finished, give one short cue instead of
+    // replaying the whole intro (or restarting the timer).
+    if (introDoneRef.current && isActive.current) {
+      const cue = workout?.time
+        ? timeLeft > 0
+          ? `${timeLeft} seconds left. Keep going!`
+          : "Keep going!"
+        : `${workout?.name || "Keep going"}. ${workout?.reps ? `${workout.reps} reps. ` : ""}You've got this!`;
+      Speech.stop();
+      Speech.speak(cue, { language: "en-US", rate: 0.9 });
+    }
+  }, [workout?.time, workout?.name, workout?.reps, timeLeft]);
 
   const formatTime = useCallback((seconds) => {
     const safeSeconds = Number(seconds) || 0;
@@ -357,24 +420,8 @@ export default function CurrentWorkout({
 
     Logger.log(`CurrentWorkout ${workout.name} mounted`);
 
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideUpAnim, {
-        toValue: 0,
-        duration: 600,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    if (!isVoiceMuted) {
-      startVoiceInstructions();
-    }
+    // Always: silent when muted, but it is also what starts a timed exercise.
+    startVoiceInstructions();
 
     return () => {
       Logger.log(`CurrentWorkout ${workout.name} unmounting, cleaning up...`);
@@ -387,6 +434,10 @@ export default function CurrentWorkout({
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
+
+      // An endless loop keeps running after its view is gone unless stopped.
+      pulseLoopRef.current?.stop();
+      pulseLoopRef.current = null;
 
       const unloadSound = async () => {
         if (soundRef.current) {
@@ -427,7 +478,7 @@ export default function CurrentWorkout({
     useCallback(() => {
       isActive.current = true;
       // Re-announce where we are so the user isn't dropped back into silence.
-      if (!isVoiceMuted && wasSpeakingRef.current) {
+      if (!mutedRef.current && wasSpeakingRef.current) {
         wasSpeakingRef.current = false;
         Speech.speak(`Resuming. ${workout?.name || "Keep going"}.`, {
           language: "en-US",
@@ -454,7 +505,7 @@ export default function CurrentWorkout({
           setIsTimerActive(false);
         }
       };
-    }, [isVoiceMuted, workout?.name, startTimer]),
+    }, [workout?.name, startTimer]),
   );
 
   // Backgrounding the whole app should silence it too.
@@ -466,10 +517,10 @@ export default function CurrentWorkout({
   }, []);
 
   useEffect(() => {
-    if (showStepsModal && !isVoiceMuted) {
+    if (showStepsModal && !mutedRef.current) {
       Speech.stop();
     }
-  }, [showStepsModal, isVoiceMuted]);
+  }, [showStepsModal]);
 
   return (
     <View style={styles.container}>
@@ -481,30 +532,48 @@ export default function CurrentWorkout({
           style={[
             styles.imageContainer,
             {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideUpAnim }],
-              height: isTimedWorkout ? scaleHeight(300) : scaleHeight(400),
+              height: hasVideo
+                ? VIDEO_BOX
+                : isTimedWorkout
+                  ? scaleHeight(300)
+                  : scaleHeight(400),
             },
+            hasVideo && { backgroundColor: VIDEO_BG },
           ]}
         >
-          <Animated.Image
-            source={{ uri: workout.image }}
-            style={[
-              styles.exerciseImage,
-              {
-                transform: [{ scale: imageScale }],
-              },
-            ]}
-            resizeMode="cover"
-          />
-
-          <View style={styles.imageGradient}>
-            <Image
-              source={workout?.photo}
-              style={styles.exerciseImage}
-              resizeMode="contain"
+          {hasVideo ? (
+            // Looping exercise video; the photo is the fallback for exercises
+            // that don't have one, or whose clip can't play on this phone.
+            <ExerciseVideoPlayer
+              slug={workout.video}
+              playing={isFocused}
+              onError={(e) => {
+                Logger.warn("[Workout] Video failed:", workout.video, e);
+                setFailedVideo(workout.video);
+              }}
             />
-          </View>
+          ) : (
+            <>
+              <Animated.Image
+                source={{ uri: workout.image }}
+                style={[
+                  styles.exerciseImage,
+                  {
+                    transform: [{ scale: imageScale }],
+                  },
+                ]}
+                resizeMode="cover"
+              />
+
+              <View style={styles.imageGradient}>
+                <Image
+                  source={workout?.photo}
+                  style={styles.exerciseImage}
+                  resizeMode="contain"
+                />
+              </View>
+            </>
+          )}
 
           <TouchableOpacity
             style={styles.muteButton}
@@ -532,13 +601,7 @@ export default function CurrentWorkout({
         </Animated.View>
 
         <Animated.View
-          style={[
-            styles.infoContainer,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideUpAnim }],
-            },
-          ]}
+          style={styles.infoContainer}
         >
           <View style={styles.titleContainer}>
             <Text style={styles.exerciseName}>
@@ -620,13 +683,17 @@ export default function CurrentWorkout({
             </Animated.View>
           )}
 
-          <View style={styles.tagsContainer}>
-            {workout.focus.map((muscle, muscleIndex) => (
-              <View key={muscleIndex} style={styles.tag}>
-                <Text style={styles.tagText}>{muscle}</Text>
-              </View>
-            ))}
-          </View>
+          {/* Some exercises (e.g. the Glutes and Posture Correction plans)
+              have no muscle list in the data. */}
+          {workout.focus?.length > 0 && (
+            <View style={styles.tagsContainer}>
+              {workout.focus.map((muscle, muscleIndex) => (
+                <View key={muscleIndex} style={styles.tag}>
+                  <Text style={styles.tagText}>{muscle}</Text>
+                </View>
+              ))}
+            </View>
+          )}
         </Animated.View>
       </ScrollView>
 
@@ -647,7 +714,7 @@ export default function CurrentWorkout({
             </View>
 
             <ScrollView style={styles.modalBody}>
-              {workout.steps.map((step, stepIndex) => (
+              {workout.steps?.map((step, stepIndex) => (
                 <View key={stepIndex} style={styles.stepItem}>
                   <View style={styles.stepNumber}>
                     <Text style={styles.stepNumberText}>{stepIndex + 1}</Text>
@@ -675,10 +742,6 @@ export default function CurrentWorkout({
                 </View>
               )}
 
-              <TouchableOpacity style={styles.videoButton}>
-                <Ionicons name="play-circle" size={28} color={colors.white} />
-                <Text style={styles.videoButtonText}>Watch Video Tutorial</Text>
-              </TouchableOpacity>
             </ScrollView>
           </View>
         </View>
@@ -1067,20 +1130,5 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "OpenSans_400Regular",
     color: colors.white,
-  },
-  videoButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    backgroundColor: colors.gradient2,
-    padding: 20,
-    borderRadius: 20,
-    marginTop: 24,
-  },
-  videoButtonText: {
-    color: colors.white,
-    fontSize: 16,
-    fontFamily: "OpenSans_600SemiBold",
   },
 });

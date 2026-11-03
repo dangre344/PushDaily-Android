@@ -21,7 +21,7 @@ import {
  * Back → Arms…) instead of repeating the same answer, and never repeats one
  * already shown in this round until the options run out.
  */
-export default function useTrainToday(history = [], { experience } = {}) {
+export default function useTrainToday(history = [], { experience, hasHistory } = {}) {
   const [result, setResult] = useState(null);
   const [busy, setBusy] = useState(false);
   const shown = useRef([]); // body parts suggested in this round
@@ -55,8 +55,13 @@ export default function useTrainToday(history = [], { experience } = {}) {
       const anchor = shown.current[0];
       const rec =
         again && previous
-          ? recommendAlternative(previous, history, { experience, exclude: shown.current, anchor })
-          : recommendToday(history, { experience });
+          ? recommendAlternative(previous, history, {
+              experience,
+              exclude: shown.current,
+              anchor,
+              hasHistory,
+            })
+          : recommendToday(history, { experience, hasHistory });
 
       // A fresh plan starts a new round; once every sibling has been shown the
       // round starts over from the original pick.

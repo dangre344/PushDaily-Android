@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
     borderRadius: ms(999),
   },
   percentText: {
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     fontSize: ms(14),
     color: "#FFFFFF",
   },
@@ -462,12 +462,12 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     flex: 1,
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     fontSize: ms(15),
     color: colors.text,
   },
   sectionCount: {
-    fontFamily: "OpenSans_700Bold",
+    fontFamily: "OpenSans_600SemiBold",
     fontSize: ms(12),
     color: colors.textLight,
   },
@@ -516,7 +516,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     flex: 1,
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_600SemiBold",
     fontSize: ms(14),
     color: colors.text,
   },

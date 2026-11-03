@@ -41,6 +41,7 @@ import { OptionCardController } from "../../components/ui/OptionCard.js";
 import AgeField from "../../components/ui/AgeField.js";
 import { SignupFooter, SignupHeader } from "../../components/ui/SignupChrome.js";
 import { colors } from "../../constants/colors.js";
+import { saveQuickStartOrder } from "../../constants/quickStartOrder.js";
 
 export default function Signup() {
   const { from } = useLocalSearchParams();
@@ -197,6 +198,8 @@ export default function Signup() {
         _id: userId,
       });
 
+      // Gender or age may have changed: re-order Quick starts once, now.
+      await saveQuickStartOrder(userData);
       await updateUser(userData);
 
       setUpdateSuccessVisible(true);
@@ -219,6 +222,8 @@ export default function Signup() {
         ...attribution,
       });
 
+      // Quick starts order is decided once, here, from gender and age.
+      await saveQuickStartOrder(userData);
       await updateUser(userData);
 
       router.replace("/home");

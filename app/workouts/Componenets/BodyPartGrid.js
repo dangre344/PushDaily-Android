@@ -1,7 +1,6 @@
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { MotiView } from "moti";
-import { useRef } from "react";
+import { memo, useRef } from "react";
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { tapHaptic } from "../../../constants/haptics";
@@ -14,18 +13,15 @@ const ms = (n) => scaling().moderateScale(n);
  * at the bottom. No card, border or shadow around it — six framed boxes in a
  * grid read as clutter; six photos read as a menu.
  */
-function Tile({ item, index, onPress }) {
+function Tile({ item, onPress }) {
   const scale = useRef(new Animated.Value(1)).current;
   const spring = (to) =>
     Animated.spring(scale, { toValue: to, useNativeDriver: true, speed: to < 1 ? 50 : 26, bounciness: to < 1 ? 0 : 8 }).start();
 
+  // Static on purpose: six staggered entrances replayed on every visit. The
+  // tile still answers a press.
   return (
-    <MotiView
-      from={{ opacity: 0, translateY: 12 }}
-      animate={{ opacity: 1, translateY: 0 }}
-      transition={{ type: "timing", duration: 280, delay: 60 + index * 45 }}
-      style={styles.cell}
-    >
+    <View style={styles.cell}>
       <Pressable
         onPress={() => {
           tapHaptic();
@@ -43,7 +39,6 @@ function Tile({ item, index, onPress }) {
             contentFit="cover"
             // these photos are framed head-first; keep the upper body in view
             contentPosition={{ top: "18%", left: "50%" }}
-            transition={200}
           />
           <LinearGradient
             colors={["transparent", "rgba(0,0,0,0.15)", "rgba(0,0,0,0.72)"]}
@@ -56,16 +51,16 @@ function Tile({ item, index, onPress }) {
           </Text>
         </Animated.View>
       </Pressable>
-    </MotiView>
+    </View>
   );
 }
 
 /** 3-across grid of body parts. Tapping one opens the existing level picker. */
-export default function BodyPartGrid({ items, onSelect }) {
+function BodyPartGrid({ items, onSelect }) {
   return (
     <View style={styles.grid}>
-      {items.map((item, i) => (
-        <Tile key={item.bodyPart} item={item} index={i} onPress={onSelect} />
+      {items.map((item) => (
+        <Tile key={item.bodyPart} item={item} onPress={onSelect} />
       ))}
     </View>
   );
@@ -92,10 +87,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingBottom: 9,
     fontSize: ms(13),
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_600SemiBold",
     color: "#FFFFFF",
     textShadowColor: "rgba(0,0,0,0.35)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
 });
+
+// Memoised: the Workouts screen re-renders on every modal/state change.
+export default memo(BodyPartGrid);

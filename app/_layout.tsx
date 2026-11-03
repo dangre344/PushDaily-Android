@@ -1,7 +1,6 @@
 import CustomSplashScreen from "@/components/CustomSplashScreen";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import {
-  OpenSans_300Light,
   OpenSans_400Regular,
   OpenSans_500Medium,
   OpenSans_600SemiBold,
@@ -61,6 +60,7 @@ import {
   WATER_ACTION_LOG,
 } from "../constants/waterReminder";
 import "../locales/i18";
+import { runAfterStartup } from "../constants/afterStartup";
 
 // Expo Router calls preventAutoHideAsync() internally, which pins the native
 // OS splash on screen until we explicitly dismiss it. Call hideAsync() at
@@ -73,8 +73,9 @@ export default function RootLayout() {
   const appState = useRef<AppStateStatus>(AppState.currentState);
   const [adsInitialized, setAdsInitialized] = useState(false);
 
-  const [fontsLoaded] = useFonts({
-    OpenSans_300Light,
+  // Only the weights the app uses (300 Light had no users) — each one is
+  // read and registered before the first screen.
+  const [fontsLoaded, fontError] = useFonts({
     OpenSans_400Regular,
     OpenSans_500Medium,
     OpenSans_600SemiBold,
@@ -96,26 +97,41 @@ export default function RootLayout() {
     // events can be switched on/off remotely without an app update.
     initRemoteConfig();
     // Nudge the user to update if a higher version is live on the Play Store.
-    // Non-blocking (flexible) flow; preserves all local data.
-    checkForAppUpdate("flexible");
+    // Non-blocking (flexible) flow; preserves all local data. Waits a few
+    // seconds so it doesn't compete with drawing the home screen.
+    const cancelUpdateCheck = runAfterStartup(
+      () => checkForAppUpdate("flexible"),
+      4000,
+    );
 
-    const initializeAds = async () => {
+    // Ads aren't on the first screen: start the SDK once the home screen has
+    // drawn, preload the app-open and interstitial ads first and the two
+    // rewarded ones a little later. (Screens that need a rewarded ad sooner
+    // create and load it themselves through getInstance().)
+    let cancelRewarded = () => {};
+    const cancelAds = runAfterStartup(async () => {
       try {
         await mobileAds().initialize();
         Logger.log("[AdMob] SDK initialized");
 
         AppOpenAdManager.getInstance();
         InterstitialAdManager.getInstance();
-        RewardedAdManager.getInstance();
-        RewardedInterstitialAdManager.getInstance();
-
         setAdsInitialized(true);
+
+        cancelRewarded = runAfterStartup(() => {
+          RewardedAdManager.getInstance();
+          RewardedInterstitialAdManager.getInstance();
+        }, 3000);
       } catch (error) {
         Logger.log("[AdMob] SDK initialization failed:", String(error));
       }
-    };
+    }, 1500);
 
-    initializeAds();
+    return () => {
+      cancelUpdateCheck();
+      cancelAds();
+      cancelRewarded();
+    };
   }, []);
 
   // ─── Deep links that name a bottom tab ────────────────────────────────────
@@ -275,7 +291,23 @@ export default function RootLayout() {
     };
   }, []);
 
-  if (!fontsLoaded) {
+  // Fonts must never hold the app on the splash: useFonts reports a failure
+  // through `fontError` (never through `fontsLoaded`), and a stalled asset
+  // download never settles at all. Either way, start with the system font.
+  const [fontWaitOver, setFontWaitOver] = useState(false);
+  useEffect(() => {
+    if (fontsLoaded) return;
+    const t = setTimeout(() => {
+      Logger.log("[Fonts] still loading after 5 s, starting without them");
+      setFontWaitOver(true);
+    }, 5000);
+    return () => clearTimeout(t);
+  }, [fontsLoaded]);
+  useEffect(() => {
+    if (fontError) Logger.log("[Fonts] failed to load:", String(fontError));
+  }, [fontError]);
+
+  if (!fontsLoaded && !fontError && !fontWaitOver) {
     return <CustomSplashScreen />;
   }
 

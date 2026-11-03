@@ -69,29 +69,28 @@ const PartnerContext = createContext(false);
 const usePartner = () => useContext(PartnerContext);
 
 const BENEFITS = {
+  // "Private" lives in the footer line, so it isn't repeated here.
   self: [
-    { icon: "calendar-outline", text: "Know when your next period is due" },
-    { icon: "barbell-outline", text: "Workout tips that match each phase" },
-    { icon: "time-outline", text: "Spot delays early with your own history" },
-    { icon: "lock-closed-outline", text: "Private — stays only on this phone" },
+    { icon: "calendar-outline", text: "Your next period date" },
+    { icon: "barbell-outline", text: "Workout tips for each phase" },
+    { icon: "time-outline", text: "Spot delays early" },
   ],
   partner: [
-    { icon: "calendar-outline", text: "Know when her next period is due" },
-    { icon: "heart-outline", text: "Know when she may need a little extra care" },
-    { icon: "barbell-outline", text: "Plan workouts together around her energy" },
-    { icon: "lock-closed-outline", text: "Private — stays only on this phone" },
+    { icon: "calendar-outline", text: "Her next period date" },
+    { icon: "heart-outline", text: "When she may need extra care" },
+    { icon: "barbell-outline", text: "Plan workouts around her energy" },
   ],
 };
 
 const INTRO = {
   self: {
     title: "Track your cycle, train smarter",
-    sub: "Your energy changes through the month. Knowing where you are helps you plan workouts — and be kinder to yourself on tough days.",
+    sub: "Plan workouts around your energy.",
     cta: "Add my last period date",
   },
   partner: {
     title: "Track your partner's cycle",
-    sub: "Know when her period is due and when she might need extra care — so you can support her better and plan workouts together.",
+    sub: "Support her better on harder days.",
     cta: "Add her last period date",
   },
 };
@@ -485,10 +484,10 @@ function LogSheet({ visible, firstTime, data, onClose, onSaved }) {
 }
 
 const REMINDER_BENEFITS = [
-  { icon: "notifications-outline", text: "A heads-up the day before the period is due" },
-  { icon: "create-outline", text: "A gentle nudge to log it, so predictions stay accurate" },
+  { icon: "notifications-outline", text: "A heads-up the day before it's due" },
+  { icon: "eye-off-outline", text: "Discreet — no details on your lock screen" },
+  { icon: "create-outline", text: "A nudge to log it, so predictions stay accurate" },
   { icon: "repeat-outline", text: "Every 15 days until the first date is added" },
-  { icon: "eye-off-outline", text: "Discreet — no dates or details on your lock screen" },
 ];
 
 function BenefitList({ items }) {
@@ -540,10 +539,9 @@ function ReminderCard({ active, busy, onEnable, onDisable, delay }) {
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.cardTitle}>Never forget to log</Text>
-          <Text style={styles.cardHint}>Accurate predictions need the dates</Text>
+          <Text style={styles.cardHint}>A heads-up the day before</Text>
         </View>
       </View>
-      <BenefitList items={REMINDER_BENEFITS.slice(0, 2)} />
       <Pressable
         onPress={onEnable}
         disabled={busy}
@@ -575,10 +573,10 @@ function ReminderPrimer({ visible, busy, onEnable, onClose }) {
             <Image source={EXPRESSION_IMAGES.hi} style={styles.primerMascot} contentFit="contain" />
             <Text style={styles.primerTitle}>Want a reminder? 🔔</Text>
             <Text style={styles.primerSub}>
-              Most people forget to log. A quick nudge keeps predictions spot on.
+              A quick nudge keeps predictions right.
             </Text>
           </View>
-          <BenefitList items={REMINDER_BENEFITS} />
+          <BenefitList items={REMINDER_BENEFITS.slice(0, 2)} />
           <Pressable
             onPress={onEnable}
             disabled={busy}
@@ -839,7 +837,7 @@ export default function PeriodPanel() {
                 <Text style={styles.cardTitle}>History</Text>
                 <Text style={styles.cardHint}>Avg cycle {status.avgCycle} days</Text>
               </View>
-              {data.cycles.slice(0, 12).map((c, i) => {
+              {data.cycles.slice(0, 6).map((c, i) => {
                 const newer = data.cycles[i - 1];
                 const length = newer ? daysBetween(fromKey(c.start), fromKey(newer.start)) : null;
                 return (
@@ -902,7 +900,7 @@ export default function PeriodPanel() {
         ) : null}
 
         <Text style={styles.disclaimer}>
-          🔒 Stored only on this phone. Predictions are estimates, not medical advice.
+          🔒 Only on this phone · Estimates, not medical advice
         </Text>
       </ScrollView>
 
@@ -989,7 +987,7 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 2,
   },
-  cardTitle: { fontFamily: "OpenSans_800ExtraBold", fontSize: ms(15.5), color: colors.text },
+  cardTitle: { fontFamily: "OpenSans_700Bold", fontSize: ms(15.5), color: colors.text },
   cardHint: { fontFamily: "OpenSans_600SemiBold", fontSize: ms(11.5), color: colors.textLight, marginTop: 2 },
   rowBetween: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
 
@@ -997,7 +995,7 @@ const styles = StyleSheet.create({
   introCard: { alignItems: "center", paddingTop: ms(8) },
   introMascot: { width: ms(110), height: ms(110) },
   introTitle: {
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     fontSize: ms(18),
     color: colors.text,
     textAlign: "center",
@@ -1038,7 +1036,7 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 4,
   },
-  primaryBtnText: { fontFamily: "OpenSans_800ExtraBold", fontSize: ms(14.5), color: "#FFFFFF" },
+  primaryBtnText: { fontFamily: "OpenSans_700Bold", fontSize: ms(14.5), color: "#FFFFFF" },
 
   // reminders
   reminderHead: { flexDirection: "row", alignItems: "center", gap: ms(10) },
@@ -1052,12 +1050,12 @@ const styles = StyleSheet.create({
   },
   reminderBtn: { height: ms(46), marginTop: -ms(4) },
   reminderOnCard: { flexDirection: "row", alignItems: "center", gap: ms(10), paddingVertical: ms(12) },
-  reminderOnTitle: { fontFamily: "OpenSans_800ExtraBold", fontSize: ms(13.5), color: colors.text },
+  reminderOnTitle: { fontFamily: "OpenSans_700Bold", fontSize: ms(13.5), color: colors.text },
   reminderOnSub: { fontFamily: "OpenSans_500Medium", fontSize: ms(11.5), color: colors.textLight, marginTop: 1 },
   primerTop: { alignItems: "center" },
   primerMascot: { width: ms(96), height: ms(96) },
   primerTitle: {
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     fontSize: ms(18),
     color: colors.text,
     textAlign: "center",
@@ -1087,7 +1085,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: ms(10),
     paddingVertical: ms(6),
   },
-  careBtnText: { fontFamily: "OpenSans_800ExtraBold", fontSize: ms(11), color: ROSE },
+  careBtnText: { fontFamily: "OpenSans_700Bold", fontSize: ms(11), color: ROSE },
   introCareLink: {
     flexDirection: "row",
     alignItems: "center",
@@ -1095,7 +1093,7 @@ const styles = StyleSheet.create({
     marginTop: ms(12),
     paddingVertical: 4,
   },
-  introCareText: { fontFamily: "OpenSans_700Bold", fontSize: ms(12.5), color: ROSE },
+  introCareText: { fontFamily: "OpenSans_600SemiBold", fontSize: ms(12.5), color: ROSE },
   careSheetHead: { flexDirection: "row", alignItems: "center", gap: ms(10), marginBottom: ms(4) },
   careSheetIcon: {
     width: ms(38),
@@ -1114,10 +1112,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  statusEyebrow: { fontFamily: "OpenSans_800ExtraBold", fontSize: ms(10.5), letterSpacing: 1.3, color: ROSE },
+  statusEyebrow: { fontFamily: "OpenSans_700Bold", fontSize: ms(10.5), letterSpacing: 1.3, color: ROSE },
   statusBigRow: { flexDirection: "row", alignItems: "baseline", gap: ms(6), marginTop: 2 },
   statusBig: { fontFamily: "OpenSans_800ExtraBold", fontSize: ms(34), color: colors.text, letterSpacing: -0.8 },
-  statusUnit: { fontFamily: "OpenSans_700Bold", fontSize: ms(14), color: colors.textLight },
+  statusUnit: { fontFamily: "OpenSans_600SemiBold", fontSize: ms(14), color: colors.textLight },
   cycleTrack: {
     height: ms(10),
     borderRadius: 999,
@@ -1131,7 +1129,7 @@ const styles = StyleSheet.create({
   cyclePeriod: { position: "absolute", left: 0, top: 0, bottom: 0, backgroundColor: ROSE, borderRadius: 999 },
   statusMeta: { flexDirection: "row", justifyContent: "space-between", marginTop: ms(8) },
   metaText: { fontFamily: "OpenSans_500Medium", fontSize: ms(11.5), color: colors.textLight },
-  metaStrong: { fontFamily: "OpenSans_800ExtraBold", color: colors.text },
+  metaStrong: { fontFamily: "OpenSans_700Bold", color: colors.text },
   phaseTip: {
     fontFamily: "OpenSans_600SemiBold",
     fontSize: ms(12),
@@ -1155,7 +1153,7 @@ const styles = StyleSheet.create({
     backgroundColor: ROSE_SOFT,
     transform: [{ rotate: "45deg" }],
   },
-  supportTitle: { fontFamily: "OpenSans_800ExtraBold", fontSize: ms(13), color: ROSE },
+  supportTitle: { fontFamily: "OpenSans_700Bold", fontSize: ms(13), color: ROSE },
   supportText: {
     fontFamily: "OpenSans_600SemiBold",
     fontSize: ms(12),
@@ -1190,8 +1188,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     elevation: 1,
   },
-  segmentText: { fontFamily: "OpenSans_700Bold", fontSize: ms(12.5), color: colors.textLight },
-  segmentTextOn: { color: colors.text, fontFamily: "OpenSans_800ExtraBold" },
+  segmentText: { fontFamily: "OpenSans_600SemiBold", fontSize: ms(12.5), color: colors.textLight },
+  segmentTextOn: { color: colors.text, fontFamily: "OpenSans_700Bold" },
   careRow: { flexDirection: "row", alignItems: "center", gap: ms(10), paddingVertical: ms(6) },
   careIcon: { width: ms(28), height: ms(28), borderRadius: ms(8), alignItems: "center", justifyContent: "center" },
   careIconDo: { backgroundColor: "#E9F7EF" },
@@ -1202,10 +1200,10 @@ const styles = StyleSheet.create({
   historyRow: { flexDirection: "row", alignItems: "center", gap: ms(10), paddingVertical: ms(10) },
   historyDivider: { borderTopWidth: 1, borderTopColor: "#F3F4F6" },
   historyDot: { width: ms(10), height: ms(10), borderRadius: ms(5), backgroundColor: ROSE },
-  historyDate: { fontFamily: "OpenSans_700Bold", fontSize: ms(13), color: colors.text },
+  historyDate: { fontFamily: "OpenSans_600SemiBold", fontSize: ms(13), color: colors.text },
   historySub: { fontFamily: "OpenSans_500Medium", fontSize: ms(11), color: colors.textLight, marginTop: 1 },
   chip: { borderRadius: 999, paddingHorizontal: ms(9), paddingVertical: ms(3) },
-  chipText: { fontFamily: "OpenSans_700Bold", fontSize: ms(10.5) },
+  chipText: { fontFamily: "OpenSans_600SemiBold", fontSize: ms(10.5) },
   trash: { padding: 2, marginLeft: 2 },
 
   // steppers
@@ -1227,7 +1225,7 @@ const styles = StyleSheet.create({
   stepValue: {
     minWidth: ms(64),
     textAlign: "center",
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     fontSize: ms(16),
     color: colors.text,
   },
@@ -1260,7 +1258,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#E5E7EB",
     marginBottom: ms(12),
   },
-  sheetTitle: { fontFamily: "OpenSans_800ExtraBold", fontSize: ms(17), color: colors.text },
+  sheetTitle: { fontFamily: "OpenSans_700Bold", fontSize: ms(17), color: colors.text },
   sheetSub: {
     fontFamily: "OpenSans_500Medium",
     fontSize: ms(12),

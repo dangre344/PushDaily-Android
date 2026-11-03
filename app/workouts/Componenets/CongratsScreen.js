@@ -187,7 +187,7 @@ const CongratsScreen = ({
       }),
     ]).start();
 
-    Animated.loop(
+    const pulse = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
           toValue: 1.06,
@@ -202,11 +202,19 @@ const CongratsScreen = ({
           useNativeDriver: true,
         }),
       ]),
-    ).start();
+    );
+    pulse.start();
 
-    setTimeout(() => {
+    const confetti = setTimeout(() => {
       confettiAnim.current?.play();
     }, 350);
+
+    // Leaving Congrats must leave nothing running: the endless pulse would keep
+    // animating, and the confetti timer could fire on an unmounted screen.
+    return () => {
+      pulse.stop();
+      clearTimeout(confetti);
+    };
   }, []);
 
   // ─── Animated number counters ───────────────────────────────────────────
@@ -731,7 +739,7 @@ const CongratsScreen = ({
             requestNonPersonalizedAdsOnly: false,
           }}
           onAdLoaded={() => {
-            console.log("[AdMob] Banner loaded");
+            Logger.log("[AdMob] Banner loaded");
           }}
           onAdFailedToLoad={(error) => {
             console.warn("[AdMob] Banner failed:", error);

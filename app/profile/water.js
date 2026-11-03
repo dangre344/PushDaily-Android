@@ -81,13 +81,6 @@ export default function WaterAndPeriodsScreen() {
           <Text style={styles.title}>
             {tab !== "period" ? "Water Reminder" : partner ? "Partner's Cycle" : "Period Tracking"}
           </Text>
-          <Text style={styles.subtitle}>
-            {tab !== "period"
-              ? "Stay hydrated, stay strong"
-              : partner
-                ? "Track her cycle and know when to care a little more"
-                : "Cycle predictions, history & care tips"}
-          </Text>
         </View>
       </View>
 
@@ -122,7 +115,7 @@ export default function WaterAndPeriodsScreen() {
                     color={t.color}
                     style={{ opacity: on ? 1 : 0.5 }}
                   />
-                  <Text style={[styles.tabText, on && { color: colors.text, fontFamily: "OpenSans_800ExtraBold" }]}>
+                  <Text style={[styles.tabText, on && { color: colors.text, fontFamily: "OpenSans_700Bold" }]}>
                     {t.label}
                   </Text>
                 </Pressable>
@@ -158,7 +151,7 @@ export default function WaterAndPeriodsScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#FFF8F5" },
+  screen: { flex: 1, backgroundColor: "#F7F8FA" },
 
   header: {
     flexDirection: "row",
@@ -216,7 +209,7 @@ const styles = StyleSheet.create({
     gap: 6,
     zIndex: 1,
   },
-  tabText: { fontFamily: "OpenSans_700Bold", fontSize: ms(13.5), color: colors.textLight },
+  tabText: { fontFamily: "OpenSans_600SemiBold", fontSize: ms(13.5), color: colors.textLight },
 
   body: { flex: 1 },
   pane: { flex: 1 },

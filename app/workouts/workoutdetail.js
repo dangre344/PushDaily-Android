@@ -12,9 +12,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { AD_UNIT_IDS } from "../../ads/Admobmanager";
+import { preloadExerciseVideo } from "../../components/workout/ExerciseVideoPlayer";
+import { preloadExercisePhoto } from "../../components/workout/exercisePhotos";
+import { logWorkoutCompleted } from "../../constants/analytics";
 import { colors } from "../../constants/colors";
 import { workoutListGlobal } from "../../constants/Constants";
 import { successHaptic, tapHaptic } from "../../constants/haptics";
@@ -27,7 +28,8 @@ import {
   initDB,
   insertMultipleWorkouts,
 } from "../../offlinedb/workoutdb";
-import { syncWidget } from "../../constants/widgetPromo";
+import { EXPRESSION_IMAGES, syncWidget } from "../../constants/widgetPromo";
+import { Image as ExpoImage } from "expo-image";
 import {
   exercisePrefill,
   setChatContext,
@@ -90,6 +92,20 @@ export default function WorkoutDetail() {
   const [completedIndices, setCompletedIndices] = useState(new Set());
   const [loadingPage, setLoadingPage] = useState("play_workout");
 
+  // The first exercise has no rest screen before it to preload its clip, so
+  // start fetching it as soon as the plan is known.
+  const firstVideo = workouts?.workoutList?.[0]?.video;
+  useEffect(() => {
+    preloadExerciseVideo(firstVideo);
+  }, [firstVideo]);
+
+  // The rest screen after this exercise shows the next one's photo: decode it
+  // now so it's on screen the moment the rest starts.
+  const nextPhoto = workouts?.workoutList?.[index + 1]?.photo;
+  useEffect(() => {
+    preloadExercisePhoto(nextPhoto);
+  }, [nextPhoto]);
+
   // Tell the floating trainer bubble which exercise is on screen, so tapping
   // Jack opens the chat with a "how do I perform this?" question ready to send.
   const currentExerciseName = workouts?.workoutList?.[index]?.name;
@@ -129,6 +145,39 @@ export default function WorkoutDetail() {
       : null;
 
   const completedCount = completedIndices.size;
+
+  // What Jack says when they try to leave, by how far they've got.
+  const quitMood = (() => {
+    const first = (user?.name || "").trim().split(/\s+/)[0] || "champ";
+    const left = Math.max(totalCount - completedCount, 0);
+    const pct = totalCount > 0 ? completedCount / totalCount : 0;
+    if (completedCount === 0) {
+      return {
+        jack: "sad",
+        title: "Leaving already? 🥺",
+        message: "We haven't even warmed up! Just one exercise — I'll count every rep with you.",
+      };
+    }
+    if (pct >= 0.8) {
+      return {
+        jack: "wow",
+        title: `Only ${left} left, ${first}?! 😱`,
+        message: "You're SO close. Quitting now would hurt me more than leg day.",
+      };
+    }
+    if (pct >= 0.5) {
+      return {
+        jack: "think",
+        title: "Past halfway! Don't stop now 🔥",
+        message: `${completedCount} of ${totalCount} done. Finish strong and I'll throw you a mini party 🎉`,
+      };
+    }
+    return {
+      jack: "phone",
+      title: "Don't ghost me, " + first + " 💔",
+      message: `${completedCount} of ${totalCount} done. Leaving now is like walking out at the movie's intro 🍿`,
+    };
+  })();
 
   const workoutCompletedWorkouts =
     workouts?.workoutList?.filter((_, i) => completedIndices.has(i)) ?? [];
@@ -216,6 +265,14 @@ export default function WorkoutDetail() {
       // (e.g. accidental re-trigger) are blocked, while different workouts
       // (different level / body part) still save normally.
       lastSavedWorkoutKeyRef.current = currentKey;
+
+      // Conversion signal for Google Ads (imported from Firebase). Fired only
+      // after a real save, so skipped/duplicate finishes never count.
+      logWorkoutCompleted({
+        exercisesDone: completedWorkouts.length,
+        exercisesTotal: totalCount,
+        durationSec: (Date.now() - startTimeRef.current) / 1000,
+      });
 
       const allWorkouts = await getAllWorkouts();
       Logger.log(
@@ -358,11 +415,33 @@ export default function WorkoutDetail() {
         </TouchableOpacity>
 
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>{workouts.bodyPart} Workout</Text>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {workouts.bodyPart} Workout
+          </Text>
           <Text style={styles.headerSubtitle}>
             {workouts.level} Level • {workouts.calories} kcal
           </Text>
         </View>
+
+        {/* Skip the exercise on screen (or, while resting, the one up next) —
+            not counted as done. */}
+        {!isFinishing && (
+          <TouchableOpacity
+            style={styles.skipButton}
+            onPress={handleSkip}
+            activeOpacity={0.8}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel={`Skip ${workouts.workoutList[index]?.name}`}
+          >
+            <Text style={styles.skipText}>Skip</Text>
+            <Ionicons
+              name="play-skip-forward"
+              size={scaling().moderateScale(14)}
+              color={colors.primary}
+            />
+          </TouchableOpacity>
+        )}
       </Animated.View>
 
       {/* Session progress — always visible while working out */}
@@ -393,6 +472,9 @@ export default function WorkoutDetail() {
 
       <ScrollView
         style={styles.scrollView}
+        // Lets the rest screen stretch to the visible height so its timer
+        // never sits below the fold.
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
       >
@@ -428,28 +510,6 @@ export default function WorkoutDetail() {
           />
         )}
       </ScrollView>
-
-      {/* Skip button — only while not finishing */}
-      {!isFinishing && (
-        <View
-          style={{
-            flexDirection: "row",
-            alignSelf: "flex-end",
-            marginEnd: 15,
-            marginBottom: 10,
-          }}
-        >
-          <TouchableOpacity
-            style={styles.skipButton}
-            onPress={handleSkip}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.skipText}>
-              Skip {workouts.workoutList[index]?.name}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
 
       {loadingPage === "next_workout" && !isFinishing && (
         <View style={styles.footer}>
@@ -500,18 +560,6 @@ export default function WorkoutDetail() {
         </View>
       )}
 
-      {/* Banner ad — pinned at the very bottom, below the footer; only on the
-          rest/next-workout screen */}
-      {loadingPage === "next_workout" && !isFinishing && (
-        <View style={styles.bannerContainer}>
-          <BannerAd
-            unitId={AD_UNIT_IDS.banner}
-            size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
-            requestOptions={{ requestNonPersonalizedAdsOnly: false }}
-          />
-        </View>
-      )}
-
       {/* Quit modal */}
       <Modal
         visible={quitModalVisible}
@@ -522,38 +570,54 @@ export default function WorkoutDetail() {
       >
         <View style={styles.quitOverlay}>
           <View style={styles.quitCard}>
-            <View style={styles.quitIconWrap}>
-              <Ionicons
-                name="fitness-outline"
-                size={scaling().moderateScale(30)}
-                color={colors.primary}
+            <View style={styles.quitMascotWrap}>
+              <ExpoImage
+                source={EXPRESSION_IMAGES[quitMood.jack]}
+                style={styles.quitMascot}
+                contentFit="contain"
               />
             </View>
-            <Text style={styles.quitTitle}>You&apos;re doing great!</Text>
-            <Text style={styles.quitMessage}>
-              You have completed {completedCount} workout
-              {completedCount !== 1 ? "s" : ""} out of {totalCount}.
-            </Text>
-            <Text style={styles.quitQuestion}>
-              Are you sure you want to quit this workout?
-            </Text>
+            <Text style={styles.quitTitle}>{quitMood.title}</Text>
+            <Text style={styles.quitQuestion}>{quitMood.message}</Text>
+
+            {/* How far they've got, at a glance. */}
+            {totalCount > 0 ? (
+              <View style={styles.quitProgress}>
+                <View style={styles.quitTrack}>
+                  <View
+                    style={[
+                      styles.quitFill,
+                      { width: `${Math.max(4, (completedCount / totalCount) * 100)}%` },
+                    ]}
+                  />
+                </View>
+                <Text style={styles.quitProgressText}>
+                  {completedCount}/{totalCount}
+                </Text>
+              </View>
+            ) : null}
+
             <View style={styles.quitActions}>
+              {/* Staying is the big, obvious choice. */}
               <TouchableOpacity
                 activeOpacity={0.85}
-                style={[styles.quitButton, styles.quitYesButton]}
+                style={[styles.quitButton, styles.quitNoButton]}
+                onPress={() => {
+                  tapHaptic();
+                  setQuitModalVisible(false);
+                }}
+              >
+                <Text style={styles.quitNoText}>Keep going 💪</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                style={styles.quitLeaveLink}
                 onPress={() => {
                   setQuitModalVisible(false);
                   router.back();
                 }}
               >
-                <Text style={styles.quitYesText}>Yes, quit</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                activeOpacity={0.85}
-                style={[styles.quitButton, styles.quitNoButton]}
-                onPress={() => setQuitModalVisible(false)}
-              >
-                <Text style={styles.quitNoText}>No, I&apos;m continuing</Text>
+                <Text style={styles.quitYesText}>Quit anyway</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -601,9 +665,13 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
 
+  // Shrinks (title ellipsizes) so long names like "Posture Correction" never
+  // run under the Skip button.
   headerCenter: {
-    alignItems: "center",
+    flexShrink: 1,
+    alignItems: "flex-start",
     marginStart: 10,
+    marginEnd: 10,
   },
 
   headerTitle: {
@@ -658,6 +726,10 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
 
+  scrollContent: {
+    flexGrow: 1,
+  },
+
   // Progress
   progressContainer: {
     paddingHorizontal: 20,
@@ -690,17 +762,22 @@ export const styles = StyleSheet.create({
   },
 
   skipButton: {
-    paddingHorizontal: 15,
-    paddingVertical: 8,
+    marginLeft: "auto",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: "rgba(255, 107, 53, 0.35)",
+    backgroundColor: "rgba(255, 107, 53, 0.08)",
   },
 
   skipText: {
-    fontFamily: "OpenSans_500Medium",
-    fontSize: scaling().moderateScale(14),
-    color: colors.secondary,
+    fontFamily: "OpenSans_600SemiBold",
+    fontSize: scaling().moderateScale(13),
+    color: colors.primary,
   },
 
   progressDotActive: {
@@ -776,7 +853,7 @@ export const styles = StyleSheet.create({
   },
 
   exerciseName: {
-    fontFamily: "opensans_700bold",
+    fontFamily: "OpenSans_700Bold",
     fontSize: scaling().moderateScale(18),
     color: colors.text,
     marginBottom: 10,
@@ -1077,14 +1154,52 @@ export const styles = StyleSheet.create({
     elevation: 8,
   },
 
-  quitIconWrap: {
-    width: scaling().moderateScale(64),
-    height: scaling().moderateScale(64),
-    borderRadius: scaling().moderateScale(32),
-    backgroundColor: colors.primary + "14",
+  quitMascotWrap: {
+    width: scaling().moderateScale(104),
+    height: scaling().moderateScale(104),
+    borderRadius: scaling().moderateScale(52),
+    backgroundColor: "#FFF3EC",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: scaling().moderateScale(14),
+    marginBottom: scaling().moderateScale(12),
+  },
+
+  quitMascot: {
+    width: scaling().moderateScale(92),
+    height: scaling().moderateScale(92),
+  },
+
+  quitProgress: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scaling().moderateScale(10),
+    marginTop: scaling().moderateScale(16),
+  },
+
+  quitTrack: {
+    flex: 1,
+    height: scaling().moderateScale(8),
+    borderRadius: 999,
+    backgroundColor: "#EEF0F4",
+    overflow: "hidden",
+  },
+
+  quitFill: {
+    height: "100%",
+    borderRadius: 999,
+    backgroundColor: colors.primary,
+  },
+
+  quitProgressText: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: scaling().moderateScale(12.5),
+    color: colors.text,
+  },
+
+  quitLeaveLink: {
+    alignItems: "center",
+    paddingVertical: scaling().moderateScale(10),
   },
 
   quitTitle: {
@@ -1092,15 +1207,6 @@ export const styles = StyleSheet.create({
     fontSize: scaling().moderateScale(20),
     color: colors.text,
     textAlign: "center",
-  },
-
-  quitMessage: {
-    fontFamily: "OpenSans_600SemiBold",
-    fontSize: scaling().moderateScale(14),
-    color: colors.primary,
-    textAlign: "center",
-    marginTop: scaling().moderateScale(8),
-    lineHeight: scaling().moderateScale(20),
   },
 
   quitQuestion: {
@@ -1126,34 +1232,19 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
-  quitYesButton: {
-    backgroundColor: "#FEE2E2",
-    borderWidth: 1,
-    borderColor: "#FCA5A5",
-  },
-
   quitNoButton: {
     backgroundColor: colors.primary,
   },
 
   quitYesText: {
-    fontFamily: "OpenSans_800ExtraBold",
-    fontSize: scaling().moderateScale(14),
-    color: "#DC2626",
+    fontFamily: "OpenSans_700Bold",
+    fontSize: scaling().moderateScale(13.5),
+    color: "#94A3B8",
   },
 
   quitNoText: {
     fontFamily: "OpenSans_800ExtraBold",
     fontSize: scaling().moderateScale(14),
     color: "#FFFFFF",
-  },
-
-  bannerContainer: {
-    width: "100%",
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: scaling().moderateScale(52),
-    backgroundColor: colors.lightColor,
-    flexShrink: 1,
   },
 });

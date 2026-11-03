@@ -78,6 +78,9 @@ const QUIZ_CATEGORIES = [
   "motivation",
 ];
 const QUIZ_COUNT = 10;
+// Asked for a few spares: each question is validated on its own and the bad
+// ones dropped, so one weak item no longer throws away the whole day's set.
+const QUIZ_ASK = 13;
 
 // How many past days of questions to send back as a do-not-repeat list. 21 is
 // about 210 questions — enough to stop recycling, small enough for the prompt.
@@ -125,9 +128,9 @@ function quizPrompt(dateKey, recentQuestions) {
         .join("\n")}\n`
     : "";
 
-  return `Generate exactly ${QUIZ_COUNT} multiple-choice fitness quiz questions for ${dateKey}.
+  return `Generate exactly ${QUIZ_ASK} multiple-choice fitness quiz questions for ${dateKey}.
 
-MIX: exactly 4 "easy", 4 "medium", 2 "hard".
+MIX: 5 "easy", 5 "medium", 3 "hard".
 
 DIFFICULTY CALIBRATION — this is a daily habit app, not an exam:
 - "easy": anyone who exercises casually knows it.
@@ -159,7 +162,10 @@ RULES:
 - Vary the phrasing. Do not open every question with the same stem
   ("Which of the following...", "How many...").
 
-Return ONLY a JSON array of ${QUIZ_COUNT} objects with exactly these keys:
+- "category" is one of: ${QUIZ_CATEGORIES.join(", ")}.
+
+Return ONLY a JSON object of the form {"questions": [ ... ]} holding ${QUIZ_ASK}
+objects with exactly these keys:
 category, difficulty, emoji, question, options, correct, tip`;
 }
 
@@ -200,83 +206,125 @@ const quizFingerprint = (s) =>
     .sort()
     .join(" ");
 
-function validateQuiz(raw, recent = []) {
-  if (!Array.isArray(raw) || raw.length !== QUIZ_COUNT) return null;
+/** One model question → the stored shape, or null when it isn't usable. */
+function cleanQuestion(q) {
+  if (!q || typeof q !== "object") return null;
+  const options = Array.isArray(q.options)
+    ? q.options.map((o) => (typeof o === "string" ? o.trim() : ""))
+    : [];
+  const correct = Number(q.correct);
+  const question = typeof q.question === "string" ? q.question.trim() : "";
+  const tip = typeof q.tip === "string" ? q.tip.trim() : "";
 
-  const out = [];
-  for (let i = 0; i < raw.length; i++) {
-    const q = raw[i] || {};
-    const options = q.options;
-    const correct = Number(q.correct);
-
-    if (
-      typeof q.question !== "string" ||
-      q.question.trim().length < 8 ||
-      !Array.isArray(options) ||
-      options.length !== 4 ||
-      options.some((o) => typeof o !== "string" || !o.trim()) ||
-      new Set(options.map((o) => o.trim().toLowerCase())).size !== 4 ||
-      !Number.isInteger(correct) ||
-      correct < 0 ||
-      correct > 3 ||
-      typeof q.tip !== "string" ||
-      q.tip.trim().length < 10
-    ) {
-      return null;
-    }
-
-    out.push({
-      id: i + 1,
-      category: QUIZ_CATEGORIES.includes(q.category) ? q.category : "workouts",
-      difficulty: (() => {
-        const d = String(q.difficulty || "").toLowerCase();
-        if (QUIZ_DIFFICULTIES.includes(d)) return d;
-        return DIFFICULTY_ALIAS[d] || "easy";
-      })(),
-      emoji: typeof q.emoji === "string" && q.emoji ? q.emoji.slice(0, 4) : "💪",
-      question: q.question.trim(),
-      options: options.map((o) => o.trim()),
-      correct,
-      tip: q.tip.trim(),
-    });
-  }
-
-  // Reject a degenerate set where every answer sits at the same index.
-  if (new Set(out.map((q) => q.correct)).size < 2) return null;
-
-  // Reject internal duplicates — the same question twice in one day.
-  const prints = out.map((q) => quizFingerprint(q.question));
-  if (new Set(prints).size !== prints.length) {
-    console.log("[quiz] rejected: duplicate questions within the set");
+  if (
+    question.length < 8 ||
+    options.length !== 4 ||
+    options.some((o) => !o) ||
+    new Set(options.map((o) => o.toLowerCase())).size !== 4 ||
+    !Number.isInteger(correct) ||
+    correct < 0 ||
+    correct > 3 ||
+    tip.length < 10
+  ) {
     return null;
   }
 
-  // Reject a set that is mostly recycled. The prompt asks the model to avoid
-  // recent questions; this is the check that the ask actually worked, because
-  // repetition is the single thing users notice about a daily quiz.
-  if (recent.length) {
-    const seen = new Set(recent.map(quizFingerprint));
-    const repeats = prints.filter((p) => seen.has(p)).length;
-    if (repeats > 2) {
-      console.log(`[quiz] rejected: ${repeats}/${QUIZ_COUNT} questions repeat recent days`);
-      return null;
-    }
-  }
-
-  // Require a real topic spread. Without this the model happily returns ten
-  // variations on hydration.
-  if (new Set(out.map((q) => q.category)).size < 4) {
-    console.log("[quiz] rejected: fewer than 4 distinct categories");
-    return null;
-  }
-
-  return out;
+  const d = String(q.difficulty || "").toLowerCase();
+  const rawEmoji = typeof q.emoji === "string" ? q.emoji.trim() : "";
+  return {
+    category: QUIZ_CATEGORIES.includes(q.category) ? q.category : "workouts",
+    difficulty: QUIZ_DIFFICULTIES.includes(d) ? d : DIFFICULTY_ALIAS[d] || "easy",
+    // Capped by code point, not UTF-16 unit: slice(0, 4) cut ZWJ emoji such
+    // as 🚶‍♀️ in half.
+    emoji: rawEmoji ? Array.from(rawEmoji).slice(0, 5).join("") : "💪",
+    question,
+    options,
+    correct,
+    tip,
+  };
 }
 
-// Quiz content is GEMINI ONLY — its JSON mode is far more reliable here, and a
-// single author keeps the daily set consistent in tone and difficulty.
-// (Groq remains the fallback for chat and analysis, where prose is fine.)
-// A failed night writes nothing, so yesterday's valid set stays live.
+// The stored ten. The app plays them as two sessions of five, 2/2/1 each.
+const QUIZ_MIX = { easy: 4, medium: 4, hard: 2 };
+const QUIZ_DIFF_RANK = { easy: 0, medium: 1, hard: 2 };
+
+// A couple of recycled questions are tolerated when the fresh ones run short —
+// the same allowance the old all-or-nothing check had.
+const QUIZ_MAX_REPEATS = 2;
+
+/**
+ * Builds the day's ten from whatever the model returned.
+ *
+ * The old check rejected the WHOLE set when any single question was off (a
+ * short hint, a duplicate option, one recycled question too many), and with a
+ * single nightly run that meant no quiz for the day. Now each question is
+ * judged on its own, the bad ones are dropped, and the ten are chosen from the
+ * survivors. Returns { quiz } or { reason }.
+ */
+function buildQuiz(raw, recent = []) {
+  if (!Array.isArray(raw) || !raw.length) return { reason: "unparseable" };
+
+  const seen = new Set(recent.map(quizFingerprint));
+  const prints = new Set();
+  const fresh = [];
+  const repeats = [];
+  let invalid = 0;
+  for (const item of raw) {
+    const q = cleanQuestion(item);
+    if (!q) {
+      invalid++;
+      continue;
+    }
+    const p = quizFingerprint(q.question);
+    if (prints.has(p)) continue; // the same question twice in one answer
+    prints.add(p);
+    (seen.has(p) ? repeats : fresh).push(q);
+  }
+
+  const pool = [...fresh, ...repeats.slice(0, QUIZ_MAX_REPEATS)];
+  if (pool.length < QUIZ_COUNT) {
+    return {
+      reason: `only ${pool.length} usable of ${raw.length} (${invalid} invalid, ${repeats.length} recent repeats)`,
+    };
+  }
+
+  // Spread topics: every category's first question comes before any
+  // category's second, then the difficulty mix is filled in that order.
+  const perCat = {};
+  const ranked = pool
+    .map((q, i) => ({ q, i, r: (perCat[q.category] = (perCat[q.category] ?? -1) + 1) }))
+    .sort((a, b) => a.r - b.r || a.i - b.i)
+    .map((x) => x.q);
+
+  const picked = [];
+  for (const [d, n] of Object.entries(QUIZ_MIX)) {
+    picked.push(...ranked.filter((q) => q.difficulty === d).slice(0, n));
+  }
+  for (const q of ranked) {
+    if (picked.length >= QUIZ_COUNT) break;
+    if (!picked.includes(q)) picked.push(q);
+  }
+
+  // Still required: a real topic spread, and answers not all at one index.
+  if (new Set(picked.map((q) => q.category)).size < 4) {
+    return { reason: "fewer than 4 distinct categories" };
+  }
+  if (new Set(picked.map((q) => q.correct)).size < 2) {
+    return { reason: "every answer at the same index" };
+  }
+
+  // Sessions are questions 1–5 and 6–10. Deal easiest-first into alternate
+  // halves so both get the same ramp.
+  const sorted = [...picked].sort(
+    (a, b) => QUIZ_DIFF_RANK[a.difficulty] - QUIZ_DIFF_RANK[b.difficulty],
+  );
+  const ordered = [
+    ...sorted.filter((_, i) => i % 2 === 0),
+    ...sorted.filter((_, i) => i % 2 === 1),
+  ];
+  return { quiz: ordered.map((q, i) => ({ id: i + 1, ...q })) };
+}
+
 /**
  * Question text from the last QUIZ_HISTORY_DAYS of stored sets.
  *
@@ -305,59 +353,202 @@ async function recentQuizQuestions(env) {
   }
 }
 
+const QUIZ_SYSTEM =
+  "You are a certified strength & nutrition coach writing quiz content. Output strict JSON only.";
+
+/**
+ * Gemini twice, then Groq. Gemini's JSON mode is the preferred author, but the
+ * job runs while Gemini's free daily quota may already be spent by the trainer
+ * chat (it resets at midnight Pacific), and a 429 used to mean no quiz at all.
+ * Returns { quiz, provider, notes } — quiz is null when every attempt failed,
+ * and nothing is stored, so the last good set keeps being served.
+ */
 async function generateQuiz(env, dateKey = utcDateKey()) {
   const recent = await recentQuizQuestions(env);
   console.log(`[quiz] ${dateKey}: avoiding ${recent.length} recent questions`);
+  const prompt = quizPrompt(dateKey, recent);
+  const notes = [];
 
-  // Two attempts: validation is deliberately strict (duplicates, topic spread,
-  // recycled questions), and at temperature 0.9 a re-roll usually clears a
-  // borderline set. Without the retry a single fussy rejection costs a whole
-  // day of quiz content.
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    const gem = await callGemini(
-      env,
-      "You are a certified strength & nutrition coach writing quiz content. Output strict JSON only.",
-      quizPrompt(dateKey, recent),
-      2600,
-      true,
-    );
+  let geminiQuota = false;
+  for (const provider of ["gemini", "gemini", "groq"]) {
+    if (provider === "gemini" && geminiQuota) continue; // a retry won't help
+    const res =
+      provider === "gemini"
+        ? await callGemini(env, QUIZ_SYSTEM, prompt, 4096, true)
+        : await callGroq(env, QUIZ_SYSTEM, prompt, 4096, true);
 
-    if (gem.status !== "ok") {
-      console.log(`[quiz] attempt ${attempt}: gemini status=${gem.status}`);
+    if (res.status !== "ok") {
+      if (provider === "gemini" && res.status === "quota") geminiQuota = true;
+      notes.push(`${provider}: ${res.status}`);
       continue;
     }
 
-    const quiz = validateQuiz(safeParseArray(gem.text), recent);
+    const { quiz, reason } = buildQuiz(parseQuizList(res.text), recent);
     if (quiz) {
-      console.log(`[quiz] attempt ${attempt}: accepted`);
-      return { quiz, provider: "gemini" };
+      console.log(`[quiz] accepted from ${provider}`);
+      return { quiz, provider, notes };
     }
-    console.log(`[quiz] attempt ${attempt}: failed validation`);
+    notes.push(`${provider}: ${reason}`);
   }
 
-  console.log("[quiz] both attempts failed — nothing stored, yesterday's set stays live");
-  return { quiz: null, provider: null };
+  console.log(`[quiz] every attempt failed — ${notes.join("; ")}`);
+  return { quiz: null, provider: null, notes };
 }
 
-function safeParseArray(text) {
+/**
+ * The model's question list. Accepts {"questions": [...]} or a bare array,
+ * tolerates ```json fences and leading prose, and — when the JSON is cut off
+ * by the output-token limit or slightly malformed — recovers every complete
+ * question object instead of losing all of them.
+ */
+function parseQuizList(text) {
   if (!text) return null;
+  const cleaned = String(text).replace(/```(?:json)?/gi, "").trim();
   try {
-    // Tolerate ```json fences or leading prose.
-    const cleaned = String(text)
-      .replace(/```json/gi, "")
-      .replace(/```/g, "")
-      .trim();
-    const start = cleaned.indexOf("[");
-    const end = cleaned.lastIndexOf("]");
-    if (start === -1 || end === -1) return null;
-    return JSON.parse(cleaned.slice(start, end + 1));
-  } catch {
-    return null;
+    const v = JSON.parse(cleaned);
+    if (Array.isArray(v)) return v;
+    if (Array.isArray(v?.questions)) return v.questions;
+  } catch {}
+
+  const start = cleaned.indexOf("[");
+  if (start === -1) return null;
+  const out = [];
+  let depth = 0;
+  let inStr = false;
+  let esc = false;
+  let objStart = -1;
+  for (let i = start + 1; i < cleaned.length; i++) {
+    const ch = cleaned[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (ch === "\\") esc = true;
+      else if (ch === '"') inStr = false;
+      continue;
+    }
+    if (ch === '"') inStr = true;
+    else if (ch === "{") {
+      if (depth === 0) objStart = i;
+      depth++;
+    } else if (ch === "}") {
+      depth--;
+      if (depth === 0 && objStart !== -1) {
+        try {
+          out.push(JSON.parse(cleaned.slice(objStart, i + 1)));
+        } catch {}
+        objStart = -1;
+      }
+    } else if (ch === "]" && depth === 0) break;
   }
+  return out.length ? out : null;
 }
 
 function utcDateKey(d = new Date()) {
   return d.toISOString().slice(0, 10);
+}
+
+// ─── Daily seed entries for the push-up board ───────────────────────────────
+// 2–3 entries a day with scores of 4–9, so the board is never empty. Nothing
+// is stored: they're derived from the UTC date, so every user sees the same
+// ones and they change at midnight UTC on their own. They're only merged into
+// the leaderboard response — the broadcast notification reads real rows only.
+// Names grouped by country, so the flag shown next to a name matches it.
+const SEED_PEOPLE = {
+  US: {
+    first: ["Jake", "Emily", "Tyler", "Madison", "Brandon", "Ashley", "Ryan", "Hannah", "Kevin", "Olivia"],
+    last: ["Johnson", "Miller", "Davis", "Wilson", "Anderson", "Thompson", "Martinez", "Clark"],
+  },
+  IN: {
+    first: ["Aarav", "Riya", "Kabir", "Ananya", "Arjun", "Meera", "Rohan", "Sneha", "Aditya", "Kavya"],
+    last: ["Sharma", "Patel", "Iyer", "Reddy", "Nair", "Gupta", "Singh", "Mehta", "Joshi", "Kulkarni"],
+  },
+  PK: {
+    first: ["Ali", "Ayesha", "Hamza", "Fatima", "Usman", "Zainab", "Bilal", "Hira", "Saad", "Mahnoor"],
+    last: ["Khan", "Ahmed", "Malik", "Qureshi", "Butt", "Chaudhry", "Siddiqui", "Raza"],
+  },
+  GB: {
+    first: ["Oliver", "Amelia", "Harry", "Isla", "George", "Poppy", "Charlie", "Freya"],
+    last: ["Smith", "Taylor", "Brown", "Evans", "Walker", "Hughes", "Wright", "Green"],
+  },
+  BD: {
+    first: ["Rafi", "Nusrat", "Tanvir", "Sadia", "Arif", "Mim", "Shakib", "Tania"],
+    last: ["Hossain", "Rahman", "Islam", "Akter", "Chowdhury", "Uddin"],
+  },
+  NG: {
+    first: ["Chinedu", "Amaka", "Tunde", "Ngozi", "Emeka", "Funmi", "Segun", "Zainab"],
+    last: ["Okafor", "Adeyemi", "Okonkwo", "Balogun", "Eze", "Bello"],
+  },
+  PH: {
+    first: ["Miguel", "Andrea", "Paolo", "Bea", "Carlo", "Jasmine", "Rafael", "Kim"],
+    last: ["Santos", "Reyes", "Cruz", "Bautista", "Garcia", "Mendoza"],
+  },
+  AE: {
+    first: ["Omar", "Mariam", "Khalid", "Noura", "Yousef", "Layla", "Saif", "Hessa"],
+    last: ["Al Mansoori", "Al Hashimi", "Al Nuaimi", "Al Suwaidi", "Al Mazrouei"],
+  },
+  CA: {
+    first: ["Ethan", "Chloe", "Logan", "Ava", "Noah", "Zoe", "Owen", "Lily"],
+    last: ["Tremblay", "Roy", "MacDonald", "Campbell", "Gagnon", "Stewart"],
+  },
+  BR: {
+    first: ["Gabriel", "Larissa", "Matheus", "Beatriz", "Lucas", "Camila", "Rafael", "Julia"],
+    last: ["Silva", "Souza", "Oliveira", "Costa", "Pereira", "Almeida"],
+  },
+  ID: {
+    first: ["Budi", "Putri", "Rizky", "Ayu", "Dimas", "Sari", "Fajar", "Dewi"],
+    last: ["Santoso", "Wijaya", "Saputra", "Pratama", "Hidayat", "Kurniawan"],
+  },
+  DE: {
+    first: ["Lukas", "Lena", "Jonas", "Mia", "Felix", "Hannah", "Leon", "Emma"],
+    last: ["Müller", "Schmidt", "Fischer", "Weber", "Wagner", "Becker"],
+  },
+};
+// India, the US and Pakistan come up more often than the rest.
+const SEED_COUNTRY_WEIGHTS = [
+  ["IN", 4], ["US", 3], ["PK", 3], ["GB", 1], ["BD", 1], ["NG", 1],
+  ["PH", 1], ["AE", 1], ["CA", 1], ["BR", 1], ["ID", 1], ["DE", 1],
+];
+
+function seededRandom(key) {
+  let h = 2166136261;
+  for (let i = 0; i < key.length; i++) {
+    h ^= key.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return () => {
+    h = (Math.imul(h, 1664525) + 1013904223) >>> 0;
+    return h / 4294967296;
+  };
+}
+
+function dailySeedEntries(dateKey = utcDateKey()) {
+  const rand = seededRandom(`pushdaily-board-${dateKey}`);
+  const pick = (list) => list[Math.floor(rand() * list.length)];
+  const totalWeight = SEED_COUNTRY_WEIGHTS.reduce((n, [, w]) => n + w, 0);
+  const pickCountry = () => {
+    let r = rand() * totalWeight;
+    for (const [cc, w] of SEED_COUNTRY_WEIGHTS) {
+      if ((r -= w) < 0) return cc;
+    }
+    return "IN";
+  };
+
+  const count = 2 + Math.floor(rand() * 2); // 2 or 3
+  const usedCountries = new Set();
+  const entries = [];
+  while (entries.length < count) {
+    // A different country for each entry, so a day never shows two of one.
+    const country = pickCountry();
+    if (usedCountries.has(country)) continue;
+    usedCountries.add(country);
+    const people = SEED_PEOPLE[country];
+    entries.push({
+      id: `u${dateKey.replace(/-/g, "")}${Math.floor(rand() * 1e9)}`,
+      name: `${pick(people.first)} ${pick(people.last)}`,
+      pushup_count: 4 + Math.floor(rand() * 6), // 4–9
+      country,
+    });
+  }
+  return entries;
 }
 
 // ─── Supabase helpers (service key stays server-side) ───────────────────────
@@ -474,7 +665,8 @@ async function supabaseHasQuiz(env, date) {
 const FCM_TOPIC = "daily_updates";
 
 // Must match the quiz entry in wrangler.toml — scheduled() routes on it.
-const QUIZ_CRON = "10 3 * * *";
+// Just after UTC midnight, when the quiz day (a UTC date) begins.
+const QUIZ_CRON = "5 0 * * *";
 
 // Sent when somebody already holds the top spot today.
 // `jack` = the mascot mood shown as the notification picture (/jack/<mood>.png).
@@ -919,8 +1111,10 @@ async function runDailyQuizJob(env, { force = false } = {}) {
 
   if (!force && (await supabaseHasQuiz(env, date))) return "already-exists";
 
-  const { quiz, provider } = await generateQuiz(env);
-  if (!quiz) return "generation-failed"; // app falls back to its local bank
+  const { quiz, provider, notes } = await generateQuiz(env, date);
+  // Nothing stored: the app keeps getting the last good set, and the next
+  // cron retries.
+  if (!quiz) return `generation-failed: ${notes.join("; ")}`;
 
   const ok = await supabaseUpsertQuiz(env, date, quiz, provider);
   return ok ? `stored:${provider}` : "store-failed";
@@ -941,6 +1135,11 @@ export default {
     // Both broadcast schedules run the same job — it reads the live board and
     // picks "somebody leads" vs "be the first" copy on its own.
     ctx.waitUntil(runEventBroadcast(env));
+    // They double as retries for the quiz: a no-op once today's set exists,
+    // otherwise another go after a failed 00:05 run.
+    ctx.waitUntil(
+      runDailyQuizJob(env).then((r) => console.log(`[quiz-retry] ${utcDateKey()} → ${r}`)),
+    );
   },
 
   async fetch(request, env) {
@@ -976,31 +1175,43 @@ export default {
     // ── Data endpoints: the app talks to these instead of Supabase, so no
     // database keys ever ship inside the APK (same pattern as the chat). ──
 
-    // Today's shared quiz set. Returns { questions: [] | null }.
+    // The newest stored quiz set: today's, or the last good one while today's
+    // isn't generated yet (just after UTC midnight, or after a failed run).
+    // Asking for today's date only left every user with an empty quiz in that
+    // window. Returns { questions: [] | null, date, fresh }.
     if (body?.mode === "daily-quiz") {
+      const today = utcDateKey();
       const rows = await supabaseSelect(
         env,
-        `daily_quiz?select=questions&date=eq.${utcDateKey()}&limit=1`,
+        `daily_quiz?select=date,questions&date=lte.${today}&order=date.desc&limit=1`,
       );
-      const questions = rows?.[0]?.questions;
-      return json({ questions: Array.isArray(questions) ? questions : null });
+      const row = rows?.[0];
+      const questions = Array.isArray(row?.questions) ? row.questions : null;
+      return json({ questions, date: row?.date || null, fresh: row?.date === today });
     }
 
     // Global push-up leaderboard for the current UTC day.
     if (body?.mode === "leaderboard") {
       const limit = Math.min(Number(body.limit) || 10, 50);
-      const rows =
+      const real =
         (await supabaseSelect(
           env,
           `scores?select=id,name,pushup_count,country&order=pushup_count.desc` +
             `&limit=${limit}${utcDayFilter()}`,
         )) || [];
+      const seeds = dailySeedEntries();
+      const rows = [...real, ...seeds]
+        .sort((a, b) => (b.pushup_count || 0) - (a.pushup_count || 0))
+        .slice(0, limit);
 
       let rank = 0;
       const best = Number(body.best) || 0;
       const mine = rows.findIndex((r) => String(r.id) === String(body.userId));
       if (mine >= 0) rank = mine + 1;
-      else if (best > 0) rank = (await countScoresAbove(env, best)) + 1;
+      else if (best > 0) {
+        const seedsAbove = seeds.filter((r) => r.pushup_count > best).length;
+        rank = (await countScoresAbove(env, best)) + seedsAbove + 1;
+      }
 
       return json({ rows, rank });
     }
@@ -1126,7 +1337,8 @@ async function callGemini(env, systemText, userText, maxTokens, jsonMode = false
       res = await fetchWithTimeout(
         url,
         { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
-        20000,
+        // A 13-question set is ~2k tokens; 20 s cut some of them off mid-answer.
+        jsonMode ? 45000 : 20000,
       );
     } catch {
       if (attempt === 3) return { status: "fail" };
@@ -1147,7 +1359,7 @@ async function callGemini(env, systemText, userText, maxTokens, jsonMode = false
 }
 
 // ── Groq (OpenAI-compatible, free tier) ──
-async function callGroq(env, systemText, userText, maxTokens) {
+async function callGroq(env, systemText, userText, maxTokens, jsonMode = false) {
   if (!env.GROQ_API_KEY) return { status: "fail" };
 
   let res;
@@ -1166,11 +1378,14 @@ async function callGroq(env, systemText, userText, maxTokens) {
             { role: "system", content: systemText },
             { role: "user", content: userText },
           ],
-          temperature: 0.7,
+          temperature: jsonMode ? 0.9 : 0.7,
           max_tokens: maxTokens,
+          // JSON mode needs an object at the top level — the quiz prompt asks
+          // for {"questions": [...]}.
+          ...(jsonMode ? { response_format: { type: "json_object" } } : {}),
         }),
       },
-      20000,
+      jsonMode ? 45000 : 20000,
     );
   } catch {
     return { status: "fail" };

@@ -71,12 +71,14 @@ const daysAgo = (dateTime) =>
  * @param  history  all completed workouts: [{ bodyPart, dateTime }]
  * @return { bodyPart, id, group, why[], weekSummary, restAdvised, forTomorrow }
  */
-export const recommendToday = (history = [], { experience } = {}) => {
+export const recommendToday = (history = [], { experience, hasHistory } = {}) => {
   const week = history.filter((w) => w?.dateTime && daysAgo(w.dateTime) <= 7);
+  // `history` may be only recent workouts; `hasHistory` says whether any exist.
+  const neverTrained = hasHistory === undefined ? history.length === 0 : !hasHistory;
 
   // ── Brand-new beginner with no log at all: a split day is a big ask. A short
   // quick-start program is the friendliest first session.
-  if (history.length === 0 && isBeginner(experience)) {
+  if (neverTrained && isBeginner(experience)) {
     return {
       bodyPart: "Full Body",
       id: BODY_PART_IDS["Full Body"],
@@ -239,9 +241,9 @@ export const recommendToday = (history = [], { experience } = {}) => {
 export const recommendAlternative = (
   previous,
   history = [],
-  { experience, exclude = [], anchor } = {},
+  { experience, exclude = [], anchor, hasHistory } = {},
 ) => {
-  const base = recommendToday(history, { experience });
+  const base = recommendToday(history, { experience, hasHistory });
   const current = previous?.bodyPart || base.bodyPart;
   // Siblings are always taken from the FIRST suggestion of the round, so
   // repeated taps stay in one family (Chest → Shoulder → Upper Body → Arms →

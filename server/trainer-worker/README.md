@@ -46,7 +46,7 @@ App  ──POST /chat──►  Worker (key as secret)  ──►  Gemini free t
 
 ## Daily AI-generated quiz (cron)
 
-A Cloudflare **Cron Trigger** (`10 3 * * *` — 03:10 UTC daily, free) makes the
+A Cloudflare **Cron Trigger** (`5 0 * * *` — 00:05 UTC daily, retried by the 04:00 and 13:30 broadcast crons, free) makes the
 Worker generate 10 fresh quiz questions with Gemini (Groq as fallback),
 **validate** them, and upsert them into Supabase. The app reads the set once a
 day and caches it. No manual work, no paid services.

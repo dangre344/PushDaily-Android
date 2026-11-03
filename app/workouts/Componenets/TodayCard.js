@@ -1,8 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { AnimatePresence, MotiView } from "moti";
+import { MotiView } from "moti";
 import Reanimated, { FadeIn } from "react-native-reanimated";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -13,7 +13,6 @@ import {
   View,
 } from "react-native";
 
-import BrandGradient from "../../../components/ui/BrandGradient";
 import { dayPartsLabel, localDayKey } from "../../../constants/bodyPartCodes";
 import { openAttendanceOn } from "../../../constants/tabNavigation";
 import { colors } from "../../../constants/colors";
@@ -60,7 +59,7 @@ function useWeek(history) {
   }, [history]);
 }
 
-function WeekDot({ day, index, showLabels }) {
+function WeekDot({ day, showLabels }) {
   const label = dayPartsLabel(day.parts);
   return (
     // Any day opens Attendance on that date, where the full details live.
@@ -79,10 +78,8 @@ function WeekDot({ day, index, showLabels }) {
       }
     >
       <Text style={[styles.dayLetter, day.isToday && styles.dayLetterToday]}>{day.letter}</Text>
-      <MotiView
-        from={{ scale: 0.4, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: "spring", damping: 13, delay: 120 + index * 55 }}
+      {/* Static on purpose: seven staggered springs replayed on every visit. */}
+      <View
         style={[
           styles.dot,
           day.done ? styles.dotDone : day.isToday ? styles.dotToday : styles.dotMiss,
@@ -90,51 +87,34 @@ function WeekDot({ day, index, showLabels }) {
         ]}
       >
         {day.done ? (
-          <Ionicons name="checkmark" size={ms(14)} color={colors.primary} />
+          <Ionicons name="checkmark" size={ms(14)} color="#FFFFFF" />
         ) : day.isToday ? (
           <View style={styles.todayPip} />
         ) : null}
-      </MotiView>
+      </View>
 
       {/* The row is only rendered when at least one day has a label, and every
           day reserves the same height, so the dots stay perfectly aligned. */}
       {showLabels ? (
-        <MotiView
-          from={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ type: "timing", duration: 300, delay: 260 + index * 55 }}
-          style={styles.partSlot}
-        >
+        <View style={styles.partSlot}>
           {/* One part: "Chest". Several: "C+B" — still one short line. */}
           {label ? (
             <Text style={styles.partText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
               {label}
             </Text>
           ) : null}
-        </MotiView>
+        </View>
       ) : null}
     </Pressable>
   );
 }
 
-/** White button with a soft breathing pulse — the one primary action here. */
+/** White button — the one primary action here. Only animates when pressed. */
 function PlanButton({ label, busy, onPress }) {
-  const pulse = useRef(new Animated.Value(1)).current;
   const press = useRef(new Animated.Value(1)).current;
 
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 1.025, duration: 1100, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1, duration: 1100, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [pulse]);
-
   return (
-    <Animated.View style={{ transform: [{ scale: Animated.multiply(pulse, press) }] }}>
+    <Animated.View style={{ transform: [{ scale: press }] }}>
       <Pressable
         disabled={busy}
         onPress={() => {
@@ -146,12 +126,12 @@ function PlanButton({ label, busy, onPress }) {
         style={styles.planBtn}
       >
         {busy ? (
-          <ActivityIndicator color={colors.primary} />
+          <ActivityIndicator color="#FFFFFF" />
         ) : (
           <>
-            <Ionicons name="sparkles" size={ms(16)} color={colors.primary} />
+            <Ionicons name="sparkles" size={ms(16)} color="#FFFFFF" />
             <Text style={styles.planText}>{label}</Text>
-            <Ionicons name="chevron-forward" size={ms(16)} color={colors.primary} />
+            <Ionicons name="chevron-forward" size={ms(16)} color="#FFFFFF" />
           </>
         )}
       </Pressable>
@@ -337,21 +317,22 @@ function PlanResult({ result, collapsed, onToggle, onStart, onAgain, busy }) {
  *
  * Everything here reads data the screen already loads; nothing new is stored.
  */
-export default function TodayCard({
+function TodayCard({
   name,
   gender,
   experience,
   streak = 0,
   daysSinceLast = -1,
   history = [],
+  totalCount, // all workouts ever; `history` may be only the recent ones
   onStart,
 }) {
+  const hasHistory = totalCount != null ? totalCount > 0 : history.length > 0;
   const week = useWeek(history);
   const showLabels = week.some((d) => d.parts.length > 0);
-  const { result, busy, analyze } = useTrainToday(history, { experience });
+  const { result, busy, analyze } = useTrainToday(history, { experience, hasHistory });
   const [collapsed, setCollapsed] = useState(false);
   const [shift, setShift] = useState(0);
-  const bob = useRef(new Animated.Value(0)).current;
   const poke = useRef(new Animated.Value(0)).current;
 
   // A fresh plan always opens expanded so the "why" is seen at least once.
@@ -371,123 +352,202 @@ export default function TodayCard({
     Animated.timing(poke, { toValue: 1, duration: 420, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
   };
 
+
+  // Compact by default so Quick starts and body parts stay above the fold;
+  // tapping the strip opens the details right below it. A fresh plan opens it.
+  const [open, setOpen] = useState(false);
   useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(bob, { toValue: 1, duration: 1500, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-        Animated.timing(bob, { toValue: 0, duration: 1500, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [bob]);
+    if (result) setOpen(true);
+  }, [result]);
+  const toggleOpen = () => {
+    tapHaptic();
+    setOpen((o) => !o);
+  };
 
-  const hasHistory = history.length > 0;
+  const planLabel = hasHistory ? "Plan today's session" : "Plan your first session";
+  const stripTitle = result
+    ? `${result.forTomorrow ? "Tomorrow" : "Today"}: ${result.bodyPart}`
+    : planLabel;
+  const trainedDays = week.filter((d) => d.done).length;
+  const stripSub = streak > 0 ? `🔥 ${streak}-day streak` : `${trainedDays}/7 days this week`;
 
+  // No entrance animation: this card is the first thing on the home screen.
   return (
-    <MotiView
-      from={{ opacity: 0, translateY: 18 }}
-      animate={{ opacity: 1, translateY: 0 }}
-      transition={{ type: "timing", duration: 380 }}
-      style={styles.shadow}
-    >
-      <BrandGradient style={styles.card}>
-        <View style={styles.top}>
-          <View style={{ flex: 1, paddingRight: 8 }}>
-            {/* The streak is the one number worth keeping on this card; the
-                date is already on the phone and highlighted in the week strip. */}
-            {streak > 0 ? (
-              <View style={styles.streakChip}>
-                <Text style={styles.streakText}>🔥 {streak}-day streak</Text>
-              </View>
-            ) : null}
-            <MotiView
-              key={shown.text}
-              from={{ opacity: 0, translateY: 4 }}
-              animate={{ opacity: 1, translateY: 0 }}
-              transition={{ type: "timing", duration: 260 }}
-            >
-              <Text style={styles.message} numberOfLines={2}>
-                {shown.text}
+    <View style={styles.shadow}>
+      <View style={styles.card}>
+        {/* ── Strip: always visible, tap to open / close the details ── */}
+        <Pressable
+          onPress={toggleOpen}
+          style={({ pressed }) => [styles.strip, pressed && { opacity: 0.85 }]}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: open }}
+          accessibilityLabel={`${stripTitle}. ${stripSub}. ${open ? "Hide" : "Show"} details`}
+        >
+          <Image
+            source={EXPRESSION_IMAGES[shown.expression]}
+            style={styles.stripMascot}
+            contentFit="contain"
+          />
+          <View style={styles.stripText}>
+            <Text style={styles.stripTitle} numberOfLines={1}>
+              {stripTitle}
+            </Text>
+            <View style={styles.stripMeta}>
+              <Text style={styles.stripSub} numberOfLines={1}>
+                {stripSub}
               </Text>
-            </MotiView>
+              <View style={styles.miniWeek}>
+                {week.map((d, i) => (
+                  <View
+                    key={i}
+                    style={[
+                      styles.miniDot,
+                      d.done && styles.miniDotDone,
+                      d.isToday && !d.done && styles.miniDotToday,
+                    ]}
+                  />
+                ))}
+              </View>
+            </View>
           </View>
-          <Pressable onPress={pokeMascot} hitSlop={6} accessibilityLabel="Tap Jack for another message">
-            <Animated.View
-              style={{
-                transform: [
-                  { translateY: bob.interpolate({ inputRange: [0, 1], outputRange: [0, -ms(5)] }) },
-                  {
-                    rotate: poke.interpolate({
-                      inputRange: [0, 0.25, 0.5, 0.75, 1],
-                      outputRange: ["0deg", "-9deg", "7deg", "-4deg", "0deg"],
-                    }),
-                  },
-                ],
-              }}
-            >
-              <Image
-                source={EXPRESSION_IMAGES[shown.expression]}
-                style={styles.mascot}
-                contentFit="contain"
-                transition={220}
-              />
-            </Animated.View>
-          </Pressable>
-        </View>
-
-        <View style={styles.week}>
-          {week.map((d, i) => (
-            <WeekDot key={i} day={d} index={i} showLabels={showLabels} />
-          ))}
-        </View>
-
-        <AnimatePresence exitBeforeEnter>
-          {/* AnimatePresence only for button → plan (once). Collapse/expand
-              happens inside PlanResult, which stays mounted. */}
-          {result ? (
-            <PlanResult
-              key="result"
-              result={result}
-              collapsed={collapsed}
-              busy={busy}
-              onToggle={() => setCollapsed((c) => !c)}
-              onStart={(item) => onStart?.(item)}
-              onAgain={() => analyze({ again: true })}
+          <View style={styles.stripChevron}>
+            <Ionicons
+              name={open ? "chevron-up" : "chevron-down"}
+              size={ms(16)}
+              color="#FFFFFF"
             />
-          ) : (
-            <MotiView
-              key="plan"
-              from={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              style={styles.planWrap}
-            >
-              <PlanButton
-                label={hasHistory ? "Plan today's session" : "Plan your first session"}
+          </View>
+        </Pressable>
+
+        {/* ── Details: Jack's line, the week, and the plan ── */}
+        {open ? (
+          <View style={styles.details}>
+            <View style={styles.top}>
+              <View style={{ flex: 1, paddingRight: 8 }}>
+                <MotiView
+                  key={shown.text}
+                  from={{ opacity: 0, translateY: 4 }}
+                  animate={{ opacity: 1, translateY: 0 }}
+                  transition={{ type: "timing", duration: 260 }}
+                >
+                  <Text style={styles.message} numberOfLines={2}>
+                    {shown.text}
+                  </Text>
+                </MotiView>
+              </View>
+              <Pressable
+                onPress={pokeMascot}
+                hitSlop={6}
+                accessibilityLabel="Tap Jack for another message"
+              >
+                <Animated.View
+                  style={{
+                    transform: [
+                      {
+                        rotate: poke.interpolate({
+                          inputRange: [0, 0.25, 0.5, 0.75, 1],
+                          outputRange: ["0deg", "-9deg", "7deg", "-4deg", "0deg"],
+                        }),
+                      },
+                    ],
+                  }}
+                >
+                  <Image
+                    source={EXPRESSION_IMAGES[shown.expression]}
+                    style={styles.mascot}
+                    contentFit="contain"
+                  />
+                </Animated.View>
+              </Pressable>
+            </View>
+
+            <View style={styles.week}>
+              {week.map((d, i) => (
+                <WeekDot key={i} day={d} showLabels={showLabels} />
+              ))}
+            </View>
+
+            {result ? (
+              <PlanResult
+                result={result}
+                collapsed={collapsed}
                 busy={busy}
-                onPress={() => analyze()}
+                onToggle={() => setCollapsed((c) => !c)}
+                onStart={(item) => onStart?.(item)}
+                onAgain={() => analyze({ again: true })}
               />
-            </MotiView>
-          )}
-        </AnimatePresence>
-      </BrandGradient>
-    </MotiView>
+            ) : (
+              <View style={styles.planWrap}>
+                <PlanButton label={planLabel} busy={busy} onPress={() => analyze()} />
+              </View>
+            )}
+          </View>
+        ) : null}
+      </View>
+    </View>
   );
 }
+
+// Soft brand tint for the card, and its border / empty-dot shade.
+const TINT = "#FFF5F0";
+const TINT_BORDER = "#FFE0D3";
 
 const styles = StyleSheet.create({
   shadow: {
     marginHorizontal: 20,
     marginTop: 12,
     borderRadius: 22,
-    shadowColor: colors.primary,
-    shadowOpacity: 0.28,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 6,
   },
-  card: { borderRadius: 22, paddingHorizontal: 16, paddingVertical: 14 },
+  // A soft tint of the brand colour; orange is kept for the accents.
+  card: {
+    borderRadius: 22,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: TINT,
+    borderWidth: 1,
+    borderColor: TINT_BORDER,
+  },
+
+  // ── compact strip ──
+  strip: { flexDirection: "row", alignItems: "center", gap: 10 },
+  stripMascot: { width: ms(40), height: ms(40) },
+  stripText: { flex: 1 },
+  stripTitle: {
+    fontSize: ms(14.5),
+    fontFamily: "OpenSans_700Bold",
+    color: colors.text,
+    letterSpacing: -0.2,
+  },
+  stripMeta: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 },
+  stripSub: {
+    flexShrink: 1,
+    fontSize: ms(11.5),
+    fontFamily: "OpenSans_500Medium",
+    color: colors.textLight,
+  },
+  miniWeek: { flexDirection: "row", gap: 3 },
+  miniDot: {
+    width: ms(7),
+    height: ms(7),
+    borderRadius: ms(4),
+    backgroundColor: TINT_BORDER,
+  },
+  miniDotDone: { backgroundColor: colors.primary },
+  miniDotToday: { borderWidth: 1.5, borderColor: colors.primary, backgroundColor: "transparent" },
+  stripChevron: {
+    width: ms(28),
+    height: ms(28),
+    borderRadius: ms(14),
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  details: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: TINT_BORDER,
+  },
 
   top: { flexDirection: "row", alignItems: "center" },
   streakChip: {
@@ -500,9 +560,9 @@ const styles = StyleSheet.create({
   },
   streakText: { fontSize: ms(10.5), fontFamily: "OpenSans_800ExtraBold", color: "#FFFFFF" },
   message: {
-    fontSize: ms(15),
-    fontFamily: "OpenSans_800ExtraBold",
-    color: "#FFFFFF",
+    fontSize: ms(14),
+    fontFamily: "OpenSans_600SemiBold",
+    color: colors.text,
     lineHeight: ms(20),
     marginTop: 0,
     letterSpacing: -0.2,
@@ -517,32 +577,39 @@ const styles = StyleSheet.create({
     fontSize: ms(8.5),
     lineHeight: ms(12),
     fontFamily: "OpenSans_700Bold",
-    color: "rgba(255,255,255,0.92)",
+    color: colors.primary,
     textAlign: "center",
   },
-  dayLetter: { fontSize: ms(9.5), fontFamily: "OpenSans_700Bold", color: "rgba(255,255,255,0.8)" },
-  dayLetterToday: { color: "#FFFFFF", fontFamily: "OpenSans_800ExtraBold" },
+  dayLetter: { fontSize: ms(9.5), fontFamily: "OpenSans_700Bold", color: colors.textLight },
+  dayLetterToday: { color: colors.primary, fontFamily: "OpenSans_800ExtraBold" },
   dot: { width: ms(28), height: ms(28), borderRadius: ms(14), alignItems: "center", justifyContent: "center" },
-  dotDone: { backgroundColor: "#FFFFFF" },
+  dotDone: { backgroundColor: colors.primary },
   dotDoneToday: { borderWidth: 2, borderColor: colors.accent },
-  dotToday: { borderWidth: 2, borderColor: "#FFFFFF", backgroundColor: "rgba(255,255,255,0.14)" },
-  dotMiss: { backgroundColor: "rgba(255,255,255,0.18)" },
-  todayPip: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#FFFFFF" },
+  dotToday: { borderWidth: 2, borderColor: colors.primary, backgroundColor: "#FFFFFF" },
+  dotMiss: { backgroundColor: TINT_BORDER },
+  todayPip: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.primary },
 
   planWrap: { marginTop: 10 },
   planBtn: {
     height: ms(42),
     borderRadius: 14,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.primary,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
   },
-  planText: { fontSize: ms(14), fontFamily: "OpenSans_800ExtraBold", color: colors.primary },
+  planText: { fontSize: ms(14), fontFamily: "OpenSans_700Bold", color: "#FFFFFF" },
 
   // ── recommendation panel ──
-  result: { marginTop: 10, backgroundColor: "#FFFFFF", borderRadius: 18, padding: 12 },
+  result: {
+    marginTop: 10,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 18,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: TINT_BORDER,
+  },
   resultCollapsed: { paddingVertical: 9, paddingHorizontal: 10 },
   resultHead: { flexDirection: "row", alignItems: "center", gap: 7 },
   resultHeadInfo: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
@@ -636,3 +703,6 @@ const styles = StyleSheet.create({
   },
   miniStartText: { fontSize: ms(12), fontFamily: "OpenSans_800ExtraBold", color: "#FFFFFF" },
 });
+
+// Memoised: the Workouts screen re-renders on every modal/state change.
+export default memo(TodayCard);

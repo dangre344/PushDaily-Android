@@ -6,7 +6,7 @@ set once a day and caches it. **Every user gets the same questions**, and the
 whole pipeline runs on free tiers.
 
 ```
-Cloudflare Cron (03:10 UTC daily)
+Cloudflare Cron (00:05 UTC daily, retried at 04:00 and 13:30)
    └─► Worker: generate via Gemini  (Groq = fallback)
         └─► validate strictly
              └─► upsert into Supabase `daily_quiz`
@@ -102,14 +102,14 @@ The cron is already declared in `wrangler.toml`:
 
 ```toml
 [triggers]
-crons = ["10 3 * * *"]     # 03:10 UTC every day
+crons = ["5 0 * * *", "0 4 * * *", "30 13 * * *"]     # quiz at 00:05 UTC
 ```
 
 Deploy output should list the schedule. You can also confirm it in the
 Cloudflare dashboard → **Workers & Pages → push-daily-trainer → Settings →
 Triggers → Cron Triggers**.
 
-**Changing the time:** cron is always **UTC**. `10 3 * * *` = 08:40 IST /
+**Changing the time:** cron is always **UTC**. `5 0 * * *` = 05:35 IST /
 23:10 US-Eastern (prev. day). Pick a time comfortably before your users wake up.
 
 ---

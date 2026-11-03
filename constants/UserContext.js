@@ -21,7 +21,7 @@ export default function UserProvider({ children }) {
     const loadSession = async () => {
       try {
         const session = await getSession();
-        console.log("session--->", session);
+        Logger.log("session--->", session);
 
         if (!mounted) return;
 

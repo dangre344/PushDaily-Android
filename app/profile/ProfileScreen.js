@@ -1,4 +1,4 @@
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { nativeApplicationVersion, nativeBuildVersion } from "expo-application";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Notifications from "expo-notifications";
@@ -25,26 +25,26 @@ import { bubbleScrollFade } from "../../constants/bubbleMessage";
 import { colors } from "../../constants/colors";
 import { tapHaptic } from "../../constants/haptics";
 import { Logger } from "../../constants/Logger";
-import { isPartnerMode } from "../../constants/periodReminders";
 import { trackEvent } from "../../constants/mixpanel";
+import { isPartnerMode } from "../../constants/periodReminders";
+import {
+  getProfileSnapshot,
+  readCachedProfileSnapshot,
+} from "../../constants/profileStatsCache";
 import { useUser } from "../../constants/UserContext";
-import { syncWidget, trackWidgetGuideOpened } from "../../constants/widgetPromo";
 import { scaling } from "../../constants/useScaling";
 import { saveUserBadge } from "../../constants/utils";
 import {
-  getAllWorkouts,
-  getCurrentStreak,
-  getDaysSinceLastWorkout,
-  getProfileStats,
-  initDB,
-} from "../../offlinedb/workoutdb";
+  syncWidget,
+  trackWidgetGuideOpened,
+} from "../../constants/widgetPromo";
 import WorkoutBadgeInfo, { getUserBadge } from "../home/WorkoutBadgeInfo";
 import MilestonesModal from "./MilestonesModal";
+import { AboutModal } from "./privacy/AboutModal";
+import { PrivacyPolicyModal } from "./privacy/PrivacyPolicyModal";
 import StatsModal from "./StatsModal";
 import SupportSheet from "./SupportSheet";
 import WidgetGuideModal from "./WidgetGuideModal";
-import { AboutModal } from "./privacy/AboutModal";
-import { PrivacyPolicyModal } from "./privacy/PrivacyPolicyModal";
 
 const ms = (n) => scaling().moderateScale(n);
 
@@ -112,7 +112,13 @@ const handleShareApp = async () => {
 const INSTAGRAM_URL = "https://www.instagram.com/pushdaily_workouts/";
 
 // Instagram has no single brand colour, so the row uses the brand gradient.
-const INSTAGRAM_GRADIENT = ["#FEDA75", "#FA7E1E", "#D62976", "#962FBF", "#4F5BD5"];
+const INSTAGRAM_GRADIENT = [
+  "#FEDA75",
+  "#FA7E1E",
+  "#D62976",
+  "#962FBF",
+  "#4F5BD5",
+];
 
 const handleOpenInstagram = async () => {
   trackEvent("Instagram Opened", { from: "profile" });
@@ -190,11 +196,17 @@ const StatsStrip = ({ stats, bmi, bmiColor, onPress }) => {
         <View key={c.label} style={statStyles.colWrap}>
           {i > 0 ? <View style={statStyles.divider} /> : null}
           <View style={statStyles.col}>
-            <Text style={statStyles.value} numberOfLines={1} adjustsFontSizeToFit>
+            <Text
+              style={statStyles.value}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
               {c.value}
             </Text>
             <View style={statStyles.labelRow}>
-              {c.dot ? <View style={[statStyles.dot, { backgroundColor: c.dot }]} /> : null}
+              {c.dot ? (
+                <View style={[statStyles.dot, { backgroundColor: c.dot }]} />
+              ) : null}
               <Text style={statStyles.label} numberOfLines={1}>
                 {c.label}
               </Text>
@@ -202,7 +214,12 @@ const StatsStrip = ({ stats, bmi, bmiColor, onPress }) => {
           </View>
         </View>
       ))}
-      <Ionicons name="chevron-forward" size={ms(14)} color={colors.dim} style={statStyles.chevron} />
+      <Ionicons
+        name="chevron-forward"
+        size={ms(14)}
+        color={colors.dim}
+        style={statStyles.chevron}
+      />
     </TouchableOpacity>
   );
 };
@@ -394,35 +411,52 @@ export default function ProfileScreen() {
     activeDays: 0,
   });
 
+  // The level shown in the header (from the cached snapshot).
+  const [storedBadge, setStoredBadge] = useState(null);
+
+  const applySnapshot = (snap) => {
+    if (!snap) return;
+    setStats(snap.stats);
+    setStreak(snap.streak);
+    setStoredBadge(snap.badge);
+  };
+
+  // Paint straight away from the last snapshot (no database work).
+  useEffect(() => {
+    readCachedProfileSnapshot().then(applySnapshot);
+  }, []);
+
+  // On every visit, confirm the snapshot is still valid. That is two tiny
+  // storage reads; the database is only queried after a workout was saved or
+  // deleted, or when the day changed (constants/profileStatsCache.js).
   useFocusEffect(
     useCallback(() => {
-      const loadStats = async () => {
-        await initDB();
+      let active = true;
+      (async () => {
+        try {
+          const snap = await getProfileSnapshot();
+          if (!active) return;
+          applySnapshot(snap);
+          if (!snap.fresh) return;
 
-        const [data, currentStreak, daysSinceLast] = await Promise.all([
-          getProfileStats(),
-          getCurrentStreak(),
-          getDaysSinceLastWorkout(),
-        ]);
-
-        setStats(data);
-        setStreak(currentStreak);
-
-        // Hand the home-screen widget what it cannot work out on its own. This
-        // screen is the natural place: the values are already loaded here and
-        // refetched on every focus.
-        syncWidget({
-          name: user?.name,
-          streak: currentStreak,
-          daysSinceLast: daysSinceLast ?? -1,
-        });
-
-        // Nudge for a Play Store in-app review (uses already-fetched count).
-        maybeAskForReview(data?.totalWorkouts);
+          saveUserBadge(snap.badge);
+          // Hand the home-screen widget what it cannot work out on its own.
+          syncWidget({
+            name: user?.name,
+            streak: snap.streak,
+            daysSinceLast: snap.daysSinceLast,
+          });
+          // Nudge for a Play Store in-app review (uses the fetched count).
+          maybeAskForReview(snap.stats?.totalWorkouts);
+        } catch (e) {
+          Logger.log("[Profile] stats load failed:", String(e));
+          // Never leave the header without a level.
+          if (active) setStoredBadge((b) => b || getUserBadge([]));
+        }
+      })();
+      return () => {
+        active = false;
       };
-
-      loadStats();
-      loadStoredBadgeRef.current?.(); // refresh the level after each workout
     }, [user?.name]),
   );
 
@@ -440,8 +474,6 @@ export default function ProfileScreen() {
   const [widgetGuideVisible, setWidgetGuideVisible] = useState(false);
   const [supportVisible, setSupportVisible] = useState(false);
 
-  const [storedBadge, setStoredBadge] = useState(null);
-
   const [notificationDialog, setNotificationDialog] = useState({
     visible: false,
     type: "info",
@@ -451,27 +483,6 @@ export default function ProfileScreen() {
     secondaryText: "",
     onPrimaryPress: null,
   });
-
-  // The cached "userBadge" key was never actually written by anything, so
-  // getStoredUserBadge() always returned null and the badge stayed hidden.
-  // Derive it from workout history instead — getUserBadge([]) still returns
-  // the first tier, so there is always something to show — and persist it so
-  // the stored copy is finally real.
-  const loadStoredBadgeRef = useRef(null);
-
-  const loadStoredBadge = async () => {
-    try {
-      await initDB();
-      const workouts = await getAllWorkouts();
-      const badge = getUserBadge(workouts || []);
-      setStoredBadge(badge);
-      saveUserBadge(badge);
-    } catch (e) {
-      Logger.log("[Profile] badge load failed:", String(e));
-      setStoredBadge(getUserBadge([])); // never leave the header empty
-    }
-  };
-  loadStoredBadgeRef.current = loadStoredBadge;
 
   useEffect(() => {
     Animated.parallel([
@@ -494,7 +505,6 @@ export default function ProfileScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-
   }, []);
 
   const getBMI = (weightKg, heightCm) => {
@@ -503,7 +513,6 @@ export default function ProfileScreen() {
     const bmi = weightKg / (heightM * heightM);
     return bmi.toFixed(1);
   };
-
 
   const getBMIColor = (bmi) => {
     if (!bmi) return colors.muted;
@@ -529,11 +538,13 @@ export default function ProfileScreen() {
 
   const bmi = getBMI(user?.weight, user?.height);
   const bmiColor = getBMIColor(bmi);
-  const profileLine = [user?.experience, user?.goal].filter(Boolean).join(" · ");
+  const profileLine = [user?.experience, user?.goal]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <SafeAreaView style={styles.screen}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar style="dark" backgroundColor={PAGE_BG} />
       <Animated.ScrollView
         {...bubbleScrollFade}
         style={styles.scrollView}
@@ -584,17 +595,30 @@ export default function ProfileScreen() {
                   )}
                 </View>
               </View>
-              <View style={styles.editBadge}>
-                <MaterialCommunityIcons name="pencil" size={ms(13)} color="#FFFFFF" />
-              </View>
             </TouchableOpacity>
           </Animated.View>
 
-          <Animated.View style={{ opacity: avatarAnim, alignItems: "center" }}>
-            <Text style={styles.name}>{user?.name || "User"}</Text>
+          <Animated.View style={{ opacity: avatarAnim, flex: 1 }}>
+            <Text style={styles.name} numberOfLines={1}>
+              {user?.name || "User"}
+            </Text>
             {/* One quiet line instead of three coloured pills; BMI moved into
                 the stats strip, where it reads as a number. */}
-            {profileLine ? <Text style={styles.subline}>{profileLine}</Text> : null}
+            {profileLine ? (
+              <Text style={styles.subline} numberOfLines={1}>
+                {profileLine}
+              </Text>
+            ) : null}
+            <TouchableOpacity
+              style={styles.editPill}
+              activeOpacity={0.8}
+              onPress={openEditProfile}
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel="Edit profile"
+            >
+              <Text style={styles.editPillText}>Edit profile</Text>
+            </TouchableOpacity>
           </Animated.View>
         </Animated.View>
 
@@ -620,7 +644,11 @@ export default function ProfileScreen() {
                     item={
                       // Anyone who isn't Female tracks a partner's cycle.
                       item.key === "water" && isPartnerMode(user?.gender)
-                        ? { ...item, subtitle: "Hydration reminders & track your partner's period cycle" }
+                        ? {
+                            ...item,
+                            subtitle:
+                              "Hydration reminders & track your partner's period cycle",
+                          }
                         : item
                     }
                     isLast={iIdx === section.items.length - 1}
@@ -660,7 +688,11 @@ export default function ProfileScreen() {
                 handleShareApp();
               }}
             >
-              <Ionicons name="share-social" size={ms(16)} color={colors.primary} />
+              <Ionicons
+                name="share-social"
+                size={ms(16)}
+                color={colors.primary}
+              />
               <Text style={styles.duoText}>Share app</Text>
             </TouchableOpacity>
           </View>
@@ -678,18 +710,26 @@ export default function ProfileScreen() {
             <Text style={styles.coffeeEmoji}>☕</Text>
             <View style={{ flex: 1 }}>
               <Text style={styles.coffeeTitle}>Enjoying Push Daily?</Text>
-              <Text style={styles.coffeeSub}>Buy me a coffee — it funds new features</Text>
+              <Text style={styles.coffeeSub}>
+                Buy me a coffee — it funds new features
+              </Text>
             </View>
             <Ionicons name="chevron-forward" size={ms(16)} color="#B45309" />
           </TouchableOpacity>
 
           {/* Footer: the legal bits, as quiet links. */}
           <View style={styles.footer}>
-            <Text style={styles.footerLink} onPress={() => setPrivacyVisible(true)}>
+            <Text
+              style={styles.footerLink}
+              onPress={() => setPrivacyVisible(true)}
+            >
               Privacy
             </Text>
             <Text style={styles.footerDot}>·</Text>
-            <Text style={styles.footerLink} onPress={() => setAboutVisible(true)}>
+            <Text
+              style={styles.footerLink}
+              onPress={() => setAboutVisible(true)}
+            >
               About
             </Text>
             <Text style={styles.footerDot}>·</Text>
@@ -708,7 +748,7 @@ export default function ProfileScreen() {
             requestNonPersonalizedAdsOnly: false,
           }}
           onAdLoaded={() => {
-            console.log("[AdMob] Banner loaded");
+            Logger.log("[AdMob] Banner loaded");
           }}
           onAdFailedToLoad={(error) => {
             console.warn("[AdMob] Banner failed:", error);
@@ -805,10 +845,34 @@ export default function ProfileScreen() {
 // ═════════════════════════════════════════════════════════════════════════════
 // STYLES
 // ═════════════════════════════════════════════════════════════════════════════
+// Page background shared with the Workouts screen, and the soft brand tint
+// used for the identity card (same as the home plan card).
+const PAGE_BG = "#F7F8FA";
+const TINT = "#FFF5F0";
+const TINT_BORDER = "#FFE0D3";
+
 const styles = StyleSheet.create({
+  editPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: ms(4),
+    marginTop: ms(8),
+    paddingHorizontal: ms(10),
+    paddingVertical: ms(4),
+    borderRadius: 999,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: TINT_BORDER,
+  },
+  editPillText: {
+    fontFamily: "OpenSans_600SemiBold",
+    fontSize: ms(11.5),
+    color: colors.primary,
+  },
   screen: {
     flex: 1,
-    backgroundColor: "white",
+    backgroundColor: PAGE_BG,
   },
 
   // Bound the scroll area so the pinned banner below it always stays on screen.
@@ -821,6 +885,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     minHeight: ms(52),
+    backgroundColor: PAGE_BG,
   },
 
   scroll: {
@@ -830,10 +895,18 @@ const styles = StyleSheet.create({
   // ── Profile header
   profileHeader: {
     alignItems: "center",
-    marginTop: ms(14),
+    marginTop: ms(5),
+    flexDirection: "row",
+    gap: ms(14),
+    marginHorizontal: ms(16),
+    padding: ms(14),
+    borderRadius: 20,
+    backgroundColor: TINT,
+    borderWidth: 1,
+    borderColor: TINT_BORDER,
   },
   avatarContainer: {
-    marginBottom: ms(10),
+    marginBottom: 0,
   },
   // ~15% smaller than before and no glow — a clean ring is enough.
   avatarRing: {
@@ -850,7 +923,7 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
     borderRadius: ms(55),
-    backgroundColor: colors.surface,
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
@@ -878,11 +951,11 @@ const styles = StyleSheet.create({
   },
   name: {
     fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(18),
+    fontSize: ms(19),
     color: colors.text,
   },
   subline: {
-    fontFamily: "OpenSans_600SemiBold",
+    fontFamily: "OpenSans_500Medium",
     fontSize: ms(12),
     color: colors.textLight,
     marginTop: 2,
@@ -932,7 +1005,11 @@ const styles = StyleSheet.create({
     paddingVertical: ms(14),
   },
   duoDivider: { width: 1, height: ms(22), backgroundColor: "#EEF0F4" },
-  duoText: { fontFamily: "OpenSans_700Bold", fontSize: ms(13.5), color: colors.text },
+  duoText: {
+    fontFamily: "OpenSans_600SemiBold",
+    fontSize: ms(13.5),
+    color: colors.text,
+  },
 
   // ── Buy me a coffee
   coffeeCard: {
@@ -949,8 +1026,17 @@ const styles = StyleSheet.create({
     borderColor: "#FDE3C4",
   },
   coffeeEmoji: { fontSize: ms(24) },
-  coffeeTitle: { fontFamily: "OpenSans_800ExtraBold", fontSize: ms(13.5), color: colors.text },
-  coffeeSub: { fontFamily: "OpenSans_500Medium", fontSize: ms(11.5), color: "#92400E", marginTop: 1 },
+  coffeeTitle: {
+    fontFamily: "OpenSans_700Bold",
+    fontSize: ms(13.5),
+    color: colors.text,
+  },
+  coffeeSub: {
+    fontFamily: "OpenSans_500Medium",
+    fontSize: ms(11.5),
+    color: "#92400E",
+    marginTop: 1,
+  },
 
   // ── Footer
   footer: {
@@ -984,7 +1070,7 @@ const statStyles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginHorizontal: ms(16),
-    marginTop: ms(18),
+    marginTop: ms(12),
     paddingVertical: ms(14),
     paddingRight: ms(14),
     backgroundColor: colors.white,
@@ -995,10 +1081,23 @@ const statStyles = StyleSheet.create({
   colWrap: { flex: 1, flexDirection: "row", alignItems: "center" },
   divider: { width: 1, height: ms(28), backgroundColor: "#EEF0F4" },
   col: { flex: 1, alignItems: "center", paddingHorizontal: 4 },
-  value: { fontFamily: "OpenSans_800ExtraBold", fontSize: ms(17), color: colors.text },
-  labelRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 1 },
+  value: {
+    fontFamily: "OpenSans_700Bold",
+    fontSize: ms(17),
+    color: colors.text,
+  },
+  labelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 1,
+  },
   dot: { width: 6, height: 6, borderRadius: 3 },
-  label: { fontFamily: "OpenSans_600SemiBold", fontSize: ms(10.5), color: colors.textLight },
+  label: {
+    fontFamily: "OpenSans_600SemiBold",
+    fontSize: ms(10.5),
+    color: colors.textLight,
+  },
   chevron: { position: "absolute", right: ms(8) },
 });
 

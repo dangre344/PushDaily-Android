@@ -111,6 +111,42 @@ const flagOf = (cc) =>
       )
     : "🌍";
 
+// ── Leaderboard cache ──
+// Opening the Event tab used to hit the Worker every time. The board is cached
+// for a few minutes (in memory, and on disk so a relaunch is instant too), per
+// user and per UTC day so it never shows yesterday's board after the reset.
+// A new score from this user, or pull-to-refresh, skips the cache.
+const K_BOARD_CACHE = "leaderboard_cache";
+const BOARD_TTL_MS = 3 * 60 * 1000;
+let boardCache = null; // { key, at, rows, rank }
+
+const boardCacheKey = (userId) => `${todayKey()}|${userId || ""}`;
+
+const readBoardCache = async (key) => {
+  if (!boardCache) {
+    try {
+      const raw = await AsyncStorage.getItem(K_BOARD_CACHE);
+      boardCache = raw ? JSON.parse(raw) : null;
+    } catch {
+      boardCache = null;
+    }
+  }
+  const fresh =
+    boardCache?.key === key && Date.now() - (boardCache.at || 0) < BOARD_TTL_MS;
+  return fresh ? boardCache : null;
+};
+
+const writeBoardCache = (entry) => {
+  boardCache = entry;
+  AsyncStorage.setItem(K_BOARD_CACHE, JSON.stringify(entry)).catch(() => {});
+};
+
+/** Forgets the cached board, so the next read fetches it fresh. */
+export const clearLeaderboardCache = () => {
+  boardCache = null;
+  AsyncStorage.removeItem(K_BOARD_CACHE).catch(() => {});
+};
+
 // ── Upload this user's best score (via the Worker) ──
 // The Worker stamps the row in UTC, so the challenge day is global.
 export const saveScore = async (id, name, count, country) => {
@@ -121,6 +157,8 @@ export const saveScore = async (id, name, count, country) => {
     count,
     country: country || null,
   });
+  // Their new score should be on the board the next time they look.
+  if (res?.ok) clearLeaderboardCache();
   return !!res?.ok;
 };
 
@@ -129,17 +167,29 @@ export const saveScore = async (id, name, count, country) => {
  * { top: [{rank, name, pushups, flag, isUser}], me: { rank, best, lifetime } }
  * `top` is empty when nobody has logged a score yet (or we're offline).
  */
-export const getLeaderboard = async (userId, userName) => {
+export const getLeaderboard = async (userId, userName, { force = false } = {}) => {
   const [best, lifetime] = await Promise.all([
     getPushupBest(),
     getPushupTotal(),
   ]);
 
-  const res = await callBackend("leaderboard", {
-    userId: userId ? String(userId) : "",
-    best,
-    limit: 10,
-  });
+  // Cached board when it's fresh; otherwise one request, then cached.
+  const key = boardCacheKey(userId);
+  let res = force ? null : await readBoardCache(key);
+  if (!res) {
+    const live = await callBackend("leaderboard", {
+      userId: userId ? String(userId) : "",
+      best,
+      limit: 10,
+    });
+    if (Array.isArray(live?.rows)) {
+      res = { key, at: Date.now(), rows: live.rows, rank: live.rank || 0 };
+      writeBoardCache(res);
+    } else {
+      // Offline or the Worker failed: an older board beats an empty one.
+      res = boardCache?.key === key ? boardCache : live;
+    }
+  }
 
   const rows = Array.isArray(res?.rows) ? res.rows : [];
   const top = rows.map((r, i) => ({

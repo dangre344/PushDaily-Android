@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { memo, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -53,6 +54,13 @@ const CHIP_COLUMNS = [PLAN_CHIP, ...QUICK_QUESTIONS].reduce((cols, q, i) => {
   else cols[cols.length - 1].push(q);
   return cols;
 }, []);
+
+// The chip strip scrolls sideways, which users didn't notice. Edge fades use
+// the screen background so they blend in (must match styles.screen).
+const CHIP_FADE_BG = "#F7F8FA";
+const CHIP_FADE_CLEAR = "rgba(247,248,250,0)";
+// The "it scrolls" nudge plays once per app launch, not on every visit.
+let chipsNudged = false;
 
 // Messages that should trigger the "analyse my week → pick a body part" flow
 // instead of going to the AI.
@@ -178,7 +186,7 @@ const buildPlanMessage = (all, group) => {
 const ms = (n) => scaling().moderateScale(n);
 
 // Jack's avatar — bundled local photo.
-const TRAINER_AVATAR = require("../../assets/images/trainer.png");
+const TRAINER_AVATAR = require("../../assets/images/trainer_avatar.webp");
 
 const timeNow = () =>
   new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -377,6 +385,51 @@ export default function TrainerChat() {
   const showQuickQuestions = !busy;
   // Live "as you type" suggestions.
   const typeSuggestions = matchQuestions(input);
+  const showChipStrip = showQuickQuestions && typeSuggestions.length === 0;
+
+  // ── Chip strip: make "there's more to the right" obvious ──
+  // A fade + chevron on the right while more chips are off-screen (tap it to
+  // scroll on), a fade on the left once scrolled, and a one-time nudge.
+  const chipsRef = useRef(null);
+  const chipsMetrics = useRef({ x: 0, width: 0, content: 0 });
+  const chipsTimers = useRef([]);
+  const [chipsEdge, setChipsEdge] = useState({ atStart: true, atEnd: true });
+
+  const updateChipsEdge = () => {
+    const { x, width, content } = chipsMetrics.current;
+    if (!width || !content) return;
+    const atStart = x <= 4;
+    const atEnd = x + width >= content - 4;
+    setChipsEdge((prev) =>
+      prev.atStart === atStart && prev.atEnd === atEnd ? prev : { atStart, atEnd },
+    );
+  };
+
+  const maybeNudgeChips = () => {
+    const { width, content } = chipsMetrics.current;
+    if (chipsNudged || !width || content <= width + 4) return;
+    chipsNudged = true;
+    const peek = Math.min(ms(70), content - width);
+    chipsTimers.current.push(
+      setTimeout(() => chipsRef.current?.scrollTo({ x: peek, animated: true }), 700),
+      setTimeout(() => chipsRef.current?.scrollTo({ x: 0, animated: true }), 1350),
+    );
+  };
+
+  const scrollChipsForward = () => {
+    const { x, width, content } = chipsMetrics.current;
+    const next = Math.min(x + width * 0.75, Math.max(0, content - width));
+    chipsRef.current?.scrollTo({ x: next, animated: true });
+  };
+
+  // The strip remounts after every answer and starts back at the left edge.
+  useEffect(() => {
+    if (!showChipStrip) return;
+    chipsMetrics.current.x = 0;
+    updateChipsEdge();
+  }, [showChipStrip]);
+
+  useEffect(() => () => chipsTimers.current.forEach(clearTimeout), []);
 
   useEffect(() => {
     return () => clearInterval(streamTimer.current);
@@ -952,8 +1005,10 @@ export default function TrainerChat() {
         )}
 
         {/* ─── Quick questions (also shown on a revisit with history) ─── */}
-        {showQuickQuestions && typeSuggestions.length === 0 && (
+        {showChipStrip && (
+          <View style={styles.chipsArea}>
           <ScrollView
+            ref={chipsRef}
             horizontal
             showsHorizontalScrollIndicator={false}
             // Without flexGrow:0 the ScrollView stretches to fill the column
@@ -961,6 +1016,21 @@ export default function TrainerChat() {
             style={styles.chipsScroll}
             contentContainerStyle={styles.chipsWrap}
             keyboardShouldPersistTaps="handled"
+            onLayout={(e) => {
+              chipsMetrics.current.width = e.nativeEvent.layout.width;
+              updateChipsEdge();
+              maybeNudgeChips();
+            }}
+            onContentSizeChange={(w) => {
+              chipsMetrics.current.content = w;
+              updateChipsEdge();
+              maybeNudgeChips();
+            }}
+            onScroll={(e) => {
+              chipsMetrics.current.x = e.nativeEvent.contentOffset.x;
+              updateChipsEdge();
+            }}
+            scrollEventThrottle={32}
           >
             {/* Two compact rows instead of one tall row: about twice as many
                 questions visible before any scrolling. */}
@@ -998,6 +1068,41 @@ export default function TrainerChat() {
               </View>
             ))}
           </ScrollView>
+
+          {/* Left fade: only once the strip has been scrolled. */}
+          {!chipsEdge.atStart ? (
+            <LinearGradient
+              pointerEvents="none"
+              colors={[CHIP_FADE_BG, CHIP_FADE_CLEAR]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={[styles.chipsFade, styles.chipsFadeLeft]}
+            />
+          ) : null}
+
+          {/* Right fade + chevron while more chips are off-screen. */}
+          {!chipsEdge.atEnd ? (
+            <View pointerEvents="box-none" style={[styles.chipsFade, styles.chipsFadeRight]}>
+              <LinearGradient
+                pointerEvents="none"
+                colors={[CHIP_FADE_CLEAR, CHIP_FADE_BG]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0.55, y: 0 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <TouchableOpacity
+                style={styles.chipsMoreBtn}
+                onPress={scrollChipsForward}
+                activeOpacity={0.8}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="More suggested questions"
+              >
+                <Ionicons name="chevron-forward" size={ms(16)} color={colors.primary} />
+              </TouchableOpacity>
+            </View>
+          ) : null}
+          </View>
         )}
 
         {/* ─── Input bar ─── */}
@@ -1197,6 +1302,35 @@ const styles = StyleSheet.create({
 
   // ── Quick question chips ──
   // Horizontally scrolling row of suggestion chips
+  chipsArea: { position: "relative" },
+  chipsFade: {
+    position: "absolute",
+    top: 0,
+    bottom: ms(8), // stops at the strip's bottom padding
+  },
+  chipsFadeLeft: { left: 0, width: ms(22) },
+  chipsFadeRight: {
+    right: 0,
+    width: ms(64),
+    alignItems: "flex-end",
+    justifyContent: "center",
+    paddingRight: ms(8),
+  },
+  chipsMoreBtn: {
+    width: ms(30),
+    height: ms(30),
+    borderRadius: ms(15),
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: colors.primary + "4D",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
   chipsScroll: {
     flexGrow: 0,
     flexShrink: 0,
@@ -1270,7 +1404,7 @@ const styles = StyleSheet.create({
   },
   chipPlanText: {
     color: "#FFFFFF",
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
   },
 
   // ── Analyze my workouts bar ──

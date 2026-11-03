@@ -160,10 +160,12 @@ export default function SupportSheet({ visible, setVisible }) {
     tapHaptic();
     const url = upiLink();
     try {
-      const ok = await Linking.canOpenURL(url);
-      if (!ok) throw new Error("no UPI handler");
-      trackEvent("Support UPI Opened", { method: "deeplink" });
+      // Opened straight away, not behind canOpenURL: on Android 11+ that only
+      // sees schemes declared in the manifest's <queries>, and "upi" isn't, so
+      // it always said "no UPI app". openURL rejects when nothing handles it,
+      // and with several UPI apps Android shows its picker.
       await Linking.openURL(url);
+      trackEvent("Support UPI Opened", { method: "deeplink" });
     } catch (e) {
       Logger.log("[Support] UPI link failed:", String(e));
       trackEvent("Support UPI Fallback", { reason: "no_upi_app" });

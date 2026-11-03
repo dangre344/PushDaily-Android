@@ -178,9 +178,11 @@ export const getTotalPoints = (performedWorkouts = []) =>
 const findTier = (score) =>
   BADGE_TIERS.find((t) => score >= t.min && score <= t.max) ?? BADGE_TIERS[0];
 
-export const getUserBadge = (performedWorkouts = []) => {
-  const score = getTotalPoints(performedWorkouts);
+export const getUserBadge = (performedWorkouts = []) =>
+  getBadgeForScore(getTotalPoints(performedWorkouts));
 
+/** Same badge, from a points total (lets callers sum points in SQL). */
+export const getBadgeForScore = (score = 0) => {
   const tier = findTier(score);
   return {
     title: tier.title,
@@ -189,6 +191,13 @@ export const getUserBadge = (performedWorkouts = []) => {
     score,
   };
 };
+
+/** Points from per-level counts: [{ level, n }] (see getLevelCounts). */
+export const getPointsFromLevelCounts = (rows = []) =>
+  rows.reduce(
+    (total, row) => total + getPointsForLevel(row?.level) * (Number(row?.n) || 0),
+    0,
+  );
 
 export const getNextBadgeProgress = (score = 0) => {
   const currentTier = findTier(score);
@@ -268,7 +277,15 @@ export default function WorkoutBadgeInfo({ userBadge, visible, setVisible }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
+  // Close once: the overlay, the ✕ and "Got it" can all fire during the fade.
+  const closingRef = useRef(false);
+  useEffect(() => {
+    if (visible) closingRef.current = false;
+  }, [visible]);
+
   const closeModal = () => {
+    if (closingRef.current) return;
+    closingRef.current = true;
     Animated.parallel([
       Animated.timing(opacityAnim, {
         toValue: 0,

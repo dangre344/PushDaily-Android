@@ -130,7 +130,7 @@ wrangler deploy
 
 ```toml
 [triggers]
-crons = ["10 3 * * *"]   # 03:10 UTC daily  (= 08:40 IST)
+crons = ["5 0 * * *", "0 4 * * *", "30 13 * * *"]   # quiz 00:05 UTC; the two broadcasts retry it
 ```
 
 Confirm in the dashboard → **Workers & Pages → push-daily-trainer → Settings →
@@ -146,13 +146,16 @@ Every AI path tries **Gemini first, then Groq**, and this is fully automatic:
 |---|---|
 | Trainer chat reply | Gemini → Groq → honest "try again" message |
 | Workout analysis | Gemini → Groq → local summary from your own numbers |
-| Daily quiz generation | Gemini → Groq → nothing written (yesterday's set stays) |
+| Daily quiz generation | Gemini → Gemini → Groq → nothing written; the app keeps getting the last good set and the next cron retries |
 
 Quiz generation also falls back when Gemini **succeeds but returns unusable
-JSON** — the output must pass validation (exactly 10 questions, 4 unique
-options, in-range answer index, non-empty hint, answers not all at one index)
-before it counts. Failing that, Groq is tried; if it also fails, **nothing is
-stored**, so a bad night can never publish a broken quiz.
+JSON**. The model is asked for 13 questions; each is validated on its own (4
+unique options, in-range answer index, a real hint, not a recent repeat) and
+the bad ones dropped. A set is stored once 10 good ones remain with at least 4
+topics and answers not all at one index. Truncated JSON is salvaged question by
+question. If every attempt fails, **nothing is stored**: the app keeps getting
+the last good set, and the next cron tries again. The manual `generate-quiz`
+trigger returns the reason for each failed attempt.
 
 The response includes `"provider": "gemini" | "groq"` so you can see which one
 answered.

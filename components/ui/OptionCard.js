@@ -69,7 +69,22 @@ function ListCard({ option, selected, onPress, index }) {
           </View>
 
           <View style={styles.textWrap}>
-            <Text style={[styles.title, selected && styles.titleOn]}>{option.title}</Text>
+            <View style={styles.titleRow}>
+              <Text style={[styles.title, selected && styles.titleOn]}>{option.title}</Text>
+              {/* Optional count/tag next to the title, e.g. "10 exercises". */}
+              {option.badge ? (
+                <View style={[styles.badge, selected && styles.badgeOn]}>
+                  <Ionicons
+                    name="barbell-outline"
+                    size={ms(12)}
+                    color={selected ? "#FFFFFF" : colors.primary}
+                  />
+                  <Text style={[styles.badgeText, selected && styles.badgeTextOn]}>
+                    {option.badge}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
             {option.time ? <Text style={styles.time}>{option.time}</Text> : null}
             {option.description ? (
               <Text style={styles.description}>{option.description}</Text>
@@ -216,6 +231,30 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   titleOn: { color: colors.primary },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  badge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 999,
+    backgroundColor: "#FFF1EA",
+    borderWidth: 1,
+    borderColor: "#FFD3C0",
+  },
+  badgeOn: { backgroundColor: colors.primary, borderColor: colors.primary },
+  badgeText: {
+    fontSize: ms(11.5),
+    fontFamily: "OpenSans_700Bold",
+    color: colors.primary,
+  },
+  badgeTextOn: { color: "#FFFFFF" },
   time: {
     fontSize: ms(12),
     fontFamily: "OpenSans_700Bold",

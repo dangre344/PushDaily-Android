@@ -160,7 +160,7 @@ export const AboutModal = ({
               requestNonPersonalizedAdsOnly: false,
             }}
             onAdLoaded={() => {
-              console.log("[AdMob] Banner loaded");
+              Logger.log("[AdMob] Banner loaded");
             }}
             onAdFailedToLoad={(error) => {
               console.warn("[AdMob] Banner failed:", error);

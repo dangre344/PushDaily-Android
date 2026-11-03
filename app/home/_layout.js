@@ -15,6 +15,7 @@ import { useEffect, useRef, useState } from "react";
 import TabTourOverlay, {
   hasSeenTabTour,
 } from "../../components/ui/TabTourOverlay.js";
+import { runAfterStartup } from "../../constants/afterStartup.js";
 import { colors } from "../../constants/colors.js";
 import { trackScreen } from "../../constants/mixpanel.js";
 import { syncPeriodReminders } from "../../constants/periodReminders.js";
@@ -61,22 +62,9 @@ const TabButton = ({ tab, isFocused, onPress }) => {
 
   useEffect(() => {
     if (isFocused) {
-      // Pop + rise animation on focus
+      // Rise on focus — one light motion (the old two-step pop was dropped).
+      scaleAnim.setValue(1);
       Animated.parallel([
-        Animated.sequence([
-          Animated.spring(scaleAnim, {
-            toValue: 1.25,
-            tension: 80,
-            friction: 5,
-            useNativeDriver: true,
-          }),
-          Animated.spring(scaleAnim, {
-            toValue: 1,
-            tension: 80,
-            friction: 6,
-            useNativeDriver: true,
-          }),
-        ]),
         Animated.spring(translateAnim, {
           toValue: -6,
           tension: 70,
@@ -232,9 +220,11 @@ export default function AppLayout() {
   // for women, "her" for anyone tracking a partner). Re-synced on every launch
   // and whenever the gender is edited, so the wording follows the profile.
   // Never prompts for permission here; that's an explicit tap in Periods.
+  // Waits until the home screen has drawn — it's notification scheduling the
+  // first frame doesn't need.
   useEffect(() => {
     if (!user) return;
-    syncPeriodReminders({ gender: user.gender });
+    return runAfterStartup(() => syncPeriodReminders({ gender: user.gender }), 2500);
   }, [user?.gender]);
 
   // Reminders scheduled by an older version (plain text, system sound) are
@@ -242,11 +232,11 @@ export default function AppLayout() {
   // already current or when notifications aren't allowed — never prompts.
   useEffect(() => {
     if (!user) return;
-    (async () => {
+    return runAfterStartup(async () => {
       await upgradeWorkoutRemindersIfNeeded(user);
       await upgradeWaterRemindersIfNeeded(user.name);
       await scheduleQuizReminder();
-    })();
+    }, 3000);
   }, [user?._id]);
 
   // First app open only: walk the user through the tabs. Delayed slightly so

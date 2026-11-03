@@ -1,6 +1,6 @@
 # Privacy Policy for Push Daily Home Workout
 
-**Last updated: October 09, 2026**
+**Last updated: October 25, 2026**
 
 ## Privacy Policy
 
@@ -59,7 +59,7 @@ The Service does not ask for Your email address, phone number or password.
 | Data | Where it is stored | Leaves your device? |
 |---|---|---|
 | **Period tracking** (period start dates, cycle length, period length, delay history) | On Your Device only | **No.** Never uploaded to our servers, never sent to analytics, never shared with third parties. |
-| **Workout history** (exercises done, dates, calories) | On Your Device only | **No**, except a summary of it if You ask the AI trainer to review Your progress (see "AI Trainer"). |
+| **Workout history** (exercises done, dates, calories) | On Your Device only | **No**, except a summary of it if You ask the AI trainer to review Your progress (see "AI Trainer"), and a "workout completed" signal (number of exercises and duration only) sent to Google Analytics for Firebase to measure our ad campaigns. Exercise names, body parts and calories are not sent. |
 | **Water intake** (glasses logged, daily goal) | On Your Device only | **No.** |
 | **Profile body details** (height, weight, age, gender, goal, fitness level) | On Your Device | **Yes, in limited cases:** shared with Our analytics provider (Mixpanel) to understand how the app is used, and sent to Our AI service when You use the AI trainer, so its advice fits You. |
 | **Push-up score** (count, display name, country) | Our leaderboard server | **Yes**, if You complete a push-up session. It is used to show the public daily leaderboard (see "Push-Up Challenge"). |
@@ -121,7 +121,7 @@ If You add the Push Daily widget, it shows Your first name and current workout s
 
 ### Advertising
 
-The app shows ads through Google AdMob. Google may use Your device's advertising identifier to show personalized ads and to measure ad performance. You can reset Your advertising ID or opt out of personalized ads in Your Android settings (Settings → Google → Ads). Health and Fitness Information, including period data, is never shared with advertisers.
+The app shows ads through Google AdMob. Google may use Your device's advertising identifier to show personalized ads and to measure ad performance. You can reset Your advertising ID or opt out of personalized ads in Your Android settings (Settings → Google → Ads). Period data and body details (height, weight, age) are never shared with advertisers. To measure which of our ads bring people who actually use the app, Google Analytics for Firebase receives a "workout completed" event (number of exercises and duration only) together with Your advertising ID; nothing else from Your workout history is sent.
 
 ### Payments and Support
 
@@ -148,6 +148,7 @@ We share data only with these Service Providers, and only for the purposes descr
 |---|---|---|
 | Mixpanel | Product analytics | App usage, app ID, profile details (name, gender, age, height, weight, goal, fitness level), install source |
 | Google Firebase (Crashlytics, Cloud Messaging, Remote Config) | Crash reports, push notifications, app configuration | Crash logs, device info, app ID, notification token |
+| Google Analytics for Firebase | Measuring which of our ad campaigns bring people who actually use the app | App instance ID, advertising ID, device info, a "workout completed" event (number of exercises, duration) |
 | Google AdMob | Advertising | Advertising ID, device info, ad interactions |
 | Google Gemini / Groq (through our Cloudflare server) | AI trainer replies, food label reading | Chat messages, profile details, workout summary, label photos |
 | Supabase (through our Cloudflare server) | Push-up leaderboard | Display name, push-up count, country, app ID |

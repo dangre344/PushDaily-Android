@@ -291,6 +291,7 @@ export const workoutListGlobal = [
       {
         name: "Wall Push Ups",
         photo: require("../assets/images/chestImages/wall-push.webp"),
+        video: "wall_push_ups",
         calories: 5,
         reps: 6,
         level: "Beginner",
@@ -307,6 +308,7 @@ export const workoutListGlobal = [
       {
         name: "Incline Push Ups",
         photo: require("../assets/images/chestImages/incline_pushups.webp"),
+        video: "incline_push_ups",
         calories: 6,
         reps: 6,
         level: "Beginner",
@@ -322,6 +324,7 @@ export const workoutListGlobal = [
       {
         name: "Knee Push Ups",
         photo: require("../assets/images/chestImages/knee_pushps.webp"),
+        video: "knee_push_ups",
         calories: 7,
         reps: 7,
         level: "Beginner",
@@ -338,6 +341,7 @@ export const workoutListGlobal = [
       {
         name: "Slow Knee Push Ups",
         photo: require("../assets/images/chestImages/knee_pushps.webp"),
+        video: "slow_knee_push_ups",
         calories: 7,
         reps: 7,
         level: "Beginner",
@@ -354,6 +358,7 @@ export const workoutListGlobal = [
       {
         name: "Wide Knee Push Ups",
         photo: require("../assets/images/chestImages/wide_knee.webp"),
+        video: "wide_knee_push_ups",
         calories: 6,
         reps: 6,
         level: "Beginner",
@@ -370,6 +375,7 @@ export const workoutListGlobal = [
       {
         name: "Push Up Hold",
         photo: require("../assets/images/chestImages/pushup_hold.webp"),
+        video: "push_up_hold",
         calories: 5,
         time: "20s",
         level: "Beginner",
@@ -385,6 +391,7 @@ export const workoutListGlobal = [
       {
         name: "Half Push Ups",
         photo: require("../assets/images/chestImages/half_pushup.webp"),
+        video: "half_push_ups",
         calories: 6,
         reps: 6,
         level: "Beginner",
@@ -400,6 +407,7 @@ export const workoutListGlobal = [
       {
         name: "Shoulder Tap Knee Push Ups",
         photo: require("../assets/images/chestImages/shoulder_kneetap.webp"),
+        video: "shoulder_tap_knee_push_ups",
         calories: 7,
         reps: 7,
         level: "Beginner",
@@ -415,6 +423,7 @@ export const workoutListGlobal = [
       {
         name: "Wall Push Up Hold",
         photo: require("../assets/images/chestImages/wallPush_hold.webp"),
+        video: "wall_push_up_hold",
         calories: 5,
         time: "20s",
         level: "Beginner",
@@ -430,6 +439,7 @@ export const workoutListGlobal = [
       {
         name: "Close Knee Push Ups",
         photo: require("../assets/images/chestImages/closekneepushup.webp"),
+        video: "close_knee_push_ups",
         calories: 7,
         reps: 7,
         level: "Beginner",
@@ -455,6 +465,7 @@ export const workoutListGlobal = [
       {
         name: "Push Ups",
         photo: require("../assets/images/chestImages/pushups.webp"),
+        video: "push_ups",
         calories: 10,
         reps: 12,
         level: "Intermediate",
@@ -471,6 +482,7 @@ export const workoutListGlobal = [
       {
         name: "Wide Push Ups",
         photo: require("../assets/images/chestImages/wide_pushups.webp"),
+        video: "wide_push_ups",
         reps: 18,
         level: "Advanced",
         description: "Wide hand push-ups increase chest muscle activation.",
@@ -485,6 +497,7 @@ export const workoutListGlobal = [
       {
         name: "Diamond Push Ups",
         photo: require("../assets/images/chestImages/diamond_pushps.webp"),
+        video: "diamond_push_ups",
         calories: 11,
         reps: 12,
         level: "Intermediate",
@@ -501,6 +514,7 @@ export const workoutListGlobal = [
       {
         name: "Decline Push Ups",
         photo: require("../assets/images/chestImages/decline_pushups.webp"),
+        video: "decline_push_ups",
         calories: 12,
         reps: 12,
         level: "Intermediate",
@@ -517,6 +531,7 @@ export const workoutListGlobal = [
       {
         name: "Push Up Shoulder Taps",
         photo: require("../assets/images/chestImages/pushup_shld_tap.webp"),
+        video: "push_up_shoulder_taps",
         calories: 11,
         reps: 12,
         level: "Intermediate",
@@ -532,6 +547,7 @@ export const workoutListGlobal = [
       {
         name: "Slow Tempo Push Ups",
         photo: require("../assets/images/chestImages/slow_pushups.webp"),
+        video: "slow_tempo_push_ups",
         calories: 10,
         reps: 12,
         level: "Intermediate",
@@ -546,6 +562,7 @@ export const workoutListGlobal = [
       {
         name: "Pause Push Ups",
         photo: require("../assets/images/chestImages/pause_pushups.webp"),
+        video: "pause_push_ups",
         calories: 10,
         reps: 12,
         level: "Intermediate",
@@ -561,6 +578,7 @@ export const workoutListGlobal = [
       {
         name: "Explosive Push Ups",
         photo: require("../assets/images/chestImages/explosive_pushups.webp"),
+        video: "explosive_push_ups",
         calories: 12,
         reps: 12,
         level: "Intermediate",
@@ -575,6 +593,7 @@ export const workoutListGlobal = [
       {
         name: "Push Up Pulses",
         photo: require("../assets/images/chestImages/pushup_pulses.webp"),
+        video: "push_up_pulses",
         calories: 9,
         reps: 12,
         level: "Intermediate",
@@ -589,6 +608,7 @@ export const workoutListGlobal = [
       {
         name: "Archer Push Ups",
         photo: require("../assets/images/chestImages/archer_pushups.webp"),
+        video: "archer_push_ups",
         calories: 12,
         reps: 12,
         level: "Intermediate",
@@ -604,6 +624,7 @@ export const workoutListGlobal = [
       {
         name: "Offset Push Ups",
         photo: require("../assets/images/chestImages/offset_pushups.webp"),
+        video: "offset_push_ups",
         calories: 9,
         reps: 12,
         level: "Intermediate",
@@ -619,6 +640,7 @@ export const workoutListGlobal = [
       {
         name: "Staggered Push Ups",
         photo: require("../assets/images/chestImages/staggered_pushups.webp"),
+        video: "staggered_push_ups",
         calories: 9,
         reps: 12,
         level: "Intermediate",
@@ -634,6 +656,7 @@ export const workoutListGlobal = [
       {
         name: "Side to Side Push Ups",
         photo: require("../assets/images/chestImages/side_side_pushups.webp"),
+        video: "side_to_side_push_ups",
         calories: 10,
         reps: 12,
         level: "Intermediate",
@@ -649,6 +672,7 @@ export const workoutListGlobal = [
       {
         name: "Elevated Push Ups",
         photo: require("../assets/images/chestImages/elevated_pushups.webp"),
+        video: "incline_push_ups",
         calories: 11,
         reps: 12,
         level: "Intermediate",
@@ -663,6 +687,7 @@ export const workoutListGlobal = [
       {
         name: "Wide to Close Push Ups",
         photo: require("../assets/images/chestImages/wide_to_close.webp"),
+        video: "wide_to_close_push_ups",
         calories: 11,
         reps: 12,
         level: "Intermediate",
@@ -687,6 +712,7 @@ export const workoutListGlobal = [
       {
         name: "Decline Push Ups",
         photo: require("../assets/images/chestImages/decline_pushups.webp"),
+        video: "decline_push_ups",
         calories: 14,
         reps: 18,
         level: "Advanced",
@@ -703,6 +729,7 @@ export const workoutListGlobal = [
       {
         name: "Diamond Push Ups",
         photo: require("../assets/images/chestImages/diamond_pushups.webp"),
+        video: "diamond_push_ups",
         calories: 14,
         reps: 18,
         level: "Advanced",
@@ -718,6 +745,7 @@ export const workoutListGlobal = [
       {
         name: "Wide Push Ups",
         photo: require("../assets/images/chestImages/wide_pushups.webp"),
+        video: "wide_push_ups",
         calories: 14,
         reps: 18,
         level: "Advanced",
@@ -733,6 +761,7 @@ export const workoutListGlobal = [
       {
         name: "Slow Tempo Push Ups",
         photo: require("../assets/images/chestImages/slow_pushups.webp"),
+        video: "slow_tempo_push_ups",
         calories: 13,
         reps: 18,
         level: "Advanced",
@@ -747,6 +776,7 @@ export const workoutListGlobal = [
       {
         name: "Pause Push Ups",
         photo: require("../assets/images/chestImages/pause_pushups.webp"),
+        video: "pause_push_ups",
         calories: 13,
         reps: 18,
         level: "Advanced",
@@ -761,6 +791,7 @@ export const workoutListGlobal = [
       {
         name: "Push Ups with Shoulder Tap",
         photo: require("../assets/images/chestImages/pushup_shld_tap.webp"),
+        video: "push_up_shoulder_taps",
         calories: 13,
         reps: 18,
         level: "Advanced",
@@ -776,6 +807,7 @@ export const workoutListGlobal = [
       {
         name: "Staggered Push Ups",
         photo: require("../assets/images/chestImages/staggered_pushups.webp"),
+        video: "staggered_push_ups",
         calories: 12,
         reps: 18,
         level: "Advanced",
@@ -790,6 +822,7 @@ export const workoutListGlobal = [
       {
         name: "Offset Push Ups",
         photo: require("../assets/images/chestImages/offset_pushups.webp"),
+        video: "offset_push_ups",
         calories: 12,
         reps: 18,
         level: "Advanced",
@@ -804,6 +837,7 @@ export const workoutListGlobal = [
       {
         name: "Wide to Close Push Ups",
         photo: require("../assets/images/chestImages/wide_to_close.webp"),
+        video: "wide_to_close_push_ups",
         calories: 12,
         reps: 18,
         level: "Advanced",
@@ -819,6 +853,7 @@ export const workoutListGlobal = [
       {
         name: "Side to Side Push Ups",
         photo: require("../assets/images/chestImages/side_side_pushups.webp"),
+        video: "side_to_side_push_ups",
         calories: 13,
         reps: 18,
         level: "Advanced",
@@ -833,6 +868,7 @@ export const workoutListGlobal = [
       {
         name: "Push Up Pulses",
         photo: require("../assets/images/chestImages/pushup_pulses.webp"),
+        video: "push_up_pulses",
         calories: 12,
         reps: 18,
         level: "Advanced",
@@ -847,6 +883,7 @@ export const workoutListGlobal = [
       {
         name: "Elevated Push Ups",
         photo: require("../assets/images/chestImages/elevated_pushups.webp"),
+        video: "incline_push_ups",
         calories: 13,
         reps: 18,
         level: "Advanced",
@@ -861,6 +898,7 @@ export const workoutListGlobal = [
       {
         name: "Decline Slow Push Ups",
         photo: require("../assets/images/chestImages/decline_slowpusups.webp"),
+        video: "decline_slow_push_ups",
         calories: 13,
         reps: 18,
         level: "Advanced",
@@ -875,6 +913,7 @@ export const workoutListGlobal = [
       {
         name: "Incline Decline Combo Push Ups",
         photo: require("../assets/images/chestImages/incline-decline_pushups.webp"),
+        video: "incline_decline_combo_push_ups",
         calories: 14,
         reps: 18,
         level: "Advanced",
@@ -889,6 +928,7 @@ export const workoutListGlobal = [
       {
         name: "Push Up Hold Bottom",
         photo: require("../assets/images/chestImages/pushups_hold_bottom.webp"),
+        video: "push_up_hold_bottom",
         calories: 5,
         time: "30s",
         level: "Advanced",
@@ -903,6 +943,7 @@ export const workoutListGlobal = [
       {
         name: "Archer Push Ups",
         photo: require("../assets/images/chestImages/archer_pushups.webp"),
+        video: "archer_push_ups",
         calories: 14,
         reps: 18,
         level: "Advanced",
@@ -917,6 +958,7 @@ export const workoutListGlobal = [
       {
         name: "Spiderman Push Ups",
         photo: require("../assets/images/chestImages/spiderman_pushups.webp"),
+        video: "spiderman_push_ups",
         calories: 14,
         reps: 18,
         level: "Advanced",
@@ -931,6 +973,7 @@ export const workoutListGlobal = [
       {
         name: "Explosive Push Ups",
         photo: require("../assets/images/chestImages/explosive_pushups.webp"),
+        video: "explosive_push_ups",
         calories: 14,
         reps: 18,
         level: "Advanced",
@@ -956,6 +999,7 @@ export const workoutListGlobal = [
       {
         name: "Arm Circles",
         photo: require("../assets/images/shoulder/arm_circle.webp"),
+        video: "arm_circles",
         calories: 5,
         reps: 10,
         level: "Beginner",
@@ -971,6 +1015,7 @@ export const workoutListGlobal = [
       {
         name: "Front Arm Raises",
         photo: require("../assets/images/shoulder/front_raises.webp"),
+        video: "front_arm_raises",
         calories: 6,
         reps: 8,
         level: "Beginner",
@@ -981,6 +1026,7 @@ export const workoutListGlobal = [
       {
         name: "Side Arm Raises",
         photo: require("../assets/images/shoulder/side_arms_raise.webp"),
+        video: "side_arm_raises",
         calories: 6,
         reps: 8,
         level: "Beginner",
@@ -991,6 +1037,7 @@ export const workoutListGlobal = [
       {
         name: "Shoulder Shrugs",
         photo: require("../assets/images/shoulder/shrugs.webp"),
+        video: "shoulder_shrugs",
         calories: 5,
         reps: 10,
         level: "Beginner",
@@ -1001,6 +1048,7 @@ export const workoutListGlobal = [
       {
         name: "Wall Angels",
         photo: require("../assets/images/shoulder/wall_angles.webp"),
+        video: "wall_angels",
         calories: 5,
         reps: 6,
         level: "Beginner",
@@ -1011,6 +1059,7 @@ export const workoutListGlobal = [
       {
         name: "Front Shoulder Hold",
         photo: require("../assets/images/shoulder/front_shoulder_hold.webp"),
+        video: "front_shoulder_hold",
         calories: 4,
         time: "20s",
         level: "Beginner",
@@ -1021,6 +1070,7 @@ export const workoutListGlobal = [
       {
         name: "Back Arm Squeeze",
         photo: require("../assets/images/shoulder/back_arm_squeeze.webp"),
+        video: "back_arm_squeeze",
         calories: 5,
         reps: 6,
         level: "Beginner",
@@ -1031,6 +1081,7 @@ export const workoutListGlobal = [
       {
         name: "Scapular Push Ups",
         photo: require("../assets/images/shoulder/scapular_push_ups.webp"),
+        video: "scapular_push_ups",
         calories: 5,
         reps: 6,
         level: "Beginner",
@@ -1041,6 +1092,7 @@ export const workoutListGlobal = [
       {
         name: "Arm Swings",
         photo: require("../assets/images/shoulder/arms_swings.webp"),
+        video: "arm_swings",
         calories: 5,
         reps: 10,
         level: "Beginner",
@@ -1051,6 +1103,7 @@ export const workoutListGlobal = [
       {
         name: "Shoulder Circles Hold",
         photo: require("../assets/images/shoulder/shoulder_circles_hold.webp"),
+        video: "shoulder_circles_hold",
         calories: 5,
         time: "20s",
         level: "Beginner",
@@ -1072,6 +1125,7 @@ export const workoutListGlobal = [
       {
         name: "Arm Circles",
         photo: require("../assets/images/shoulder/arm_circle.webp"),
+        video: "arm_circles",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -1089,6 +1143,7 @@ export const workoutListGlobal = [
       {
         name: "Front Arm Raises",
         photo: require("../assets/images/shoulder/front_raises.webp"),
+        video: "front_arm_raises",
         calories: 10,
         reps: 12,
         level: "Intermediate",
@@ -1106,6 +1161,7 @@ export const workoutListGlobal = [
       {
         name: "Side Arm Raises",
         photo: require("../assets/images/shoulder/side_arms_raise.webp"),
+        video: "side_arm_raises",
         calories: 10,
         reps: 12,
         level: "Intermediate",
@@ -1123,6 +1179,7 @@ export const workoutListGlobal = [
       {
         name: "Shoulder Shrugs",
         photo: require("../assets/images/shoulder/shrugs.webp"),
+        video: "shoulder_shrugs",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -1140,6 +1197,7 @@ export const workoutListGlobal = [
       {
         name: "Wall Angels",
         photo: require("../assets/images/shoulder/wall_angles.webp"),
+        video: "wall_angels",
         calories: 9,
         reps: 12,
         level: "Intermediate",
@@ -1157,6 +1215,7 @@ export const workoutListGlobal = [
       {
         name: "Front Shoulder Hold",
         photo: require("../assets/images/shoulder/front_shoulder_hold.webp"),
+        video: "front_shoulder_hold",
         calories: 6,
         time: "30s",
         level: "Intermediate",
@@ -1173,6 +1232,7 @@ export const workoutListGlobal = [
       {
         name: "Prone Y-T Raises",
         photo: require("../assets/images/shoulder/y_t.webp"),
+        video: "prone_y_t_raises",
         calories: 10,
         reps: 12,
         level: "Intermediate",
@@ -1189,6 +1249,7 @@ export const workoutListGlobal = [
       {
         name: "Pike Push-Ups",
         photo: require("../assets/images/shoulder/pike_pushups.webp"),
+        video: "pike_push_ups",
         calories: 12,
         reps: 12,
         level: "Intermediate",
@@ -1206,6 +1267,7 @@ export const workoutListGlobal = [
       {
         name: "Dive Bomber Push-Ups",
         photo: require("../assets/images/shoulder/dive_bomber.webp"),
+        video: "dive_bomber_push_ups",
         calories: 12,
         reps: 12,
         level: "Intermediate",
@@ -1223,6 +1285,7 @@ export const workoutListGlobal = [
       {
         name: "Pike Shoulder Shrugs",
         photo: require("../assets/images/shoulder/pike_shld_shrungs.webp"),
+        video: "pike_shoulder_shrugs",
         calories: 10,
         reps: 12,
         level: "Intermediate",
@@ -1250,6 +1313,7 @@ export const workoutListGlobal = [
       {
         name: "Arm Circles",
         photo: require("../assets/images/shoulder/arm_circle.webp"),
+        video: "arm_circles",
         calories: 12,
         reps: 16,
         level: "Advanced",
@@ -1266,6 +1330,7 @@ export const workoutListGlobal = [
       {
         name: "Front Arm Raises",
         photo: require("../assets/images/shoulder/front_raises.webp"),
+        video: "front_arm_raises",
         calories: 14,
         reps: 16,
         level: "Advanced",
@@ -1282,6 +1347,7 @@ export const workoutListGlobal = [
       {
         name: "Side Arm Raises",
         photo: require("../assets/images/shoulder/side_arms_raise.webp"),
+        video: "side_arm_raises",
         calories: 14,
         reps: 16,
         level: "Advanced",
@@ -1298,6 +1364,7 @@ export const workoutListGlobal = [
       {
         name: "Shoulder Shrugs",
         photo: require("../assets/images/shoulder/shrugs.webp"),
+        video: "shoulder_shrugs",
         calories: 12,
         reps: 16,
         level: "Advanced",
@@ -1313,6 +1380,7 @@ export const workoutListGlobal = [
       {
         name: "Wall Angels",
         photo: require("../assets/images/shoulder/wall_angles.webp"),
+        video: "wall_angels",
         calories: 13,
         reps: 16,
         level: "Advanced",
@@ -1328,6 +1396,7 @@ export const workoutListGlobal = [
       {
         name: "Front Shoulder Hold",
         photo: require("../assets/images/shoulder/front_shoulder_hold.webp"),
+        video: "front_shoulder_hold",
         calories: 8,
         time: "40s",
         level: "Advanced",
@@ -1343,6 +1412,7 @@ export const workoutListGlobal = [
       {
         name: "Back Arm Squeeze",
         photo: require("../assets/images/shoulder/back_arm_squeeze.webp"),
+        video: "back_arm_squeeze",
         calories: 12,
         reps: 16,
         level: "Advanced",
@@ -1358,6 +1428,7 @@ export const workoutListGlobal = [
       {
         name: "Scapular Push Ups",
         photo: require("../assets/images/shoulder/scapular_push_ups.webp"),
+        video: "scapular_push_ups",
         calories: 14,
         reps: 16,
         level: "Advanced",
@@ -1373,6 +1444,7 @@ export const workoutListGlobal = [
       {
         name: "Arm Swings",
         photo: require("../assets/images/shoulder/arms_swings.webp"),
+        video: "arm_swings",
         calories: 12,
         reps: 16,
         level: "Advanced",
@@ -1388,6 +1460,7 @@ export const workoutListGlobal = [
       {
         name: "Shoulder Circles Hold",
         photo: require("../assets/images/shoulder/shoulder_circles_hold.webp"),
+        video: "shoulder_circles_hold",
         calories: 8,
         time: "40s",
         level: "Advanced",
@@ -1403,6 +1476,7 @@ export const workoutListGlobal = [
       {
         name: "Inchworm to Shrug",
         photo: require("../assets/images/shoulder/inch_worm.webp"),
+        video: "inchworm_to_shrug",
         calories: 10,
         reps: 12,
         level: "Intermediate",
@@ -1420,6 +1494,7 @@ export const workoutListGlobal = [
       {
         name: "Plank Shoulder Taps",
         photo: require("../assets/images/shoulder/plank_shoulder_tap.webp"),
+        video: "plank_shoulder_taps",
         calories: 14,
         reps: 16,
         level: "Advanced",
@@ -1435,6 +1510,7 @@ export const workoutListGlobal = [
       {
         name: "Shoulder Pulse Raises",
         photo: require("../assets/images/shoulder/shoulder_pulse_raise.webp"),
+        video: "shoulder_pulse_raises",
         calories: 13,
         reps: 16,
         level: "Advanced",
@@ -1450,6 +1526,7 @@ export const workoutListGlobal = [
       {
         name: "Reverse Arm Circles",
         photo: require("../assets/images/shoulder/reverse_arm_circle.webp"),
+        video: "reverse_arm_circles",
         calories: 11,
         reps: 16,
         level: "Advanced",
@@ -1465,6 +1542,7 @@ export const workoutListGlobal = [
       {
         name: "Shoulder Taps Hold",
         photo: require("../assets/images/shoulder/shoulder_taps_hold.webp"),
+        video: "shoulder_taps_hold",
         calories: 12,
         time: "40s",
         level: "Advanced",
@@ -1480,6 +1558,7 @@ export const workoutListGlobal = [
       {
         name: "Explosive Shoulder Push Ups",
         photo: require("../assets/images/chestImages/explosive_pushups.webp"),
+        video: "explosive_shoulder_push_ups",
         calories: 15,
         reps: 16,
         level: "Advanced",
@@ -1495,6 +1574,7 @@ export const workoutListGlobal = [
       {
         name: "Pike Push Ups",
         photo: require("../assets/images/shoulder/pike_pushups.webp"),
+        video: "pike_push_ups",
         calories: 15,
         reps: 16,
         level: "Advanced",
@@ -1510,6 +1590,7 @@ export const workoutListGlobal = [
       {
         name: "Shoulder Walkouts",
         photo: require("../assets/images/shoulder/shoulder_walkouts.webp"),
+        video: "shoulder_walkouts",
         calories: 16,
         reps: 16,
         level: "Advanced",
@@ -1525,6 +1606,7 @@ export const workoutListGlobal = [
       {
         name: "Y-T Raises",
         photo: require("../assets/images/shoulder/y_t.webp"),
+        video: "prone_y_t_raises",
         calories: 15,
         reps: 16,
         level: "Advanced",
@@ -1552,6 +1634,7 @@ export const workoutListGlobal = [
       {
         name: "Superman",
         photo: require("../assets/images/other/superman_hold.webp"),
+        video: "superman",
         calories: 6,
         reps: 6,
         level: "Beginner",
@@ -1567,6 +1650,7 @@ export const workoutListGlobal = [
       {
         name: "Cat-Cow Stretch",
         photo: require("../assets/images/other/cat_cow.webp"),
+        video: "cat_cow_stretch",
         calories: 5,
         reps: 6,
         level: "Beginner",
@@ -1582,6 +1666,7 @@ export const workoutListGlobal = [
       {
         name: "Bird-Dog",
         photo: require("../assets/images/other/bird_dog.webp"),
+        video: "bird_dog",
         calories: 6,
         reps: 6,
         level: "Beginner",
@@ -1598,6 +1683,7 @@ export const workoutListGlobal = [
       {
         name: "Bridge",
         photo: require("../assets/images/back/bridge.webp"),
+        video: "bridge",
         calories: 6,
         reps: 6,
         level: "Beginner",
@@ -1613,6 +1699,7 @@ export const workoutListGlobal = [
       {
         name: "Reverse Snow Angels",
         photo: require("../assets/images/other/reverse_snow_angles.webp"),
+        video: "reverse_snow_angels",
         calories: 6,
         reps: 6,
         level: "Beginner",
@@ -1628,6 +1715,7 @@ export const workoutListGlobal = [
       {
         name: "Standing Back Extension",
         photo: require("../assets/images/back/standing_backext.webp"),
+        video: "standing_back_extension",
         calories: 5,
         reps: 6,
         level: "Beginner",
@@ -1643,6 +1731,7 @@ export const workoutListGlobal = [
       {
         name: "Prone Arm Lifts",
         photo: require("../assets/images/back/prone_lift.webp"),
+        video: "prone_arm_lifts",
         calories: 6,
         reps: 6,
         level: "Beginner",
@@ -1658,6 +1747,7 @@ export const workoutListGlobal = [
       {
         name: "Cobra Stretch Hold",
         photo: require("../assets/images/back/cobra_strech.webp"),
+        video: "cobra_stretch_hold",
         calories: 5,
         time: "20s",
         level: "Beginner",
@@ -1673,6 +1763,7 @@ export const workoutListGlobal = [
       {
         name: "Pelvic Tilts",
         photo: require("../assets/images/other/pelvic_tilt.webp"),
+        video: "pelvic_tilts",
         calories: 5,
         reps: 6,
         level: "Beginner",
@@ -1688,6 +1779,7 @@ export const workoutListGlobal = [
       {
         name: "Wall Angels",
         photo: require("../assets/images/shoulder/wall_angles.webp"),
+        video: "wall_angels",
         calories: 6,
         reps: 6,
         level: "Beginner",
@@ -1714,6 +1806,7 @@ export const workoutListGlobal = [
       {
         name: "Superman",
         photo: require("../assets/images/other/superman_hold.webp"),
+        video: "superman",
         calories: 10,
         reps: 12,
         level: "Intermediate",
@@ -1729,6 +1822,7 @@ export const workoutListGlobal = [
       {
         name: "Cat-Cow Stretch",
         photo: require("../assets/images/other/cat_cow.webp"),
+        video: "cat_cow_stretch",
         calories: 9,
         reps: 12,
         level: "Intermediate",
@@ -1744,6 +1838,7 @@ export const workoutListGlobal = [
       {
         name: "Bird-Dog",
         photo: require("../assets/images/other/bird_dog.webp"),
+        video: "bird_dog",
         calories: 10,
         reps: 12,
         level: "Intermediate",
@@ -1759,6 +1854,7 @@ export const workoutListGlobal = [
       {
         name: "Bridge",
         photo: require("../assets/images/back/bridge.webp"),
+        video: "bridge",
         calories: 10,
         reps: 12,
         level: "Intermediate",
@@ -1774,6 +1870,7 @@ export const workoutListGlobal = [
       {
         name: "Reverse Snow Angels",
         photo: require("../assets/images/other/reverse_snow_angles.webp"),
+        video: "reverse_snow_angels",
         calories: 10,
         reps: 12,
         level: "Intermediate",
@@ -1789,6 +1886,7 @@ export const workoutListGlobal = [
       {
         name: "Standing Back Extension",
         photo: require("../assets/images/back/standing_backext.webp"),
+        video: "standing_back_extension",
         calories: 9,
         reps: 12,
         level: "Intermediate",
@@ -1804,6 +1902,7 @@ export const workoutListGlobal = [
       {
         name: "Prone Arm Lifts",
         photo: require("../assets/images/back/prone_lift.webp"),
+        video: "prone_arm_lifts",
         calories: 10,
         reps: 12,
         level: "Intermediate",
@@ -1819,6 +1918,7 @@ export const workoutListGlobal = [
       {
         name: "Cobra Stretch Hold",
         photo: require("../assets/images/back/cobra_strech.webp"),
+        video: "cobra_stretch_hold",
         calories: 8,
         time: "30s",
         level: "Intermediate",
@@ -1834,6 +1934,7 @@ export const workoutListGlobal = [
       {
         name: "Pelvic Tilts",
         photo: require("../assets/images/other/pelvic_tilt.webp"),
+        video: "pelvic_tilts",
         calories: 9,
         reps: 12,
         level: "Intermediate",
@@ -1849,6 +1950,7 @@ export const workoutListGlobal = [
       {
         name: "Wall Angels",
         photo: require("../assets/images/shoulder/wall_angles.webp"),
+        video: "wall_angels",
         calories: 10,
         reps: 12,
         level: "Intermediate",
@@ -1864,6 +1966,7 @@ export const workoutListGlobal = [
       {
         name: "Prone T-Lifts",
         photo: require("../assets/images/back/prone_t_lift.webp"),
+        video: "prone_t_lifts",
         calories: 11,
         reps: 12,
         level: "Intermediate",
@@ -1879,6 +1982,7 @@ export const workoutListGlobal = [
       {
         name: "Reverse Plank Hold",
         photo: require("../assets/images/abs/reverse_plank.webp"),
+        video: "reverse_plank_hold",
         calories: 8,
         time: "30s",
         level: "Intermediate",
@@ -1894,6 +1998,7 @@ export const workoutListGlobal = [
       {
         name: "Dynamic Back Extensions",
         photo: require("../assets/images/back/dynamic_back_ext.webp"),
+        video: "back_extension",
         calories: 12,
         reps: 12,
         level: "Intermediate",
@@ -1909,6 +2014,7 @@ export const workoutListGlobal = [
       {
         name: "Alternating Superman",
         photo: require("../assets/images/back/alternate_superman.webp"),
+        video: "alternating_superman",
         calories: 12,
         reps: 12,
         level: "Intermediate",
@@ -1924,6 +2030,7 @@ export const workoutListGlobal = [
       {
         name: "Swimmer Kicks",
         photo: require("../assets/images/back/swimmer_kicks.webp"),
+        video: "swimmer_kicks",
         calories: 10,
         reps: 12,
         level: "Intermediate",
@@ -1939,6 +2046,7 @@ export const workoutListGlobal = [
       {
         name: "Plank Row Taps",
         photo: require("../assets/images/shoulder/plank_shoulder_tap.webp"),
+        video: "plank_shoulder_taps",
         calories: 10,
         reps: 12,
         level: "Intermediate",
@@ -1954,6 +2062,7 @@ export const workoutListGlobal = [
       {
         name: "Standing Arm Swings",
         photo: require("../assets/images/shoulder/arms_swings.webp"),
+        video: "arm_swings",
         calories: 9,
         reps: 12,
         level: "Intermediate",
@@ -1969,6 +2078,7 @@ export const workoutListGlobal = [
       {
         name: "Back Extension Pulses",
         photo: require("../assets/images/other/back_extension.webp"),
+        video: "back_extension_pulses",
         calories: 11,
         reps: 12,
         level: "Intermediate",
@@ -1995,6 +2105,7 @@ export const workoutListGlobal = [
       {
         name: "Superman",
         photo: require("../assets/images/other/superman_hold.webp"),
+        video: "superman",
         calories: 14,
         reps: 16,
         level: "Advanced",
@@ -2011,6 +2122,7 @@ export const workoutListGlobal = [
       {
         name: "Cat-Cow Stretch",
         photo: require("../assets/images/other/cat_cow.webp"),
+        video: "cat_cow_stretch",
         calories: 12,
         reps: 16,
         level: "Advanced",
@@ -2026,6 +2138,7 @@ export const workoutListGlobal = [
       {
         name: "Bird-Dog",
         photo: require("../assets/images/other/bird_dog.webp"),
+        video: "bird_dog",
         calories: 14,
         reps: 16,
         level: "Advanced",
@@ -2042,6 +2155,7 @@ export const workoutListGlobal = [
       {
         name: "Bridge",
         photo: require("../assets/images/back/bridge.webp"),
+        video: "bridge",
         calories: 14,
         reps: 16,
         level: "Advanced",
@@ -2058,6 +2172,7 @@ export const workoutListGlobal = [
       {
         name: "Reverse Snow Angels",
         photo: require("../assets/images/other/reverse_snow_angles.webp"),
+        video: "reverse_snow_angels",
         calories: 14,
         reps: 16,
         level: "Advanced",
@@ -2074,6 +2189,7 @@ export const workoutListGlobal = [
       {
         name: "Standing Back Extension",
         photo: require("../assets/images/back/standing_backext.webp"),
+        video: "standing_back_extension",
         calories: 12,
         reps: 16,
         level: "Advanced",
@@ -2090,6 +2206,7 @@ export const workoutListGlobal = [
       {
         name: "Prone Arm Lifts",
         photo: require("../assets/images/back/prone_lift.webp"),
+        video: "prone_arm_lifts",
         calories: 14,
         reps: 16,
         level: "Advanced",
@@ -2106,6 +2223,7 @@ export const workoutListGlobal = [
       {
         name: "Cobra Stretch Hold",
         photo: require("../assets/images/back/cobra_strech.webp"),
+        video: "cobra_stretch_hold",
         calories: 10,
         time: "40s",
         level: "Advanced",
@@ -2122,6 +2240,7 @@ export const workoutListGlobal = [
       {
         name: "Pelvic Tilts",
         photo: require("../assets/images/other/pelvic_tilt.webp"),
+        video: "pelvic_tilts",
         calories: 12,
         reps: 16,
         level: "Advanced",
@@ -2138,6 +2257,7 @@ export const workoutListGlobal = [
       {
         name: "Wall Angels",
         photo: require("../assets/images/shoulder/wall_angles.webp"),
+        video: "wall_angels",
         calories: 14,
         reps: 16,
         level: "Advanced",
@@ -2154,6 +2274,7 @@ export const workoutListGlobal = [
       {
         name: "Prone T-Lifts",
         photo: require("../assets/images/back/prone_t_lift.webp"),
+        video: "prone_t_lifts",
         calories: 15,
         reps: 16,
         level: "Advanced",
@@ -2170,6 +2291,7 @@ export const workoutListGlobal = [
       {
         name: "Reverse Plank Hold",
         photo: require("../assets/images/abs/reverse_plank.webp"),
+        video: "reverse_plank_hold",
         calories: 10,
         time: "40s",
         level: "Advanced",
@@ -2186,6 +2308,7 @@ export const workoutListGlobal = [
       {
         name: "Dynamic Back Extensions",
         photo: require("../assets/images/back/dynamic_back_ext.webp"),
+        video: "back_extension",
         calories: 16,
         reps: 16,
         level: "Advanced",
@@ -2201,6 +2324,7 @@ export const workoutListGlobal = [
       {
         name: "Alternating Superman",
         photo: require("../assets/images/back/alternate_superman.webp"),
+        video: "alternating_superman",
         calories: 16,
         reps: 16,
         level: "Advanced",
@@ -2217,6 +2341,7 @@ export const workoutListGlobal = [
       {
         name: "Swimmer Kicks",
         photo: require("../assets/images/back/swimmer_kicks.webp"),
+        video: "swimmer_kicks",
         calories: 14,
         reps: 16,
         level: "Advanced",
@@ -2232,6 +2357,7 @@ export const workoutListGlobal = [
       {
         name: "Plank Row Taps",
         photo: require("../assets/images/shoulder/plank_shoulder_tap.webp"),
+        video: "plank_shoulder_taps",
         calories: 14,
         reps: 16,
         level: "Advanced",
@@ -2247,6 +2373,7 @@ export const workoutListGlobal = [
       {
         name: "Standing Arm Swings",
         photo: require("../assets/images/shoulder/arms_swings.webp"),
+        video: "arm_swings",
         calories: 13,
         reps: 16,
         level: "Advanced",
@@ -2262,6 +2389,7 @@ export const workoutListGlobal = [
       {
         name: "Back Extension Pulses",
         photo: require("../assets/images/other/back_extension.webp"),
+        video: "back_extension_pulses",
         calories: 15,
         reps: 16,
         level: "Advanced",
@@ -2278,6 +2406,7 @@ export const workoutListGlobal = [
       {
         name: "Reverse Plank Leg Lifts",
         photo: require("../assets/images/back/reverse_plank_leg_lifts.webp"),
+        video: "reverse_plank_leg_lifts",
         calories: 15,
         reps: 16,
         level: "Advanced",
@@ -2294,6 +2423,7 @@ export const workoutListGlobal = [
       {
         name: "Superman Hold",
         photo: require("../assets/images/other/superman_hold.webp"),
+        video: "superman_hold",
         calories: 10,
         time: "40s",
         level: "Advanced",
@@ -2319,6 +2449,7 @@ export const workoutListGlobal = [
       {
         name: "Wall Tricep Push Ups",
         photo: require("../assets/images/arms/wall_pushups.webp"),
+        video: "wall_tricep_push_ups",
         calories: 6,
         reps: 8,
         level: "Beginner",
@@ -2335,6 +2466,7 @@ export const workoutListGlobal = [
       {
         name: "Bench Dips (Beginner)",
         photo: require("../assets/images/arms/bench_dips.webp"),
+        video: "bench_dips_beginner",
         calories: 7,
         reps: 8,
         level: "Beginner",
@@ -2351,6 +2483,7 @@ export const workoutListGlobal = [
       {
         name: "Knee Diamond Push Ups",
         photo: require("../assets/images/arms/knee_diamond.webp"),
+        video: "knee_diamond_push_ups",
         calories: 7,
         reps: 6,
         level: "Beginner",
@@ -2365,6 +2498,7 @@ export const workoutListGlobal = [
       {
         name: "Plank Up-Downs",
         photo: require("../assets/images/arms/plank_up-downs.webp"),
+        video: "plank_up_downs",
         calories: 6,
         reps: 8,
         level: "Beginner",
@@ -2381,6 +2515,7 @@ export const workoutListGlobal = [
       {
         name: "Push-Up Hold (Tricep Focus)",
         photo: require("../assets/images/chestImages/pushup_hold.webp"),
+        video: "push_up_hold",
         calories: 6,
         time: "20s",
         level: "Beginner",
@@ -2395,6 +2530,7 @@ export const workoutListGlobal = [
       {
         name: "Close Grip Push Ups",
         photo: require("../assets/images/arms/close_grip_push_ups.webp"),
+        video: "close_grip_push_ups",
         calories: 7,
         reps: 6,
         level: "Beginner",
@@ -2409,6 +2545,7 @@ export const workoutListGlobal = [
       {
         name: "Reverse Plank Hold",
         photo: require("../assets/images/arms/reverse_plank_hold.webp"),
+        video: "reverse_plank_hold",
         calories: 5,
         time: "20s",
         level: "Beginner",
@@ -2424,6 +2561,7 @@ export const workoutListGlobal = [
       {
         name: "Arm Circles",
         photo: require("../assets/images/shoulder/arm_circle.webp"),
+        video: "arm_circles",
         calories: 5,
         reps: 10,
         level: "Beginner",
@@ -2438,6 +2576,7 @@ export const workoutListGlobal = [
       {
         name: "Wall Bicep Hold (Isometric)",
         photo: require("../assets/images/arms/wall_bicep_hold.webp"),
+        video: "wall_bicep_hold",
         calories: 6,
         time: "20s",
         level: "Beginner",
@@ -2453,6 +2592,7 @@ export const workoutListGlobal = [
       {
         name: "Forearm Plank Hold",
         photo: require("../assets/images/arms/forearm_plank_hold.webp"),
+        video: "plank",
         calories: 7,
         time: "20s",
         level: "Beginner",
@@ -2478,6 +2618,7 @@ export const workoutListGlobal = [
       {
         name: "Bench Dips",
         photo: require("../assets/images/arms/bench_dips.webp"),
+        video: "bench_dips",
         calories: 12,
         reps: 12,
         level: "Intermediate",
@@ -2493,6 +2634,7 @@ export const workoutListGlobal = [
       {
         name: "Diamond Push Ups",
         photo: require("../assets/images/chestImages/diamond_pushps.webp"),
+        video: "diamond_push_ups",
         calories: 12,
         reps: 12,
         level: "Intermediate",
@@ -2507,6 +2649,7 @@ export const workoutListGlobal = [
       {
         name: "Feet Elevated Dips",
         photo: require("../assets/images/arms/feet_elevated_dips.webp"),
+        video: "feet_elevated_dips",
         calories: 13,
         reps: 12,
         level: "Intermediate",
@@ -2517,6 +2660,7 @@ export const workoutListGlobal = [
       {
         name: "Pseudo Planche Push Ups",
         photo: require("../assets/images/arms/pseudo_planche_push_ups.webp"),
+        video: "pseudo_planche_push_ups",
         calories: 13,
         reps: 10,
         level: "Intermediate",
@@ -2531,6 +2675,7 @@ export const workoutListGlobal = [
       {
         name: "Plank Up-Downs",
         photo: require("../assets/images/arms/plank_up-downs.webp"),
+        video: "plank_up_downs",
         calories: 11,
         reps: 12,
         level: "Intermediate",
@@ -2541,6 +2686,7 @@ export const workoutListGlobal = [
       {
         name: "Reverse Plank Push",
         photo: require("../assets/images/arms/reverse_plank_push.webp"),
+        video: "reverse_plank_push",
         calories: 11,
         reps: 12,
         level: "Intermediate",
@@ -2555,6 +2701,7 @@ export const workoutListGlobal = [
       {
         name: "Towel Iso Curl Hold",
         photo: require("../assets/images/arms/towel_iso_curl.webp"),
+        video: "towel_iso_curl_hold",
         calories: 12,
         time: "30s",
         level: "Intermediate",
@@ -2572,6 +2719,7 @@ export const workoutListGlobal = [
       {
         name: "Inverted Rows (Under Table)",
         photo: require("../assets/images/arms/inverted_row.webp"),
+        video: "inverted_rows",
         calories: 13,
         reps: 12,
         level: "Intermediate",
@@ -2582,6 +2730,7 @@ export const workoutListGlobal = [
       {
         name: "Towel Bicep Curls",
         photo: require("../assets/images/arms/towel_bicep_curls.webp"),
+        video: "towel_bicep_curls",
         calories: 10,
         reps: 12,
         level: "Intermediate",
@@ -2596,6 +2745,7 @@ export const workoutListGlobal = [
       {
         name: "Forearm Plank Hold",
         photo: require("../assets/images/arms/forearm_plank_hold.webp"),
+        video: "plank",
 
         calories: 10,
         time: "30s",
@@ -2618,6 +2768,7 @@ export const workoutListGlobal = [
       {
         name: "Bench Dips (Feet Elevated)",
         photo: require("../assets/images/arms/feet_elevated_dips.webp"),
+        video: "feet_elevated_dips",
         calories: 15,
         reps: 16,
         level: "Advanced",
@@ -2628,6 +2779,7 @@ export const workoutListGlobal = [
       {
         name: "Korean Dips",
         photo: require("../assets/images/arms/korean_dips.webp"),
+        video: "korean_dips",
 
         calories: 16,
         reps: 12,
@@ -2645,6 +2797,7 @@ export const workoutListGlobal = [
       {
         name: "Pseudo Planche Push Ups",
         photo: require("../assets/images/arms/pseudo_planche_push_ups.webp"),
+        video: "pseudo_planche_push_ups",
         calories: 15,
         reps: 14,
         level: "Advanced",
@@ -2655,6 +2808,7 @@ export const workoutListGlobal = [
       {
         name: "Handstand Push Ups",
         photo: require("../assets/images/arms/handstand_push_ups.webp"),
+        video: "handstand_push_ups",
         calories: 16,
         reps: 10,
         level: "Advanced",
@@ -2665,6 +2819,7 @@ export const workoutListGlobal = [
       {
         name: "Archer Push Ups",
         photo: require("../assets/images/chestImages/archer_pushups.webp"),
+        video: "archer_push_ups",
         calories: 15,
         reps: 14,
         level: "Advanced",
@@ -2675,6 +2830,7 @@ export const workoutListGlobal = [
       {
         name: "Towel Bicep Curls (Advanced)",
         photo: require("../assets/images/arms/towel_bicep_curls.webp"),
+        video: "towel_bicep_curls",
         calories: 16,
         reps: 12,
         level: "Advanced",
@@ -2691,6 +2847,7 @@ export const workoutListGlobal = [
       {
         name: "Inverted Rows",
         photo: require("../assets/images/arms/inverted_row.webp"),
+        video: "inverted_rows",
         calories: 16,
         reps: 12,
         level: "Advanced",
@@ -2707,6 +2864,7 @@ export const workoutListGlobal = [
       {
         name: "Floor Towel Curls",
         photo: require("../assets/images/arms/towel_bicep_curls.webp"),
+        video: "floor_towel_curls",
         calories: 14,
         reps: 12,
         level: "Advanced",
@@ -2725,6 +2883,7 @@ export const workoutListGlobal = [
       {
         name: "L-Sit Hold",
         photo: require("../assets/images/arms/l-sit_hold.webp"),
+        video: "l_sit_hold",
         calories: 14,
         time: "40s",
         level: "Advanced",
@@ -2735,6 +2894,7 @@ export const workoutListGlobal = [
       {
         name: "Forearm Push Ups",
         photo: require("../assets/images/arms/forearm_push_ups.webp"),
+        video: "plank_up_downs",
         calories: 14,
         reps: 14,
         level: "Advanced",
@@ -2756,6 +2916,7 @@ export const workoutListGlobal = [
       {
         name: "Crunches",
         photo: require("../assets/images/abs/crunches.webp"),
+        video: "crunches",
         calories: 6,
         reps: 8,
         level: "Beginner",
@@ -2772,6 +2933,7 @@ export const workoutListGlobal = [
       {
         name: "Reverse Crunches",
         photo: require("../assets/images/abs/reverse_crunches.webp"),
+        video: "reverse_crunches",
         calories: 6,
         reps: 8,
         level: "Beginner",
@@ -2787,6 +2949,7 @@ export const workoutListGlobal = [
       {
         name: "Knee Raises",
         photo: require("../assets/images/abs/knee_raises.webp"),
+        video: "knee_raises",
         calories: 6,
         reps: 8,
         level: "Beginner",
@@ -2803,6 +2966,7 @@ export const workoutListGlobal = [
       {
         name: "Flutter Kicks",
         photo: require("../assets/images/abs/flutter_kicks.webp"),
+        video: "flutter_kicks",
         calories: 5,
         time: "20s",
         level: "Beginner",
@@ -2818,6 +2982,7 @@ export const workoutListGlobal = [
       {
         name: "Plank",
         photo: require("../assets/images/abs/plank.webp"),
+        video: "plank",
         calories: 6,
         time: "20s",
         level: "Beginner",
@@ -2832,6 +2997,7 @@ export const workoutListGlobal = [
       {
         name: "Side Plank (Left)",
         photo: require("../assets/images/abs/side_plank_left.webp"),
+        video: "side_plank_left",
         calories: 5,
         time: "20s",
         level: "Beginner",
@@ -2846,6 +3012,7 @@ export const workoutListGlobal = [
       {
         name: "Side Plank (Right)",
         photo: require("../assets/images/abs/side_plank_right.webp"),
+        video: "side_plank_right",
         calories: 5,
         time: "20s",
         level: "Beginner",
@@ -2860,6 +3027,7 @@ export const workoutListGlobal = [
       {
         name: "Seated Knee Tucks",
         photo: require("../assets/images/abs/seated_knee.webp"),
+        video: "seated_knee_tucks",
         calories: 6,
         reps: 8,
         level: "Beginner",
@@ -2875,6 +3043,7 @@ export const workoutListGlobal = [
       {
         name: "Leg Lifts",
         photo: require("../assets/images/abs/leg_lift.webp"),
+        video: "leg_lifts",
         calories: 6,
         reps: 8,
         level: "Beginner",
@@ -2890,6 +3059,7 @@ export const workoutListGlobal = [
       {
         name: "Toe Touches",
         photo: require("../assets/images/abs/toe_touch.webp"),
+        video: "toe_touches",
         calories: 5,
         reps: 8,
         level: "Beginner",
@@ -2916,6 +3086,7 @@ export const workoutListGlobal = [
       {
         name: "Crunches",
         photo: require("../assets/images/abs/crunches.webp"),
+        video: "crunches",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -2931,6 +3102,7 @@ export const workoutListGlobal = [
       {
         name: "Reverse Crunches",
         photo: require("../assets/images/abs/reverse_crunches.webp"),
+        video: "reverse_crunches",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -2945,6 +3117,7 @@ export const workoutListGlobal = [
       {
         name: "Leg Raises",
         photo: require("../assets/images/abs/leg_lift.webp"),
+        video: "leg_lifts",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -2959,6 +3132,7 @@ export const workoutListGlobal = [
       {
         name: "Flutter Kicks",
         photo: require("../assets/images/abs/flutter_kicks.webp"),
+        video: "flutter_kicks",
         calories: 7,
         time: "30s",
         level: "Intermediate",
@@ -2973,6 +3147,7 @@ export const workoutListGlobal = [
       {
         name: "Bicycle Crunches",
         photo: require("../assets/images/abs/bycle_crunches.webp"),
+        video: "bicycle_crunches",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -2989,6 +3164,7 @@ export const workoutListGlobal = [
       {
         name: "Plank",
         photo: require("../assets/images/abs/plank.webp"),
+        video: "plank",
         calories: 8,
         time: "30s",
         level: "Intermediate",
@@ -3003,6 +3179,7 @@ export const workoutListGlobal = [
       {
         name: "Side Plank (Left)",
         photo: require("../assets/images/abs/side_plank_left.webp"),
+        video: "side_plank_left",
         calories: 7,
         time: "30s",
         level: "Intermediate",
@@ -3017,6 +3194,7 @@ export const workoutListGlobal = [
       {
         name: "Side Plank (Right)",
         photo: require("../assets/images/abs/side_plank_right.webp"),
+        video: "side_plank_right",
         calories: 7,
         time: "30s",
         level: "Intermediate",
@@ -3031,6 +3209,7 @@ export const workoutListGlobal = [
       {
         name: "Mountain Climbers",
         photo: require("../assets/images/abs/mountain_climber.webp"),
+        video: "mountain_climbers",
         calories: 9,
         reps: 12,
         level: "Intermediate",
@@ -3047,6 +3226,7 @@ export const workoutListGlobal = [
       {
         name: "Seated Knee Tucks",
         photo: require("../assets/images/abs/seated_knee.webp"),
+        video: "seated_knee_tucks",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -3061,6 +3241,7 @@ export const workoutListGlobal = [
       {
         name: "Toe Touches",
         photo: require("../assets/images/abs/toe_touch.webp"),
+        video: "toe_touches",
         calories: 7,
         reps: 12,
         level: "Intermediate",
@@ -3076,6 +3257,7 @@ export const workoutListGlobal = [
       {
         name: "Leg Circles",
         photo: require("../assets/images/abs/leg_circle.webp"),
+        video: "leg_circles",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -3091,6 +3273,7 @@ export const workoutListGlobal = [
       {
         name: "Plank to Knee Tap",
         photo: require("../assets/images/abs/plank_to_knee.webp"),
+        video: "plank_to_knee_tap",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -3107,6 +3290,7 @@ export const workoutListGlobal = [
       {
         name: "V-Ups",
         photo: require("../assets/images/abs/v_ups.webp"),
+        video: "v_ups",
         calories: 9,
         reps: 12,
         level: "Intermediate",
@@ -3123,6 +3307,7 @@ export const workoutListGlobal = [
       {
         name: "Reverse Plank",
         photo: require("../assets/images/abs/reverse_plank.webp"),
+        video: "reverse_plank_hold",
         calories: 8,
         time: "30s",
         level: "Intermediate",
@@ -3137,6 +3322,7 @@ export const workoutListGlobal = [
       {
         name: "Plank Shoulder Taps",
         photo: require("../assets/images/abs/plank.webp"),
+        video: "plank_shoulder_taps",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -3151,6 +3337,7 @@ export const workoutListGlobal = [
       {
         name: "Scissor Kicks",
         photo: require("../assets/images/abs/scissor_kick.webp"),
+        video: "scissor_kicks",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -3165,6 +3352,7 @@ export const workoutListGlobal = [
       {
         name: "Hollow Hold",
         photo: require("../assets/images/abs/hollow_hold.webp"),
+        video: "hollow_hold",
         calories: 7,
         time: "30s",
         level: "Intermediate",
@@ -3190,6 +3378,7 @@ export const workoutListGlobal = [
       {
         name: "Crunches",
         photo: require("../assets/images/abs/crunches.webp"),
+        video: "crunches",
         calories: 10,
         reps: 16,
         level: "Advanced",
@@ -3205,6 +3394,7 @@ export const workoutListGlobal = [
       {
         name: "Reverse Crunches",
         photo: require("../assets/images/abs/reverse_crunches.webp"),
+        video: "reverse_crunches",
         calories: 10,
         reps: 16,
         level: "Advanced",
@@ -3219,6 +3409,7 @@ export const workoutListGlobal = [
       {
         name: "Leg Raises",
         photo: require("../assets/images/abs/leg_lift.webp"),
+        video: "leg_lifts",
         calories: 10,
         reps: 16,
         level: "Advanced",
@@ -3234,6 +3425,7 @@ export const workoutListGlobal = [
       {
         name: "Bicycle Crunches",
         photo: require("../assets/images/abs/bycle_crunches.webp"),
+        video: "bicycle_crunches",
         calories: 10,
         reps: 16,
         level: "Advanced",
@@ -3248,6 +3440,7 @@ export const workoutListGlobal = [
       {
         name: "Flutter Kicks",
         photo: require("../assets/images/abs/flutter_kicks.webp"),
+        video: "flutter_kicks",
         calories: 9,
         time: "40s",
         level: "Advanced",
@@ -3262,6 +3455,7 @@ export const workoutListGlobal = [
       {
         name: "Plank",
         photo: require("../assets/images/abs/plank.webp"),
+        video: "plank",
         calories: 10,
         time: "40s",
         level: "Advanced",
@@ -3276,6 +3470,7 @@ export const workoutListGlobal = [
       {
         name: "Side Plank (Left)",
         photo: require("../assets/images/abs/side_plank_left.webp"),
+        video: "side_plank_left",
         calories: 9,
         time: "40s",
         level: "Advanced",
@@ -3290,6 +3485,7 @@ export const workoutListGlobal = [
       {
         name: "Side Plank (Right)",
         photo: require("../assets/images/abs/side_plank_right.webp"),
+        video: "side_plank_right",
         calories: 9,
         time: "40s",
         level: "Advanced",
@@ -3304,6 +3500,7 @@ export const workoutListGlobal = [
       {
         name: "Mountain Climbers",
         photo: require("../assets/images/abs/mountain_climber.webp"),
+        video: "mountain_climbers",
         calories: 11,
         reps: 16,
         level: "Advanced",
@@ -3319,6 +3516,7 @@ export const workoutListGlobal = [
       {
         name: "V-Ups",
         photo: require("../assets/images/abs/v_ups.webp"),
+        video: "v_ups",
         calories: 11,
         reps: 16,
         level: "Advanced",
@@ -3334,6 +3532,7 @@ export const workoutListGlobal = [
       {
         name: "Plank to Knee Tap",
         photo: require("../assets/images/abs/plank_to_knee.webp"),
+        video: "plank_to_knee_tap",
         calories: 10,
         reps: 16,
         level: "Advanced",
@@ -3348,6 +3547,7 @@ export const workoutListGlobal = [
       {
         name: "Scissor Kicks",
         photo: require("../assets/images/abs/scissor_kick.webp"),
+        video: "scissor_kicks",
         calories: 10,
         reps: 16,
         level: "Advanced",
@@ -3362,6 +3562,7 @@ export const workoutListGlobal = [
       {
         name: "Hollow Hold",
         photo: require("../assets/images/abs/hollow_hold.webp"),
+        video: "hollow_hold",
         calories: 9,
         time: "40s",
         level: "Advanced",
@@ -3376,6 +3577,7 @@ export const workoutListGlobal = [
       {
         name: "Plank Shoulder Taps",
         photo: require("../assets/images/abs/plank.webp"),
+        video: "plank_shoulder_taps",
         calories: 10,
         reps: 16,
         level: "Advanced",
@@ -3390,6 +3592,7 @@ export const workoutListGlobal = [
       {
         name: "Reverse Plank",
         photo: require("../assets/images/abs/reverse_plank.webp"),
+        video: "reverse_plank_hold",
         calories: 9,
         time: "40s",
         level: "Advanced",
@@ -3405,6 +3608,7 @@ export const workoutListGlobal = [
       {
         name: "Toe Touches",
         photo: require("../assets/images/abs/toe_touch.webp"),
+        video: "toe_touches",
         calories: 10,
         reps: 16,
         level: "Advanced",
@@ -3419,6 +3623,7 @@ export const workoutListGlobal = [
       {
         name: "Leg Circles",
         photo: require("../assets/images/abs/leg_circle.webp"),
+        video: "leg_circles",
         calories: 10,
         reps: 16,
         level: "Advanced",
@@ -3433,6 +3638,7 @@ export const workoutListGlobal = [
       {
         name: "Seated Knee Tucks",
         photo: require("../assets/images/abs/seated_knee.webp"),
+        video: "seated_knee_tucks",
         calories: 10,
         reps: 16,
         level: "Advanced",
@@ -3458,6 +3664,7 @@ export const workoutListGlobal = [
       {
         name: "Bodyweight Squats",
         photo: require("../assets/images/legs/bodywieght_squat.webp"),
+        video: "bodyweight_squats",
         calories: 6,
         reps: 6,
         level: "Beginner",
@@ -3473,6 +3680,7 @@ export const workoutListGlobal = [
       {
         name: "Lunges",
         photo: require("../assets/images/legs/lunges.webp"),
+        video: "lunges",
         calories: 6,
         reps: 6,
         level: "Beginner",
@@ -3488,6 +3696,7 @@ export const workoutListGlobal = [
       {
         name: "Step Ups (on low step)",
         photo: require("../assets/images/legs/step_up.webp"),
+        video: "step_ups",
         calories: 6,
         reps: 6,
         level: "Beginner",
@@ -3503,6 +3712,7 @@ export const workoutListGlobal = [
       {
         name: "Glute Bridges",
         photo: require("../assets/images/legs/glute_bridge.webp"),
+        video: "bridge",
         calories: 6,
         reps: 6,
         level: "Beginner",
@@ -3517,6 +3727,7 @@ export const workoutListGlobal = [
       {
         name: "Side Leg Raises (Left)",
         photo: require("../assets/images/legs/leg_raises_left.webp"),
+        video: "side_leg_raises_left",
         calories: 5,
         reps: 6,
         level: "Beginner",
@@ -3531,6 +3742,7 @@ export const workoutListGlobal = [
       {
         name: "Side Leg Raises (Right)",
         photo: require("../assets/images/legs/leg_raises_right.webp"),
+        video: "side_leg_raises_right",
         calories: 5,
         reps: 6,
         level: "Beginner",
@@ -3545,6 +3757,7 @@ export const workoutListGlobal = [
       {
         name: "Calf Raises",
         photo: require("../assets/images/legs/calf_raises.webp"),
+        video: "calf_raises",
         calories: 6,
         reps: 6,
         level: "Beginner",
@@ -3559,6 +3772,7 @@ export const workoutListGlobal = [
       {
         name: "Wall Sit",
         photo: require("../assets/images/legs/wall_sit.webp"),
+        video: "wall_sit",
         calories: 5,
         time: "20s",
         level: "Beginner",
@@ -3573,6 +3787,7 @@ export const workoutListGlobal = [
       {
         name: "Marching in Place",
         photo: require("../assets/images/legs/marching.webp"),
+        video: "marching_in_place",
         calories: 5,
         reps: 6,
         level: "Beginner",
@@ -3587,6 +3802,7 @@ export const workoutListGlobal = [
       {
         name: "Inner Thigh Squeeze",
         photo: require("../assets/images/legs/inner_thigh_squeeze.webp"),
+        video: "inner_thigh_squeeze",
         calories: 6,
         reps: 6,
         level: "Beginner",
@@ -3612,6 +3828,7 @@ export const workoutListGlobal = [
       {
         name: "Bodyweight Squats",
         photo: require("../assets/images/legs/bodywieght_squat.webp"),
+        video: "bodyweight_squats",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -3628,6 +3845,7 @@ export const workoutListGlobal = [
       {
         name: "Lunges",
         photo: require("../assets/images/legs/lunges.webp"),
+        video: "lunges",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -3644,6 +3862,7 @@ export const workoutListGlobal = [
       {
         name: "Jump Squats",
         photo: require("../assets/images/legs/jum_squat.webp"),
+        video: "jump_squats",
         calories: 9,
         reps: 12,
         level: "Intermediate",
@@ -3658,6 +3877,7 @@ export const workoutListGlobal = [
       {
         name: "Glute Bridges",
         photo: require("../assets/images/legs/glute_bridge.webp"),
+        video: "bridge",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -3672,6 +3892,7 @@ export const workoutListGlobal = [
       {
         name: "Step Ups (Higher)",
         photo: require("../assets/images/legs/step_up_higher.webp"),
+        video: "step_ups",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -3686,6 +3907,7 @@ export const workoutListGlobal = [
       {
         name: "Side Leg Raises (Left)",
         photo: require("../assets/images/legs/leg_raises_left.webp"),
+        video: "side_leg_raises_left",
         calories: 7,
         reps: 12,
         level: "Intermediate",
@@ -3696,6 +3918,7 @@ export const workoutListGlobal = [
       {
         name: "Side Leg Raises (Right)",
         photo: require("../assets/images/legs/leg_raises_right.webp"),
+        video: "side_leg_raises_right",
         calories: 7,
         reps: 12,
         level: "Intermediate",
@@ -3706,6 +3929,7 @@ export const workoutListGlobal = [
       {
         name: "Calf Raises",
         photo: require("../assets/images/legs/calf_raises.webp"),
+        video: "calf_raises",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -3716,6 +3940,7 @@ export const workoutListGlobal = [
       {
         name: "Wall Sit",
         photo: require("../assets/images/legs/wall_sit.webp"),
+        video: "wall_sit",
         calories: 8,
         time: "40s",
         level: "Intermediate",
@@ -3726,6 +3951,7 @@ export const workoutListGlobal = [
       {
         name: "Marching in Place",
         photo: require("../assets/images/legs/marching.webp"),
+        video: "marching_in_place",
         calories: 7,
         reps: 12,
         level: "Intermediate",
@@ -3736,6 +3962,7 @@ export const workoutListGlobal = [
       {
         name: "Inner Thigh Squeeze",
         photo: require("../assets/images/legs/inner_thigh_squeeze.webp"),
+        video: "inner_thigh_squeeze",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -3746,6 +3973,7 @@ export const workoutListGlobal = [
       {
         name: "Lateral Lunges",
         photo: require("../assets/images/legs/lateral_lunges.webp"),
+        video: "lateral_lunges",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -3756,6 +3984,7 @@ export const workoutListGlobal = [
       {
         name: "Curtsy Lunges",
         photo: require("../assets/images/legs/curtusy_lunges.webp"),
+        video: "curtsy_lunges",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -3766,6 +3995,7 @@ export const workoutListGlobal = [
       {
         name: "Squat Pulses",
         photo: require("../assets/images/legs/squat_pulse.webp"),
+        video: "squat_pulses",
         calories: 9,
         reps: 12,
         level: "Intermediate",
@@ -3776,6 +4006,7 @@ export const workoutListGlobal = [
       {
         name: "Single Leg Glute Bridges (Left)",
         photo: require("../assets/images/legs/single_leg_glute_left.webp"),
+        video: "single_leg_glute_bridge_left",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -3786,6 +4017,7 @@ export const workoutListGlobal = [
       {
         name: "Single Leg Glute Bridges (Right)",
         photo: require("../assets/images/legs/single_leg_glute_right.webp"),
+        video: "single_leg_glute_bridge_right",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -3796,6 +4028,7 @@ export const workoutListGlobal = [
       {
         name: "Squat Hold",
         photo: require("../assets/images/legs/squat_hold.webp"),
+        video: "squat_hold",
         calories: 7,
         time: "30s",
         level: "Intermediate",
@@ -3806,6 +4039,7 @@ export const workoutListGlobal = [
       {
         name: "Step Back Lunges",
         photo: require("../assets/images/legs/step_back_lunges.webp"),
+        video: "step_back_lunges",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -3827,6 +4061,7 @@ export const workoutListGlobal = [
       {
         name: "Jump Squats",
         photo: require("../assets/images/legs/jum_squat.webp"),
+        video: "jump_squats",
         calories: 12,
         reps: 16,
         level: "Advanced",
@@ -3842,6 +4077,7 @@ export const workoutListGlobal = [
       {
         name: "Lunges",
         photo: require("../assets/images/legs/lunges.webp"),
+        video: "lunges",
         calories: 11,
         reps: 16,
         level: "Advanced",
@@ -3857,6 +4093,7 @@ export const workoutListGlobal = [
       {
         name: "Curtsy Lunges",
         photo: require("../assets/images/legs/curtusy_lunges.webp"),
+        video: "curtsy_lunges",
         calories: 11,
         reps: 16,
         level: "Advanced",
@@ -3871,6 +4108,7 @@ export const workoutListGlobal = [
       {
         name: "Lateral Lunges",
         photo: require("../assets/images/legs/lateral_lunges.webp"),
+        video: "lateral_lunges",
         calories: 11,
         reps: 16,
         level: "Advanced",
@@ -3885,6 +4123,7 @@ export const workoutListGlobal = [
       {
         name: "Glute Bridges",
         photo: require("../assets/images/legs/glute_bridge.webp"),
+        video: "bridge",
         calories: 10,
         reps: 16,
         level: "Advanced",
@@ -3899,6 +4138,7 @@ export const workoutListGlobal = [
       {
         name: "Single Leg Glute Bridges (Left)",
         photo: require("../assets/images/legs/single_leg_glute_left.webp"),
+        video: "single_leg_glute_bridge_left",
         calories: 11,
         reps: 16,
         level: "Advanced",
@@ -3909,6 +4149,7 @@ export const workoutListGlobal = [
       {
         name: "Single Leg Glute Bridges (Right)",
         photo: require("../assets/images/legs/single_leg_glute_right.webp"),
+        video: "single_leg_glute_bridge_right",
         calories: 11,
         reps: 16,
         level: "Advanced",
@@ -3919,6 +4160,7 @@ export const workoutListGlobal = [
       {
         name: "Calf Raises",
         photo: require("../assets/images/legs/calf_raises.webp"),
+        video: "calf_raises",
         calories: 11,
         reps: 16,
         level: "Advanced",
@@ -3929,6 +4171,7 @@ export const workoutListGlobal = [
       {
         name: "Wall Sit",
         photo: require("../assets/images/legs/wall_sit.webp"),
+        video: "wall_sit",
         calories: 10,
         time: "45s",
         level: "Advanced",
@@ -3939,6 +4182,7 @@ export const workoutListGlobal = [
       {
         name: "Squat Pulses",
         photo: require("../assets/images/legs/squat_pulse.webp"),
+        video: "squat_pulses",
         calories: 12,
         reps: 16,
         level: "Advanced",
@@ -3949,6 +4193,7 @@ export const workoutListGlobal = [
       {
         name: "Step Ups (High)",
         photo: require("../assets/images/legs/step_up.webp"),
+        video: "step_ups",
         calories: 11,
         reps: 16,
         level: "Advanced",
@@ -3963,6 +4208,7 @@ export const workoutListGlobal = [
       {
         name: "Plie Squats",
         photo: require("../assets/images/legs/plie_squats.webp"),
+        video: "plie_squats",
         calories: 11,
         reps: 16,
         level: "Advanced",
@@ -3973,6 +4219,7 @@ export const workoutListGlobal = [
       {
         name: "Squat Hold + Pulses",
         photo: require("../assets/images/legs/squat_hold_pulse.webp"),
+        video: "squat_hold_pulses",
         calories: 11,
         time: "40s",
         level: "Advanced",
@@ -3983,6 +4230,7 @@ export const workoutListGlobal = [
       {
         name: "Step Back Lunges",
         photo: require("../assets/images/legs/step_back_lunges.webp"),
+        video: "step_back_lunges",
         calories: 11,
         reps: 16,
         level: "Advanced",
@@ -3993,6 +4241,7 @@ export const workoutListGlobal = [
       {
         name: "Marching in Place",
         photo: require("../assets/images/legs/marching.webp"),
+        video: "marching_in_place",
         calories: 10,
         reps: 16,
         level: "Advanced",
@@ -4003,6 +4252,7 @@ export const workoutListGlobal = [
       {
         name: "Inner Thigh Squeeze",
         photo: require("../assets/images/legs/inner_thigh_squeeze.webp"),
+        video: "inner_thigh_squeeze",
         calories: 11,
         reps: 16,
         level: "Advanced",
@@ -4013,6 +4263,7 @@ export const workoutListGlobal = [
       {
         name: "Skater Bounds",
         photo: require("../assets/images/legs/skater_bounds.webp"),
+        video: "skater_jumps",
         calories: 12,
         reps: 16,
         level: "Advanced",
@@ -4023,6 +4274,7 @@ export const workoutListGlobal = [
       {
         name: "Side Leg Raises (Left)",
         photo: require("../assets/images/legs/leg_raises_left.webp"),
+        video: "side_leg_raises_left",
         calories: 10,
         reps: 16,
         level: "Advanced",
@@ -4033,6 +4285,7 @@ export const workoutListGlobal = [
       {
         name: "Side Leg Raises (Right)",
         photo: require("../assets/images/legs/leg_raises_right.webp"),
+        video: "side_leg_raises_right",
         calories: 10,
         reps: 16,
         level: "Advanced",
@@ -4043,6 +4296,7 @@ export const workoutListGlobal = [
       {
         name: "Squat to Calf Raise",
         photo: require("../assets/images/legs/squat_to_calve_raises.webp"),
+        video: "squat_to_calf_raise",
         calories: 12,
         reps: 16,
         level: "Advanced",
@@ -4053,6 +4307,7 @@ export const workoutListGlobal = [
       {
         name: "Lateral Step Overs",
         photo: require("../assets/images/legs/lateral_step_over.webp"),
+        video: "lateral_step_overs",
         calories: 11,
         reps: 16,
         level: "Advanced",
@@ -4075,6 +4330,7 @@ export const workoutListGlobal = [
       {
         name: "Jumping Jacks",
         photo: require("../assets/images/hiit/jumping_jacks.webp"),
+        video: "jumping_jacks",
         calories: 6,
         time: "20s",
 
@@ -4086,6 +4342,7 @@ export const workoutListGlobal = [
       {
         name: "High Knees",
         photo: require("../assets/images/hiit/high_knees.webp"),
+        video: "high_knees",
         calories: 6,
         time: "20s",
         level: "Beginner",
@@ -4096,6 +4353,7 @@ export const workoutListGlobal = [
       {
         name: "Butt Kicks",
         photo: require("../assets/images/hiit/butt_kicks.webp"),
+        video: "butt_kicks",
         calories: 5,
         time: "20s",
         level: "Beginner",
@@ -4106,6 +4364,7 @@ export const workoutListGlobal = [
       {
         name: "Bodyweight Squats",
         photo: require("../assets/images/legs/bodywieght_squat.webp"),
+        video: "bodyweight_squats",
         calories: 6,
         reps: 8,
         level: "Beginner",
@@ -4116,6 +4375,7 @@ export const workoutListGlobal = [
       {
         name: "Marching in Place",
         photo: require("../assets/images/legs/marching.webp"),
+        video: "marching_in_place",
         calories: 5,
         reps: 10,
         level: "Beginner",
@@ -4126,6 +4386,7 @@ export const workoutListGlobal = [
       {
         name: "Side Steps",
         photo: require("../assets/images/hiit/side_to_side_skater.webp"),
+        video: "side_steps",
         calories: 5,
         time: "20s",
         level: "Beginner",
@@ -4136,6 +4397,7 @@ export const workoutListGlobal = [
       {
         name: "Arm Circles",
         photo: require("../assets/images/shoulder/arm_circle.webp"),
+        video: "arm_circles",
         calories: 4,
         time: "20s",
         level: "Beginner",
@@ -4146,6 +4408,7 @@ export const workoutListGlobal = [
       {
         name: "Mountain Climbers (Slow)",
         photo: require("../assets/images/hiit/mountain_climber.webp"),
+        video: "mountain_climbers",
         calories: 6,
         time: "20s",
         level: "Beginner",
@@ -4156,6 +4419,7 @@ export const workoutListGlobal = [
       {
         name: "Plank",
         photo: require("../assets/images/abs/plank.webp"),
+        video: "plank",
         calories: 5,
         time: "20s",
         level: "Beginner",
@@ -4166,6 +4430,7 @@ export const workoutListGlobal = [
       {
         name: "Standing Toe Touch",
         photo: require("../assets/images/hiit/standing_toe.webp"),
+        video: "standing_toe_touch",
         calories: 4,
         reps: 10,
         level: "Beginner",
@@ -4187,6 +4452,7 @@ export const workoutListGlobal = [
       {
         name: "Jump Squats",
         photo: require("../assets/images/legs/jum_squat.webp"),
+        video: "jump_squats",
         calories: 10,
         reps: 12,
         level: "Intermediate",
@@ -4197,6 +4463,7 @@ export const workoutListGlobal = [
       {
         name: "High Knees",
         photo: require("../assets/images/hiit/high_knees.webp"),
+        video: "high_knees",
         calories: 9,
         time: "30s",
         level: "Intermediate",
@@ -4207,6 +4474,7 @@ export const workoutListGlobal = [
       {
         name: "Burpees (Half)",
         photo: require("../assets/images/hiit/burpees.webp"),
+        video: "burpees_half",
         calories: 10,
         reps: 10,
         level: "Intermediate",
@@ -4217,6 +4485,7 @@ export const workoutListGlobal = [
       {
         name: "Mountain Climbers",
         photo: require("../assets/images/abs/mountain_climber.webp"),
+        video: "mountain_climbers",
         calories: 9,
         time: "30s",
         level: "Intermediate",
@@ -4227,6 +4496,7 @@ export const workoutListGlobal = [
       {
         name: "Skater Steps",
         photo: require("../assets/images/hiit/side_to_side_skater.webp"),
+        video: "skater_jumps",
         calories: 9,
         reps: 12,
         level: "Intermediate",
@@ -4237,6 +4507,7 @@ export const workoutListGlobal = [
       {
         name: "Plank Shoulder Taps",
         photo: require("../assets/images/shoulder/plank_shoulder_tap.webp"),
+        video: "plank_shoulder_taps",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -4247,6 +4518,7 @@ export const workoutListGlobal = [
       {
         name: "Jumping Jacks",
         photo: require("../assets/images/hiit/jumping_jacks.webp"),
+        video: "jumping_jacks",
         calories: 8,
         time: "30s",
         level: "Intermediate",
@@ -4257,6 +4529,7 @@ export const workoutListGlobal = [
       {
         name: "Butt Kicks",
         photo: require("../assets/images/hiit/butt_kicks.webp"),
+        video: "butt_kicks",
         calories: 8,
         time: "30s",
         level: "Intermediate",
@@ -4267,6 +4540,7 @@ export const workoutListGlobal = [
       {
         name: "Squat Hold",
         photo: require("../assets/images/legs/squat_hold.webp"),
+        video: "squat_hold",
         calories: 7,
         time: "30s",
         level: "Intermediate",
@@ -4277,6 +4551,7 @@ export const workoutListGlobal = [
       {
         name: "Push-Ups",
         photo: require("../assets/images/chestImages/pushups.webp"),
+        video: "push_ups",
         calories: 9,
         reps: 10,
         level: "Intermediate",
@@ -4287,6 +4562,7 @@ export const workoutListGlobal = [
       {
         name: "Plank",
         photo: require("../assets/images/abs/plank.webp"),
+        video: "plank",
         calories: 7,
         time: "30s",
         level: "Intermediate",
@@ -4297,6 +4573,7 @@ export const workoutListGlobal = [
       {
         name: "Step Back Lunges",
         photo: require("../assets/images/legs/step_back_lunges.webp"),
+        video: "step_back_lunges",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -4307,6 +4584,7 @@ export const workoutListGlobal = [
       {
         name: "Toe Touch Crunch",
         photo: require("../assets/images/abs/toe_touch.webp"),
+        video: "toe_touches",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -4317,6 +4595,7 @@ export const workoutListGlobal = [
       {
         name: "Fast Feet",
         photo: require("../assets/images/hiit/fast_feet.webp"),
+        video: "fast_feet",
         calories: 9,
         time: "30s",
         level: "Intermediate",
@@ -4338,6 +4617,7 @@ export const workoutListGlobal = [
       {
         name: "Burpees",
         photo: require("../assets/images/hiit/burpees.webp"),
+        video: "burpees",
         calories: 14,
         reps: 16,
         level: "Advanced",
@@ -4348,6 +4628,7 @@ export const workoutListGlobal = [
       {
         name: "Jump Lunges",
         photo: require("../assets/images/hiit/jump_lunges.webp"),
+        video: "jump_lunges",
         calories: 13,
         reps: 16,
         level: "Advanced",
@@ -4358,6 +4639,7 @@ export const workoutListGlobal = [
       {
         name: "Mountain Climbers",
         photo: require("../assets/images/hiit/mountain_climber.webp"),
+        video: "mountain_climbers",
         calories: 12,
         time: "40s",
         level: "Advanced",
@@ -4368,6 +4650,7 @@ export const workoutListGlobal = [
       {
         name: "Jump Squats",
         photo: require("../assets/images/legs/jum_squat.webp"),
+        video: "jump_squats",
         calories: 12,
         reps: 16,
         level: "Advanced",
@@ -4378,6 +4661,7 @@ export const workoutListGlobal = [
       {
         name: "High Knees",
         photo: require("../assets/images/hiit/high_knees.webp"),
+        video: "high_knees",
         calories: 11,
         time: "40s",
         level: "Advanced",
@@ -4388,6 +4672,7 @@ export const workoutListGlobal = [
       {
         name: "Skater Bounds",
         photo: require("../assets/images/hiit/side_to_side_skater.webp"),
+        video: "skater_jumps",
         calories: 12,
         reps: 16,
         level: "Advanced",
@@ -4398,6 +4683,7 @@ export const workoutListGlobal = [
       {
         name: "Plank Jacks",
         photo: require("../assets/images/hiit/plank_jack.webp"),
+        video: "plank_jacks",
         calories: 11,
         time: "40s",
         level: "Advanced",
@@ -4408,6 +4694,7 @@ export const workoutListGlobal = [
       {
         name: "Push-Ups",
         photo: require("../assets/images/chestImages/pushups.webp"),
+        video: "push_ups",
         calories: 11,
         reps: 16,
         level: "Advanced",
@@ -4418,6 +4705,7 @@ export const workoutListGlobal = [
       {
         name: "Squat Pulses",
         photo: require("../assets/images/legs/squat_pulse.webp"),
+        video: "squat_pulses",
         calories: 11,
         reps: 16,
         level: "Advanced",
@@ -4428,6 +4716,7 @@ export const workoutListGlobal = [
       {
         name: "Wall Sit",
         photo: require("../assets/images/legs/wall_sit.webp"),
+        video: "wall_sit",
         calories: 10,
         time: "45s",
         level: "Advanced",
@@ -4438,6 +4727,7 @@ export const workoutListGlobal = [
       {
         name: "Fast Feet",
         photo: require("../assets/images/hiit/fast_feet.webp"),
+        video: "fast_feet",
         calories: 12,
         time: "40s",
         level: "Advanced",
@@ -4448,6 +4738,7 @@ export const workoutListGlobal = [
       {
         name: "Toe Touch Crunch",
         photo: require("../assets/images/abs/toe_touch.webp"),
+        video: "toe_touches",
         calories: 11,
         reps: 16,
         level: "Advanced",
@@ -4458,6 +4749,7 @@ export const workoutListGlobal = [
       {
         name: "Plank Shoulder Taps",
         photo: require("../assets/images/shoulder/plank_shoulder_tap.webp"),
+        video: "plank_shoulder_taps",
         calories: 11,
         reps: 16,
         level: "Advanced",
@@ -4468,6 +4760,7 @@ export const workoutListGlobal = [
       {
         name: "Jumping Jacks",
         photo: require("../assets/images/hiit/jumping_jacks.webp"),
+        video: "jumping_jacks",
         calories: 10,
         time: "40s",
         level: "Advanced",
@@ -4478,6 +4771,7 @@ export const workoutListGlobal = [
       {
         name: "Butt Kicks",
         photo: require("../assets/images/hiit/butt_kicks.webp"),
+        video: "butt_kicks",
         calories: 10,
         time: "40s",
         level: "Advanced",
@@ -4488,6 +4782,7 @@ export const workoutListGlobal = [
       {
         name: "Step Back Lunges",
         photo: require("../assets/images/legs/step_back_lunges.webp"),
+        video: "step_back_lunges",
         calories: 11,
         reps: 16,
         level: "Advanced",
@@ -4498,6 +4793,7 @@ export const workoutListGlobal = [
       {
         name: "Plank",
         photo: require("../assets/images/abs/plank.webp"),
+        video: "plank",
         calories: 10,
         time: "40s",
         level: "Advanced",
@@ -4508,6 +4804,7 @@ export const workoutListGlobal = [
       {
         name: "Side Steps",
         photo: require("../assets/images/hiit/side_steps.webp"),
+        video: "side_steps",
         calories: 10,
         time: "40s",
         level: "Advanced",
@@ -4529,6 +4826,7 @@ export const workoutListGlobal = [
       {
         name: "Wall Push-Ups",
         photo: require("../assets/images/arms/wall_pushups.webp"),
+        video: "wall_push_ups",
         calories: 6,
         reps: 8,
         level: "Beginner",
@@ -4545,6 +4843,7 @@ export const workoutListGlobal = [
       {
         name: "Arm Circles",
         photo: require("../assets/images/shoulder/arm_circle.webp"),
+        video: "arm_circles",
         calories: 5,
         time: "20s",
         level: "Beginner",
@@ -4559,6 +4858,7 @@ export const workoutListGlobal = [
       {
         name: "Incline Push-Ups",
         photo: require("../assets/images/chestImages/incline_pushups.webp"),
+        video: "incline_push_ups",
         calories: 6,
         reps: 8,
         level: "Beginner",
@@ -4569,6 +4869,7 @@ export const workoutListGlobal = [
       {
         name: "Plank Shoulder Tap",
         photo: require("../assets/images/shoulder/plank_shoulder_tap.webp"),
+        video: "plank_shoulder_taps",
         calories: 6,
         reps: 8,
         level: "Beginner",
@@ -4579,6 +4880,7 @@ export const workoutListGlobal = [
       {
         name: "Arm Raises",
         photo: require("../assets/images/shoulder/front_raises.webp"),
+        video: "front_arm_raises",
         calories: 5,
         reps: 8,
         level: "Beginner",
@@ -4589,6 +4891,7 @@ export const workoutListGlobal = [
       {
         name: "Punches",
         photo: require("../assets/images/other/punches.webp"),
+        video: "punches",
         calories: 6,
         time: "20s",
         level: "Beginner",
@@ -4599,6 +4902,7 @@ export const workoutListGlobal = [
       {
         name: "Knee Push-Ups",
         photo: require("../assets/images/chestImages/knee_pushps.webp"),
+        video: "knee_push_ups",
         calories: 6,
         reps: 8,
         level: "Beginner",
@@ -4609,6 +4913,7 @@ export const workoutListGlobal = [
       {
         name: "Wall Plank",
         photo: require("../assets/images/other/wall_plank.webp"),
+        video: "wall_plank",
         calories: 5,
         time: "20s",
         level: "Beginner",
@@ -4619,6 +4924,7 @@ export const workoutListGlobal = [
       {
         name: "Tricep Dips (Chair)",
         photo: require("../assets/images/arms/bench_dips.webp"),
+        video: "bench_dips",
         calories: 6,
         reps: 8,
         level: "Beginner",
@@ -4629,6 +4935,7 @@ export const workoutListGlobal = [
       {
         name: "Shoulder Shrugs",
         photo: require("../assets/images/shoulder/shrugs.webp"),
+        video: "shoulder_shrugs",
         calories: 5,
         reps: 8,
         level: "Beginner",
@@ -4650,6 +4957,7 @@ export const workoutListGlobal = [
       {
         name: "Push-Ups",
         photo: require("../assets/images/chestImages/pushups.webp"),
+        video: "push_ups",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -4660,6 +4968,7 @@ export const workoutListGlobal = [
       {
         name: "Plank Shoulder Taps",
         photo: require("../assets/images/shoulder/plank_shoulder_tap.webp"),
+        video: "plank_shoulder_taps",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -4670,6 +4979,7 @@ export const workoutListGlobal = [
       {
         name: "Pike Push-Ups",
         photo: require("../assets/images/shoulder/pike_pushups.webp"),
+        video: "pike_push_ups",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -4680,6 +4990,7 @@ export const workoutListGlobal = [
       {
         name: "Tricep Dips",
         photo: require("../assets/images/arms/bench_dips.webp"),
+        video: "bench_dips",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -4690,6 +5001,7 @@ export const workoutListGlobal = [
       {
         name: "Arm Circles Fast",
         photo: require("../assets/images/shoulder/arm_circle.webp"),
+        video: "arm_circles",
         calories: 7,
         time: "30s",
         level: "Intermediate",
@@ -4700,6 +5012,7 @@ export const workoutListGlobal = [
       {
         name: "Punches Fast",
         photo: require("../assets/images/other/punches.webp"),
+        video: "punches",
         calories: 8,
         time: "30s",
         level: "Intermediate",
@@ -4710,6 +5023,7 @@ export const workoutListGlobal = [
       {
         name: "Plank Up-Down",
         photo: require("../assets/images/arms/plank_up-downs.webp"),
+        video: "plank_up_downs",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -4720,6 +5034,7 @@ export const workoutListGlobal = [
       {
         name: "Superman Hold",
         photo: require("../assets/images/other/superman_hold.webp"),
+        video: "superman_hold",
         calories: 7,
         time: "30s",
         level: "Intermediate",
@@ -4730,6 +5045,7 @@ export const workoutListGlobal = [
       {
         name: "Shoulder Taps",
         photo: require("../assets/images/shoulder/shoulder_taps_hold.webp"),
+        video: "plank_shoulder_taps",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -4740,6 +5056,7 @@ export const workoutListGlobal = [
       {
         name: "Incline Push-Ups",
         photo: require("../assets/images/chestImages/incline_pushups.webp"),
+        video: "incline_push_ups",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -4750,6 +5067,7 @@ export const workoutListGlobal = [
       {
         name: "Bear Crawl Hold",
         photo: require("../assets/images/other/bear_crawl.webp"),
+        video: "bear_crawl_hold",
         calories: 8,
         time: "30s",
         level: "Intermediate",
@@ -4760,6 +5078,7 @@ export const workoutListGlobal = [
       {
         name: "Wall Handstand Hold",
         photo: require("../assets/images/other/wall_stand.webp"),
+        video: "wall_handstand_hold",
         calories: 8,
         time: "30s",
         level: "Intermediate",
@@ -4770,6 +5089,7 @@ export const workoutListGlobal = [
       {
         name: "Push-Up Hold",
         photo: require("../assets/images/chestImages/pushup_hold.webp"),
+        video: "push_up_hold",
         calories: 8,
         time: "30s",
         level: "Intermediate",
@@ -4780,6 +5100,7 @@ export const workoutListGlobal = [
       {
         name: "Shadow Boxing",
         photo: require("../assets/images/other/punches.webp"),
+        video: "shadow_boxing",
         calories: 9,
         time: "30s",
         level: "Intermediate",
@@ -4801,6 +5122,7 @@ export const workoutListGlobal = [
       {
         name: "Push-Ups",
         photo: require("../assets/images/chestImages/pushups.webp"),
+        video: "push_ups",
         calories: 10,
         reps: 16,
         level: "Advanced",
@@ -4811,6 +5133,7 @@ export const workoutListGlobal = [
       {
         name: "Clap Push-Ups",
         photo: require("../assets/images/other/clap_pushups.webp"),
+        video: "clap_push_ups",
         calories: 12,
         reps: 12,
         level: "Advanced",
@@ -4821,6 +5144,7 @@ export const workoutListGlobal = [
       {
         name: "Pike Push-Ups",
         photo: require("../assets/images/shoulder/pike_pushups.webp"),
+        video: "pike_push_ups",
         calories: 10,
         reps: 16,
         level: "Advanced",
@@ -4831,6 +5155,7 @@ export const workoutListGlobal = [
       {
         name: "Handstand Hold",
         photo: require("../assets/images/other/handstand.webp"),
+        video: "wall_handstand_hold",
         calories: 10,
         time: "40s",
         level: "Advanced",
@@ -4841,6 +5166,7 @@ export const workoutListGlobal = [
       {
         name: "Plank Shoulder Taps",
         photo: require("../assets/images/shoulder/plank_shoulder_tap.webp"),
+        video: "plank_shoulder_taps",
         calories: 10,
         reps: 16,
         level: "Advanced",
@@ -4851,6 +5177,7 @@ export const workoutListGlobal = [
       {
         name: "Tricep Dips",
         photo: require("../assets/images/arms/bench_dips.webp"),
+        video: "bench_dips",
         calories: 10,
         reps: 16,
         level: "Advanced",
@@ -4861,6 +5188,7 @@ export const workoutListGlobal = [
       {
         name: "Plank Up Down",
         photo: require("../assets/images/arms/plank_up-downs.webp"),
+        video: "plank_up_downs",
         calories: 10,
         reps: 16,
         level: "Advanced",
@@ -4871,6 +5199,7 @@ export const workoutListGlobal = [
       {
         name: "Superman Hold",
         photo: require("../assets/images/other/superman_hold.webp"),
+        video: "superman_hold",
         calories: 9,
         time: "40s",
         level: "Advanced",
@@ -4881,6 +5210,7 @@ export const workoutListGlobal = [
       {
         name: "Bear Crawl",
         photo: require("../assets/images/other/bear_crawl.webp"),
+        video: "bear_crawl",
         calories: 11,
         reps: 16,
         level: "Advanced",
@@ -4891,6 +5221,7 @@ export const workoutListGlobal = [
       {
         name: "Shadow Boxing Fast",
         photo: require("../assets/images/other/punches.webp"),
+        video: "shadow_boxing",
         calories: 11,
         time: "40s",
         level: "Advanced",
@@ -4901,6 +5232,7 @@ export const workoutListGlobal = [
       {
         name: "Push-Up Hold",
         photo: require("../assets/images/chestImages/pushup_hold.webp"),
+        video: "push_up_hold",
         calories: 10,
         time: "40s",
         level: "Advanced",
@@ -4911,6 +5243,7 @@ export const workoutListGlobal = [
       {
         name: "Mountain Climbers",
         photo: require("../assets/images/abs/mountain_climber.webp"),
+        video: "mountain_climbers",
         calories: 12,
         reps: 16,
         level: "Advanced",
@@ -4921,6 +5254,7 @@ export const workoutListGlobal = [
       {
         name: "Shoulder Taps",
         photo: require("../assets/images/shoulder/shoulder_taps_hold.webp"),
+        video: "plank_shoulder_taps",
         calories: 10,
         reps: 16,
         level: "Advanced",
@@ -4931,6 +5265,7 @@ export const workoutListGlobal = [
       {
         name: "Dive Bomber Push-Ups",
         photo: require("../assets/images/shoulder/dive_bomber.webp"),
+        video: "dive_bomber_push_ups",
         calories: 12,
         reps: 12,
         level: "Advanced",
@@ -4941,6 +5276,7 @@ export const workoutListGlobal = [
       {
         name: "Plank Jack",
         photo: require("../assets/images/hiit/plank_jack.webp"),
+        video: "plank_jacks",
         calories: 11,
         reps: 16,
         level: "Advanced",
@@ -4951,6 +5287,7 @@ export const workoutListGlobal = [
       {
         name: "Arm Circles Fast",
         photo: require("../assets/images/shoulder/arm_circle.webp"),
+        video: "arm_circles",
         calories: 9,
         time: "40s",
         level: "Advanced",
@@ -4961,6 +5298,7 @@ export const workoutListGlobal = [
       {
         name: "Punch Combo",
         photo: require("../assets/images/other/punches.webp"),
+        video: "shadow_boxing",
         calories: 11,
         time: "40s",
         level: "Advanced",
@@ -4971,6 +5309,7 @@ export const workoutListGlobal = [
       {
         name: "Wall Handstand Push-Up",
         photo: require("../assets/images/other/wall_stand.webp"),
+        video: "handstand_push_ups",
         calories: 12,
         reps: 10,
         level: "Advanced",
@@ -4992,6 +5331,7 @@ export const workoutListGlobal = [
       {
         name: "Jumping Jacks",
         photo: require("../assets/images/hiit/jumping_jacks.webp"),
+        video: "jumping_jacks",
         calories: 6,
         time: "20s",
         level: "Beginner",
@@ -5007,6 +5347,7 @@ export const workoutListGlobal = [
       {
         name: "Bodyweight Squats",
         photo: require("../assets/images/legs/bodywieght_squat.webp"),
+        video: "bodyweight_squats",
         calories: 6,
         reps: 8,
         level: "Beginner",
@@ -5022,6 +5363,7 @@ export const workoutListGlobal = [
       {
         name: "Knee Push-Ups",
         photo: require("../assets/images/chestImages/knee_pushps.webp"),
+        video: "knee_push_ups",
         calories: 6,
         reps: 8,
         level: "Beginner",
@@ -5037,6 +5379,7 @@ export const workoutListGlobal = [
       {
         name: "Glute Bridges",
         photo: require("../assets/images/legs/glute_bridge.webp"),
+        video: "bridge",
         calories: 6,
         reps: 8,
         level: "Beginner",
@@ -5052,6 +5395,7 @@ export const workoutListGlobal = [
       {
         name: "Plank",
         photo: require("../assets/images/abs/plank.webp"),
+        video: "plank",
         calories: 5,
         time: "20s",
         level: "Beginner",
@@ -5067,6 +5411,7 @@ export const workoutListGlobal = [
       {
         name: "Marching in Place",
         photo: require("../assets/images/legs/marching.webp"),
+        video: "marching_in_place",
         calories: 5,
         reps: 8,
         level: "Beginner",
@@ -5082,6 +5427,7 @@ export const workoutListGlobal = [
       {
         name: "Arm Circles",
         photo: require("../assets/images/shoulder/arm_circle.webp"),
+        video: "arm_circles",
         calories: 5,
         time: "20s",
         level: "Beginner",
@@ -5097,6 +5443,7 @@ export const workoutListGlobal = [
       {
         name: "Wall Sit",
         photo: require("../assets/images/legs/wall_sit.webp"),
+        video: "wall_sit",
         calories: 5,
         time: "20s",
         level: "Beginner",
@@ -5112,6 +5459,7 @@ export const workoutListGlobal = [
       {
         name: "Standing Calf Raises",
         photo: require("../assets/images/legs/calf_raises.webp"),
+        video: "calf_raises",
         calories: 5,
         reps: 8,
         level: "Beginner",
@@ -5127,6 +5475,7 @@ export const workoutListGlobal = [
       {
         name: "Punches",
         photo: require("../assets/images/other/punches.webp"),
+        video: "punches",
         calories: 6,
         time: "20s",
         level: "Beginner",
@@ -5153,6 +5502,7 @@ export const workoutListGlobal = [
       {
         name: "Jump Squats",
         photo: require("../assets/images/legs/jum_squat.webp"),
+        video: "jump_squats",
         calories: 9,
         reps: 12,
         level: "Intermediate",
@@ -5167,6 +5517,7 @@ export const workoutListGlobal = [
       {
         name: "Push-Ups",
         photo: require("../assets/images/chestImages/pushups.webp"),
+        video: "push_ups",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -5181,6 +5532,7 @@ export const workoutListGlobal = [
       {
         name: "Mountain Climbers",
         photo: require("../assets/images/hiit/mountain_climber.webp"),
+        video: "mountain_climbers",
         calories: 9,
         reps: 12,
         level: "Intermediate",
@@ -5195,6 +5547,7 @@ export const workoutListGlobal = [
       {
         name: "Lunges",
         photo: require("../assets/images/legs/lunges.webp"),
+        video: "lunges",
         calories: 9,
         reps: 12,
         level: "Intermediate",
@@ -5210,6 +5563,7 @@ export const workoutListGlobal = [
       {
         name: "Plank",
         photo: require("../assets/images/abs/plank.webp"),
+        video: "plank",
         calories: 8,
         time: "30s",
         level: "Intermediate",
@@ -5224,6 +5578,7 @@ export const workoutListGlobal = [
       {
         name: "Burpees",
         photo: require("../assets/images/hiit/burpees.webp"),
+        video: "burpees",
         calories: 11,
         reps: 12,
         level: "Intermediate",
@@ -5240,6 +5595,7 @@ export const workoutListGlobal = [
       {
         name: "Glute Bridges",
         photo: require("../assets/images/legs/glute_bridge.webp"),
+        video: "bridge",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -5255,6 +5611,7 @@ export const workoutListGlobal = [
       {
         name: "Bicycle Crunches",
         photo: require("../assets/images/abs/bycle_crunches.webp"),
+        video: "bicycle_crunches",
         calories: 9,
         reps: 12,
         level: "Intermediate",
@@ -5270,6 +5627,7 @@ export const workoutListGlobal = [
       {
         name: "Step-Ups",
         photo: require("../assets/images/legs/step_up.webp"),
+        video: "step_ups",
         calories: 9,
         reps: 12,
         level: "Intermediate",
@@ -5285,6 +5643,7 @@ export const workoutListGlobal = [
       {
         name: "High Knees",
         photo: require("../assets/images/hiit/high_knees.webp"),
+        video: "high_knees",
         calories: 8,
         time: "30s",
         level: "Intermediate",
@@ -5310,6 +5669,7 @@ export const workoutListGlobal = [
       {
         name: "Burpees",
         photo: require("../assets/images/hiit/burpees.webp"),
+        video: "burpees",
         calories: 14,
         reps: 16,
         level: "Advanced",
@@ -5326,6 +5686,7 @@ export const workoutListGlobal = [
       {
         name: "Jump Squats",
         photo: require("../assets/images/legs/jum_squat.webp"),
+        video: "jump_squats",
         calories: 13,
         reps: 16,
         level: "Advanced",
@@ -5340,6 +5701,7 @@ export const workoutListGlobal = [
       {
         name: "Push-Ups",
         photo: require("../assets/images/chestImages/pushups.webp"),
+        video: "push_ups",
         calories: 12,
         reps: 16,
         level: "Advanced",
@@ -5355,6 +5717,7 @@ export const workoutListGlobal = [
       {
         name: "Mountain Climbers",
         photo: require("../assets/images/abs/mountain_climber.webp"),
+        video: "mountain_climbers",
         calories: 13,
         time: "40s",
         level: "Advanced",
@@ -5369,6 +5732,7 @@ export const workoutListGlobal = [
       {
         name: "Plank Shoulder Taps",
         photo: require("../assets/images/shoulder/plank_shoulder_tap.webp"),
+        video: "plank_shoulder_taps",
         calories: 12,
         reps: 16,
         level: "Advanced",
@@ -5384,6 +5748,7 @@ export const workoutListGlobal = [
       {
         name: "Lunges",
         photo: require("../assets/images/legs/lunges.webp"),
+        video: "lunges",
         calories: 12,
         reps: 16,
         level: "Advanced",
@@ -5398,6 +5763,7 @@ export const workoutListGlobal = [
       {
         name: "Bicycle Crunches",
         photo: require("../assets/images/abs/bycle_crunches.webp"),
+        video: "bicycle_crunches",
         calories: 12,
         reps: 16,
         level: "Advanced",
@@ -5412,6 +5778,7 @@ export const workoutListGlobal = [
       {
         name: "High Knees",
         photo: require("../assets/images/hiit/high_knees.webp"),
+        video: "high_knees",
         calories: 11,
         time: "40s",
         level: "Advanced",
@@ -5422,6 +5789,7 @@ export const workoutListGlobal = [
       {
         name: "Jumping Lunges",
         photo: require("../assets/images/hiit/jump_lunges.webp"),
+        video: "jump_lunges",
         calories: 14,
         reps: 16,
         level: "Advanced",
@@ -5436,6 +5804,7 @@ export const workoutListGlobal = [
       {
         name: "Plank",
         photo: require("../assets/images/abs/plank.webp"),
+        video: "plank",
         calories: 11,
         time: "40s",
         level: "Advanced",
@@ -5450,6 +5819,7 @@ export const workoutListGlobal = [
       {
         name: "Step-Ups (High)",
         photo: require("../assets/images/legs/step_up.webp"),
+        video: "step_ups",
         calories: 12,
         reps: 16,
         level: "Advanced",
@@ -5464,6 +5834,7 @@ export const workoutListGlobal = [
       {
         name: "Glute Bridges",
         photo: require("../assets/images/legs/glute_bridge.webp"),
+        video: "bridge",
         calories: 11,
         reps: 16,
         level: "Advanced",
@@ -5474,6 +5845,7 @@ export const workoutListGlobal = [
       {
         name: "Toe Touches",
         photo: require("../assets/images/abs/toe_touch.webp"),
+        video: "toe_touches",
         calories: 11,
         reps: 16,
         level: "Advanced",
@@ -5488,6 +5860,7 @@ export const workoutListGlobal = [
       {
         name: "Skater Jumps",
         photo: require("../assets/images/hiit/side_to_side_skater.webp"),
+        video: "skater_jumps",
         calories: 13,
         reps: 16,
         level: "Advanced",
@@ -5502,6 +5875,7 @@ export const workoutListGlobal = [
       {
         name: "Wall Sit",
         photo: require("../assets/images/legs/wall_sit.webp"),
+        video: "wall_sit",
         calories: 10,
         time: "45s",
         level: "Advanced",
@@ -5516,6 +5890,7 @@ export const workoutListGlobal = [
       {
         name: "Squat to Calf Raise",
         photo: require("../assets/images/legs/squat_to_calve_raises.webp"),
+        video: "squat_to_calf_raise",
         calories: 13,
         reps: 16,
         level: "Advanced",
@@ -5526,6 +5901,7 @@ export const workoutListGlobal = [
       {
         name: "Plank to Knee Drive",
         photo: require("../assets/images/abs/plank_to_knee.webp"),
+        video: "mountain_climbers",
         calories: 12,
         reps: 16,
         level: "Advanced",
@@ -5536,6 +5912,7 @@ export const workoutListGlobal = [
       {
         name: "Jump Rope (Simulated)",
         photo: require("../assets/images/other/jump_rope.webp"),
+        video: "jump_rope",
         calories: 12,
         time: "40s",
         level: "Advanced",
@@ -5561,6 +5938,7 @@ export const workoutListGlobal = [
       {
         name: "Glute Bridges",
         photo: require("../assets/images/legs/glute_bridge.webp"),
+        video: "bridge",
         calories: 6,
         reps: 8,
         level: "Beginner",
@@ -5576,6 +5954,7 @@ export const workoutListGlobal = [
       {
         name: "Bodyweight Squats",
         photo: require("../assets/images/legs/bodywieght_squat.webp"),
+        video: "bodyweight_squats",
         calories: 6,
         reps: 8,
         level: "Beginner",
@@ -5591,6 +5970,7 @@ export const workoutListGlobal = [
       {
         name: "Donkey Kicks (Left)",
         photo: require("../assets/images/other/donkey_kick_left.webp"),
+        video: "donkey_kicks_left",
         calories: 5,
         reps: 8,
         level: "Beginner",
@@ -5606,6 +5986,7 @@ export const workoutListGlobal = [
       {
         name: "Donkey Kicks (Right)",
         photo: require("../assets/images/other/donkey_kick_right.webp"),
+        video: "donkey_kicks_right",
         calories: 5,
         reps: 8,
         level: "Beginner",
@@ -5621,6 +6002,7 @@ export const workoutListGlobal = [
       {
         name: "Fire Hydrants (Left)",
         photo: require("../assets/images/other/fire_hydrant_left.webp"),
+        video: "fire_hydrants_left",
         calories: 5,
         reps: 8,
         level: "Beginner",
@@ -5636,6 +6018,7 @@ export const workoutListGlobal = [
       {
         name: "Fire Hydrants (Right)",
         photo: require("../assets/images/other/fire_hydrant_right.webp"),
+        video: "fire_hydrants_right",
         calories: 5,
         reps: 8,
         level: "Beginner",
@@ -5650,6 +6033,7 @@ export const workoutListGlobal = [
       {
         name: "Step Back Lunges",
         photo: require("../assets/images/legs/step_back_lunges.webp"),
+        video: "step_back_lunges",
         calories: 6,
         reps: 8,
         level: "Beginner",
@@ -5664,6 +6048,7 @@ export const workoutListGlobal = [
       {
         name: "Glute Kickbacks (Standing)",
         photo: require("../assets/images/hiit/butt_kicks.webp"),
+        video: "glute_kickbacks_standing",
         calories: 5,
         reps: 8,
         level: "Beginner",
@@ -5679,6 +6064,7 @@ export const workoutListGlobal = [
       {
         name: "Wall Sit",
         photo: require("../assets/images/legs/wall_sit.webp"),
+        video: "wall_sit",
         calories: 5,
         time: "20s",
         level: "Beginner",
@@ -5693,6 +6079,7 @@ export const workoutListGlobal = [
       {
         name: "Marching Glute Bridge",
         photo: require("../assets/images/legs/marching.webp"),
+        video: "marching_glute_bridge",
         calories: 6,
         reps: 8,
         level: "Beginner",
@@ -5718,6 +6105,7 @@ export const workoutListGlobal = [
       {
         name: "Hip Thrust",
         photo: require("../assets/images/other/hip_thrust.webp"),
+        video: "hip_thrust",
         calories: 9,
         reps: 12,
         level: "Intermediate",
@@ -5733,6 +6121,7 @@ export const workoutListGlobal = [
       {
         name: "Bulgarian Split Squats (Left)",
         photo: require("../assets/images/other/bulgarian_split_left.webp"),
+        video: "bulgarian_split_squats_left",
         calories: 9,
         reps: 12,
         level: "Intermediate",
@@ -5745,6 +6134,7 @@ export const workoutListGlobal = [
       {
         name: "Bulgarian Split Squats (Right)",
         photo: require("../assets/images/other/bulgarian_split_right.webp"),
+        video: "bulgarian_split_squats_right",
         calories: 9,
         reps: 12,
         level: "Intermediate",
@@ -5757,6 +6147,7 @@ export const workoutListGlobal = [
       {
         name: "Jump Squats",
         photo: require("../assets/images/legs/jum_squat.webp"),
+        video: "jump_squats",
         calories: 10,
         reps: 12,
         level: "Intermediate",
@@ -5765,6 +6156,7 @@ export const workoutListGlobal = [
       {
         name: "Walking Lunges",
         photo: require("../assets/images/other/walking_lunges.webp"),
+        video: "walking_lunges",
         calories: 9,
         reps: 12,
         level: "Intermediate",
@@ -5773,6 +6165,7 @@ export const workoutListGlobal = [
       {
         name: "Single Leg Glute Bridge (Left)",
         photo: require("../assets/images/other/single_leg_glute_left.webp"),
+        video: "single_leg_glute_bridge_left",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -5781,6 +6174,7 @@ export const workoutListGlobal = [
       {
         name: "Single Leg Glute Bridge (Right)",
         photo: require("../assets/images/other/single_leg_glute_right.webp"),
+        video: "single_leg_glute_bridge_right",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -5789,6 +6183,7 @@ export const workoutListGlobal = [
       {
         name: "Fire Hydrants",
         photo: require("../assets/images/other/fire_hydrant_left.webp"),
+        video: "fire_hydrants_left",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -5797,6 +6192,7 @@ export const workoutListGlobal = [
       {
         name: "Curtsy Lunges",
         photo: require("../assets/images/legs/curtusy_lunges.webp"),
+        video: "curtsy_lunges",
         calories: 9,
         reps: 12,
         level: "Intermediate",
@@ -5805,6 +6201,7 @@ export const workoutListGlobal = [
       {
         name: "Squat Pulses",
         photo: require("../assets/images/legs/squat_pulse.webp"),
+        video: "squat_pulses",
         calories: 9,
         reps: 12,
         level: "Intermediate",
@@ -5813,6 +6210,7 @@ export const workoutListGlobal = [
       {
         name: "Step-Ups",
         photo: require("../assets/images/legs/step_up.webp"),
+        video: "step_ups",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -5821,6 +6219,7 @@ export const workoutListGlobal = [
       {
         name: "Kickbacks",
         photo: require("../assets/images/hiit/butt_kicks.webp"),
+        video: "glute_kickbacks_standing",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -5829,6 +6228,7 @@ export const workoutListGlobal = [
       {
         name: "Wall Sit",
         photo: require("../assets/images/legs/wall_sit.webp"),
+        video: "wall_sit",
         calories: 8,
         time: "30s",
         level: "Intermediate",
@@ -5837,6 +6237,7 @@ export const workoutListGlobal = [
       {
         name: "Bridge Hold",
         photo: require("../assets/images/legs/glute_bridge.webp"),
+        video: "glute_bridge_hold",
         calories: 7,
         time: "30s",
         level: "Intermediate",
@@ -5856,6 +6257,7 @@ export const workoutListGlobal = [
       {
         name: "Hip Thrust",
         photo: require("../assets/images/other/hip_thrust.webp"),
+        video: "hip_thrust",
         calories: 12,
         reps: 16,
         level: "Advanced",
@@ -5868,6 +6270,7 @@ export const workoutListGlobal = [
       {
         name: "Jump Squats",
         photo: require("../assets/images/legs/jum_squat.webp"),
+        video: "jump_squats",
         calories: 13,
         reps: 16,
         level: "Advanced",
@@ -5876,6 +6279,7 @@ export const workoutListGlobal = [
       {
         name: "Bulgarian Split Squats (Left)",
         photo: require("../assets/images/other/bulgarian_split_left.webp"),
+        video: "bulgarian_split_squats_left",
         calories: 12,
         reps: 16,
         level: "Advanced",
@@ -5884,6 +6288,7 @@ export const workoutListGlobal = [
       {
         name: "Bulgarian Split Squats (Right)",
         photo: require("../assets/images/other/bulgarian_split_right.webp"),
+        video: "bulgarian_split_squats_right",
         calories: 12,
         reps: 16,
         level: "Advanced",
@@ -5892,6 +6297,7 @@ export const workoutListGlobal = [
       {
         name: "Walking Lunges",
         photo: require("../assets/images/other/walking_lunges.webp"),
+        video: "walking_lunges",
         calories: 12,
         reps: 16,
         level: "Advanced",
@@ -5900,6 +6306,7 @@ export const workoutListGlobal = [
       {
         name: "Jump Lunges",
         photo: require("../assets/images/hiit/jump_lunges.webp"),
+        video: "jump_lunges",
         calories: 14,
         reps: 16,
         level: "Advanced",
@@ -5908,6 +6315,7 @@ export const workoutListGlobal = [
       {
         name: "Single Leg Bridge (Left)",
         photo: require("../assets/images/legs/single_leg_glute_left.webp"),
+        video: "single_leg_glute_bridge_left",
         calories: 11,
         reps: 16,
         level: "Advanced",
@@ -5916,6 +6324,7 @@ export const workoutListGlobal = [
       {
         name: "Single Leg Bridge (Right)",
         photo: require("../assets/images/legs/single_leg_glute_right.webp"),
+        video: "single_leg_glute_bridge_right",
         calories: 11,
         reps: 16,
         level: "Advanced",
@@ -5924,6 +6333,7 @@ export const workoutListGlobal = [
       {
         name: "Curtsy Lunges",
         photo: require("../assets/images/legs/curtusy_lunges.webp"),
+        video: "curtsy_lunges",
         calories: 12,
         reps: 16,
         level: "Advanced",
@@ -5932,6 +6342,7 @@ export const workoutListGlobal = [
       {
         name: "Step-Ups (High)",
         photo: require("../assets/images/legs/step_up.webp"),
+        video: "step_ups",
         calories: 12,
         reps: 16,
         level: "Advanced",
@@ -5940,6 +6351,7 @@ export const workoutListGlobal = [
       {
         name: "Squat Pulses",
         photo: require("../assets/images/legs/squat_pulse.webp"),
+        video: "squat_pulses",
         calories: 13,
         reps: 16,
         level: "Advanced",
@@ -5948,6 +6360,7 @@ export const workoutListGlobal = [
       {
         name: "Glute Bridge Hold",
         photo: require("../assets/images/legs/glute_bridge.webp"),
+        video: "glute_bridge_hold",
         calories: 10,
         time: "40s",
         level: "Advanced",
@@ -5956,6 +6369,7 @@ export const workoutListGlobal = [
       {
         name: "Fire Hydrants",
         photo: require("../assets/images/other/fire_hydrant_left.webp"),
+        video: "fire_hydrants_left",
         calories: 10,
         reps: 16,
         level: "Advanced",
@@ -5964,6 +6378,7 @@ export const workoutListGlobal = [
       {
         name: "Kickbacks",
         photo: require("../assets/images/hiit/butt_kicks.webp"),
+        video: "glute_kickbacks_standing",
         calories: 11,
         reps: 16,
         level: "Advanced",
@@ -5972,6 +6387,7 @@ export const workoutListGlobal = [
       {
         name: "Wall Sit",
         photo: require("../assets/images/legs/wall_sit.webp"),
+        video: "wall_sit",
         calories: 10,
         time: "45s",
         level: "Advanced",
@@ -5980,6 +6396,7 @@ export const workoutListGlobal = [
       {
         name: "Frog Pumps",
         photo: require("../assets/images/other/frog_pumps.webp"),
+        video: "frog_pumps",
         calories: 12,
         reps: 16,
         level: "Advanced",
@@ -5988,6 +6405,7 @@ export const workoutListGlobal = [
       {
         name: "Skater Jumps",
         photo: require("../assets/images/hiit/side_to_side_skater.webp"),
+        video: "skater_jumps",
         calories: 13,
         reps: 16,
         level: "Advanced",
@@ -5996,6 +6414,7 @@ export const workoutListGlobal = [
       {
         name: "Squat to Calf Raise",
         photo: require("../assets/images/legs/squat_to_calve_raises.webp"),
+        video: "squat_to_calf_raise",
         calories: 13,
         reps: 16,
         level: "Advanced",
@@ -6015,6 +6434,7 @@ export const workoutListGlobal = [
       {
         name: "Chin Tucks",
         photo: require("../assets/images/other/chin_tuck.webp"),
+        video: "chin_tucks",
         calories: 5,
         reps: 8,
         level: "Beginner",
@@ -6031,6 +6451,7 @@ export const workoutListGlobal = [
       {
         name: "Wall Angels",
         photo: require("../assets/images/shoulder/wall_angles.webp"),
+        video: "wall_angels",
         calories: 6,
         reps: 8,
         level: "Beginner",
@@ -6046,6 +6467,7 @@ export const workoutListGlobal = [
       {
         name: "Shoulder Rolls",
         photo: require("../assets/images/other/shoulder_roll.webp"),
+        video: "shoulder_rolls",
         calories: 4,
         reps: 8,
         level: "Beginner",
@@ -6060,6 +6482,7 @@ export const workoutListGlobal = [
       {
         name: "Cat Cow Stretch",
         photo: require("../assets/images/other/cat_cow.webp"),
+        video: "cat_cow_stretch",
         calories: 5,
         reps: 8,
         level: "Beginner",
@@ -6075,6 +6498,7 @@ export const workoutListGlobal = [
       {
         name: "Chest Stretch",
         photo: require("../assets/images/other/chest_strech.webp"),
+        video: "chest_stretch",
         calories: 5,
         time: "20s",
         level: "Beginner",
@@ -6090,6 +6514,7 @@ export const workoutListGlobal = [
       {
         name: "Neck Side Stretch",
         photo: require("../assets/images/other/neck_strech.webp"),
+        video: "neck_side_stretch",
         calories: 4,
         time: "20s",
         level: "Beginner",
@@ -6104,6 +6529,7 @@ export const workoutListGlobal = [
       {
         name: "Pelvic Tilts",
         photo: require("../assets/images/other/pelvic_tilt.webp"),
+        video: "pelvic_tilts",
         calories: 5,
         reps: 8,
         level: "Beginner",
@@ -6118,6 +6544,7 @@ export const workoutListGlobal = [
       {
         name: "Bird Dog",
         photo: require("../assets/images/other/bird_dog.webp"),
+        video: "bird_dog",
         calories: 6,
         reps: 8,
         level: "Beginner",
@@ -6132,6 +6559,7 @@ export const workoutListGlobal = [
       {
         name: "Wall Posture Hold",
         photo: require("../assets/images/other/wall_posture_hold.webp"),
+        video: "wall_posture_hold",
         calories: 5,
         time: "20s",
         level: "Beginner",
@@ -6146,6 +6574,7 @@ export const workoutListGlobal = [
       {
         name: "Seated Spine Stretch",
         photo: require("../assets/images/other/seated_spine_strech.webp"),
+        video: "seated_spine_stretch",
         calories: 5,
         time: "20s",
         level: "Beginner",
@@ -6171,6 +6600,7 @@ export const workoutListGlobal = [
       {
         name: "Wall Angels",
         photo: require("../assets/images/shoulder/wall_angles.webp"),
+        video: "wall_angels",
         calories: 7,
         reps: 12,
         level: "Intermediate",
@@ -6182,6 +6612,7 @@ export const workoutListGlobal = [
       {
         name: "Bird Dog",
         photo: require("../assets/images/other/bird_dog.webp"),
+        video: "bird_dog",
         calories: 7,
         reps: 12,
         level: "Intermediate",
@@ -6190,6 +6621,7 @@ export const workoutListGlobal = [
       {
         name: "Glute Bridges",
         photo: require("../assets/images/legs/glute_bridge.webp"),
+        video: "bridge",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -6198,6 +6630,7 @@ export const workoutListGlobal = [
       {
         name: "Superman Hold",
         photo: require("../assets/images/other/superman_hold.webp"),
+        video: "superman_hold",
         calories: 8,
         time: "30s",
         level: "Intermediate",
@@ -6206,6 +6639,7 @@ export const workoutListGlobal = [
       {
         name: "Plank",
         photo: require("../assets/images/abs/plank.webp"),
+        video: "plank",
         calories: 8,
         time: "30s",
         level: "Intermediate",
@@ -6214,6 +6648,7 @@ export const workoutListGlobal = [
       {
         name: "Reverse Snow Angels",
         photo: require("../assets/images/other/reverse_snow_angles.webp"),
+        video: "reverse_snow_angels",
         calories: 7,
         reps: 12,
         level: "Intermediate",
@@ -6222,6 +6657,7 @@ export const workoutListGlobal = [
       {
         name: "Hip Flexor Stretch",
         photo: require("../assets/images/other/hip_flexor.webp"),
+        video: "hip_flexor_stretch",
         calories: 6,
         time: "30s",
         level: "Intermediate",
@@ -6230,6 +6666,7 @@ export const workoutListGlobal = [
       {
         name: "Thoracic Rotation",
         photo: require("../assets/images/other/thoracic_rotation.webp"),
+        video: "thoracic_rotation",
         calories: 6,
         reps: 12,
         level: "Intermediate",
@@ -6238,6 +6675,7 @@ export const workoutListGlobal = [
       {
         name: "Chin Tucks",
         photo: require("../assets/images/other/chin_tuck.webp"),
+        video: "chin_tucks",
         calories: 6,
         reps: 12,
         level: "Intermediate",
@@ -6246,6 +6684,7 @@ export const workoutListGlobal = [
       {
         name: "Wall Hold",
         photo: require("../assets/images/other/wall_posture_hold.webp"),
+        video: "wall_posture_hold",
         calories: 7,
         time: "30s",
         level: "Intermediate",
@@ -6254,6 +6693,7 @@ export const workoutListGlobal = [
       {
         name: "Dead Bug",
         photo: require("../assets/images/other/dead_bug.webp"),
+        video: "dead_bug",
         calories: 7,
         reps: 12,
         level: "Intermediate",
@@ -6262,6 +6702,7 @@ export const workoutListGlobal = [
       {
         name: "Shoulder Blade Squeeze",
         photo: require("../assets/images/other/shoulder_blaze.webp"),
+        video: "back_arm_squeeze",
         calories: 6,
         reps: 12,
         level: "Intermediate",
@@ -6270,6 +6711,7 @@ export const workoutListGlobal = [
       {
         name: "Back Extension",
         photo: require("../assets/images/other/back_extension.webp"),
+        video: "back_extension",
         calories: 8,
         reps: 12,
         level: "Intermediate",
@@ -6278,6 +6720,7 @@ export const workoutListGlobal = [
       {
         name: "Hamstring Stretch",
         photo: require("../assets/images/other/hamstring_strech.webp"),
+        video: "hamstring_stretch",
         calories: 6,
         time: "30s",
         level: "Intermediate",
@@ -6297,6 +6740,7 @@ export const workoutListGlobal = [
       {
         name: "Plank",
         photo: require("../assets/images/abs/plank.webp"),
+        video: "plank",
         calories: 10,
         time: "40s",
         level: "Advanced",
@@ -6305,6 +6749,7 @@ export const workoutListGlobal = [
       {
         name: "Superman Hold",
         photo: require("../assets/images/other/superman_hold.webp"),
+        video: "superman_hold",
         calories: 10,
         time: "40s",
         level: "Advanced",
@@ -6313,6 +6758,7 @@ export const workoutListGlobal = [
       {
         name: "Dead Bug",
         photo: require("../assets/images/other/dead_bug.webp"),
+        video: "dead_bug",
         calories: 9,
         reps: 16,
         level: "Advanced",
@@ -6321,6 +6767,7 @@ export const workoutListGlobal = [
       {
         name: "Bird Dog",
         photo: require("../assets/images/other/bird_dog.webp"),
+        video: "bird_dog",
         calories: 9,
         reps: 16,
         level: "Advanced",
@@ -6329,6 +6776,7 @@ export const workoutListGlobal = [
       {
         name: "Wall Angels",
         photo: require("../assets/images/shoulder/wall_angles.webp"),
+        video: "wall_angels",
         calories: 9,
         reps: 16,
         level: "Advanced",
@@ -6337,6 +6785,7 @@ export const workoutListGlobal = [
       {
         name: "Reverse Snow Angels",
         photo: require("../assets/images/other/reverse_snow_angles.webp"),
+        video: "reverse_snow_angels",
         calories: 9,
         reps: 16,
         level: "Advanced",
@@ -6345,6 +6794,7 @@ export const workoutListGlobal = [
       {
         name: "Back Extension",
         photo: require("../assets/images/other/back_extension.webp"),
+        video: "back_extension",
         calories: 10,
         reps: 16,
         level: "Advanced",
@@ -6353,6 +6803,7 @@ export const workoutListGlobal = [
       {
         name: "Glute Bridges",
         photo: require("../assets/images/legs/glute_bridge.webp"),
+        video: "bridge",
         calories: 9,
         reps: 16,
         level: "Advanced",
@@ -6361,6 +6812,7 @@ export const workoutListGlobal = [
       {
         name: "Hip Flexor Stretch",
         photo: require("../assets/images/other/hip_flexor.webp"),
+        video: "hip_flexor_stretch",
         calories: 8,
         time: "40s",
         level: "Advanced",
@@ -6369,6 +6821,7 @@ export const workoutListGlobal = [
       {
         name: "Thoracic Rotation",
         photo: require("../assets/images/other/thoracic_rotation.webp"),
+        video: "thoracic_rotation",
         calories: 8,
         reps: 16,
         level: "Advanced",
@@ -6377,6 +6830,7 @@ export const workoutListGlobal = [
       {
         name: "Chin Tucks",
         photo: require("../assets/images/other/chin_tuck.webp"),
+        video: "chin_tucks",
         calories: 8,
         reps: 16,
         level: "Advanced",
@@ -6385,6 +6839,7 @@ export const workoutListGlobal = [
       {
         name: "Shoulder Blade Squeeze",
         photo: require("../assets/images/other/shoulder_blaze.webp"),
+        video: "back_arm_squeeze",
         calories: 8,
         reps: 16,
         level: "Advanced",
@@ -6393,6 +6848,7 @@ export const workoutListGlobal = [
       {
         name: "Wall Hold",
         photo: require("../assets/images/other/wall_posture_hold.webp"),
+        video: "wall_posture_hold",
         calories: 9,
         time: "40s",
         level: "Advanced",
@@ -6401,6 +6857,7 @@ export const workoutListGlobal = [
       {
         name: "Hamstring Stretch",
         photo: require("../assets/images/other/hamstring_strech.webp"),
+        video: "hamstring_stretch",
         calories: 8,
         time: "40s",
         level: "Advanced",
@@ -6409,6 +6866,7 @@ export const workoutListGlobal = [
       {
         name: "Chest Stretch",
         photo: require("../assets/images/other/chest_strech.webp"),
+        video: "chest_stretch",
         calories: 8,
         time: "40s",
         level: "Advanced",
@@ -6417,6 +6875,7 @@ export const workoutListGlobal = [
       {
         name: "Neck Stretch",
         photo: require("../assets/images/other/neck_strech.webp"),
+        video: "neck_side_stretch",
         calories: 7,
         time: "40s",
         level: "Advanced",
@@ -6425,6 +6884,7 @@ export const workoutListGlobal = [
       {
         name: "Cat Cow",
         photo: require("../assets/images/other/cat_cow.webp"),
+        video: "cat_cow_stretch",
         calories: 8,
         reps: 16,
         level: "Advanced",
@@ -6433,6 +6893,7 @@ export const workoutListGlobal = [
       {
         name: "Spine Stretch",
         photo: require("../assets/images/other/seated_spine_strech.webp"),
+        video: "seated_spine_stretch",
         calories: 8,
         time: "40s",
         level: "Advanced",

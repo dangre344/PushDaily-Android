@@ -27,19 +27,19 @@ export const checkScheduledNotifications = async () => {
   try {
     const scheduled = await Notifications.getAllScheduledNotificationsAsync();
 
-    console.log("Scheduled notifications:", JSON.stringify(scheduled, null, 2));
+    Logger.log("Scheduled notifications:", JSON.stringify(scheduled, null, 2));
 
     scheduled.forEach((item, index) => {
-      console.log(`Notification ${index + 1}`);
-      console.log("ID:", item.identifier);
-      console.log("Title:", item.content?.title);
-      console.log("Body:", item.content?.body);
-      console.log("Trigger:", item.trigger);
+      Logger.log(`Notification ${index + 1}`);
+      Logger.log("ID:", item.identifier);
+      Logger.log("Title:", item.content?.title);
+      Logger.log("Body:", item.content?.body);
+      Logger.log("Trigger:", item.trigger);
     });
 
     return scheduled;
   } catch (error) {
-    console.log("Error checking scheduled notifications:", error);
+    Logger.log("Error checking scheduled notifications:", error);
     return [];
   }
 };
@@ -52,7 +52,7 @@ export const getStoredUserBadge = async () => {
 
     return JSON.parse(badgeString);
   } catch (error) {
-    console.log("Error getting badge:", error);
+    Logger.log("Error getting badge:", error);
     return null;
   }
 };
@@ -61,7 +61,7 @@ export const removeStoredUserBadge = async () => {
   try {
     await AsyncStorage.removeItem(BADGE_STORAGE_KEY);
   } catch (error) {
-    console.log("Error removing badge:", error);
+    Logger.log("Error removing badge:", error);
   }
 };
 

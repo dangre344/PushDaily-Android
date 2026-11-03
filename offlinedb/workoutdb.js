@@ -1,6 +1,15 @@
 // WorkoutDB.js
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SQLite from "expo-sqlite";
 import { Logger } from "../constants/Logger";
+
+// Changes on every write to the workouts table, so anything cached from it
+// (Profile's stats — constants/profileStatsCache.js) knows to recompute.
+export const WORKOUTS_VERSION_KEY = "workouts_data_version";
+const bumpWorkoutsVersion = () =>
+  AsyncStorage.setItem(WORKOUTS_VERSION_KEY, String(Date.now())).catch((e) =>
+    Logger.log("workouts version bump failed:", String(e)),
+  );
 
 let db = null;
 let dbInitPromise = null;
@@ -21,6 +30,8 @@ export const initDB = async () => {
           bodyPart TEXT,
           dateTime TEXT
         );
+        -- Every date query sorts or filters on dateTime.
+        CREATE INDEX IF NOT EXISTS idx_workouts_dateTime ON workouts(dateTime);
       `);
       db = opened;
       Logger.log("Database initialized:", db);
@@ -46,6 +57,7 @@ export const insertWorkout = async (workout) => {
      VALUES (?, ?, ?, ?, ?, ?)`,
     [workoutId, name, calories, level, bodyPart, dateTime],
   );
+  await bumpWorkoutsVersion();
 };
 
 export const insertMultipleWorkouts = async (workouts = []) => {
@@ -104,6 +116,7 @@ export const insertMultipleWorkouts = async (workouts = []) => {
     });
 
     Logger.log("insertMultipleWorkouts success");
+    await bumpWorkoutsVersion();
     return true;
   } catch (error) {
     Logger.log("insertMultipleWorkouts error:", error);
@@ -115,6 +128,29 @@ export const getAllWorkouts = async () => {
   const database = getDB();
   return await database.getAllAsync(
     `SELECT * FROM workouts ORDER BY dateTime DESC`,
+  );
+};
+
+/**
+ * Workouts from the last `days` days, newest first — only the columns the
+ * Workouts screen uses. dateTime is stored as an ISO (UTC) string, so a
+ * string comparison is a time comparison.
+ */
+export const getRecentWorkouts = async (days = 60) => {
+  const database = getDB();
+  const since = new Date(Date.now() - days * 86400000).toISOString();
+  return await database.getAllAsync(
+    `SELECT id, bodyPart, level, dateTime FROM workouts
+     WHERE dateTime >= ? ORDER BY dateTime DESC`,
+    [since],
+  );
+};
+
+/** How many workouts were logged at each level: [{ level, n }]. */
+export const getLevelCounts = async () => {
+  const database = getDB();
+  return await database.getAllAsync(
+    `SELECT level, COUNT(*) AS n FROM workouts GROUP BY level`,
   );
 };
 
@@ -191,11 +227,13 @@ export const getWorkoutsForCurrentWeek = async () => {
 export const deleteWorkout = async (id) => {
   const database = getDB();
   await database.runAsync(`DELETE FROM workouts WHERE id = ?`, [id]);
+  await bumpWorkoutsVersion();
 };
 
 export const clearWorkouts = async () => {
   const database = getDB();
   await database.runAsync(`DELETE FROM workouts`);
+  await bumpWorkoutsVersion();
 };
 
 export const getProfileStats = async () => {

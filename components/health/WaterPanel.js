@@ -9,6 +9,7 @@ import {
   Linking,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TouchableOpacity,
   View,
@@ -16,7 +17,6 @@ import {
 import { Toast } from "toastify-react-native";
 import { colors } from "../../constants/colors";
 import { Logger } from "../../constants/Logger";
-import { sayOncePerSession, waterNudge } from "../../constants/bubbleMessage";
 import { useUser } from "../../constants/UserContext";
 import { scaling } from "../../constants/useScaling";
 import {
@@ -35,10 +35,10 @@ const fmt = (n) =>
   String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
 const IMPORTANCE = [
-  { icon: "flash-outline", text: "Boosts energy and beats afternoon fatigue." },
-  { icon: "bulb-outline", text: "Sharpens focus and concentration." },
-  { icon: "flame-outline", text: "Supports metabolism and fat burning." },
-  { icon: "sparkles-outline", text: "Keeps skin clear and joints healthy." },
+  { icon: "flash-outline", text: "More energy, less afternoon fatigue" },
+  { icon: "bulb-outline", text: "Sharper focus" },
+  { icon: "flame-outline", text: "Supports metabolism" },
+  { icon: "sparkles-outline", text: "Healthier skin and joints" },
 ];
 
 const getPlant = (ratio) => {
@@ -115,6 +115,7 @@ export default function WaterPanel({ visible = true }) {
   const [enabled, setEnabled] = useState(false);
   const [consumed, setConsumed] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [whyOpen, setWhyOpen] = useState(false);
 
   const progressAnim = useRef(new Animated.Value(0)).current;
   const plantScale = useRef(new Animated.Value(1)).current;
@@ -123,13 +124,6 @@ export default function WaterPanel({ visible = true }) {
   const ratio = goal.glasses > 0 ? Math.min(consumed / goal.glasses, 1) : 0;
   const percent = Math.round(ratio * 100);
   const plant = getPlant(ratio);
-
-  // Explain why hydration matters — once per app session.
-  useEffect(() => {
-    if (!visible) return;
-    const t = setTimeout(() => sayOncePerSession("water", waterNudge()), 700);
-    return () => clearTimeout(t);
-  }, [visible]);
 
   useEffect(() => {
     if (!visible) return;
@@ -243,58 +237,29 @@ export default function WaterPanel({ visible = true }) {
     setConsumed(next);
   };
 
+  // Two cards and a quiet link: today's progress (with the one action) and a
+  // reminders switch. The explainer opens on tap.
   return (
     <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
     >
-      {/* Why hydration matters */}
+      {/* ── Today ── */}
       <AnimCard delay={60} style={styles.card}>
-        <Text style={styles.cardTitle}>Why hydration matters</Text>
-        <Text style={styles.cardLead}>
-          Even mild dehydration drains your energy and focus. Drinking enough
-          water every day helps your body perform and recover better.
-        </Text>
-        {IMPORTANCE.map((item) => (
-          <View key={item.icon} style={styles.impRow}>
-            <View style={styles.impIcon}>
-              <Ionicons name={item.icon} size={ms(15)} color={colors.primary} />
-            </View>
-            <Text style={styles.impText}>{item.text}</Text>
+        <View style={styles.todayTop}>
+          <Animated.Text style={[styles.plant, { transform: [{ scale: plantScale }] }]}>
+            {plant.emoji}
+          </Animated.Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.todayTitle}>
+              {consumed} of {goal.glasses} glasses
+            </Text>
+            <Text style={styles.todaySub}>
+              {fmt(consumed * WATER_GLASS_ML)} / {fmt(goal.ml)} ml today
+            </Text>
           </View>
-        ))}
-      </AnimCard>
-
-      {/* Daily goal */}
-      <AnimCard delay={140} style={[styles.card, styles.goalCard]}>
-        <Text style={styles.goalLabel}>Your daily water goal</Text>
-        <Text style={styles.goalValue}>{fmt(goal.ml)} ml</Text>
-        <Text style={styles.goalGlasses}>
-          ≈ {goal.glasses} glasses ({WATER_GLASS_ML} ml each)
-        </Text>
-        <Text style={styles.goalNote}>
-          Based on your weight ({user?.weight || "—"} kg) and height (
-          {user?.height || "—"} cm).
-        </Text>
-      </AnimCard>
-
-      {/* Plant + progress */}
-      <AnimCard delay={220} style={styles.card}>
-        <Animated.Text
-          style={[styles.plant, { transform: [{ scale: plantScale }] }]}
-        >
-          {plant.emoji}
-        </Animated.Text>
-        <Text style={[styles.plantLabel, { color: plant.color }]}>
-          {plant.label}
-        </Text>
-
-        <View style={styles.progressHeader}>
-          <Text style={styles.progressGlasses}>
-            {consumed} / {goal.glasses} glasses
-          </Text>
-          <Text style={styles.progressPercent}>{percent}%</Text>
+          <Text style={styles.todayPercent}>{percent}%</Text>
         </View>
 
         <View style={styles.progressTrack}>
@@ -311,12 +276,12 @@ export default function WaterPanel({ visible = true }) {
           />
         </View>
 
-        {/* "I drank a glass" is always visible — tracking just enables reminders */}
         <View style={styles.logRow}>
           <TouchableOpacity
             style={styles.minusBtn}
             onPress={handleRemoveGlass}
             activeOpacity={0.85}
+            accessibilityLabel="Remove a glass"
           >
             <Ionicons name="remove" size={ms(20)} color={colors.text} />
           </TouchableOpacity>
@@ -334,94 +299,147 @@ export default function WaterPanel({ visible = true }) {
         </View>
       </AnimCard>
 
-      {/* Start / Stop */}
-      <AnimCard delay={300}>
-        {!enabled ? (
-          <TouchableOpacity
-            style={styles.startBtn}
-            onPress={handleStart}
-            activeOpacity={0.9}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <>
-                <Ionicons name="notifications" size={ms(18)} color="#FFFFFF" />
-                <Text style={styles.startBtnText}>Start Tracking Water</Text>
-              </>
-            )}
-          </TouchableOpacity>
+      {/* ── Reminders: one row, one switch ── */}
+      <AnimCard delay={120} style={[styles.card, styles.reminderRow]}>
+        <View style={styles.reminderIcon}>
+          <Ionicons
+            name={enabled ? "notifications" : "notifications-outline"}
+            size={ms(17)}
+            color={colors.primary}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.reminderTitle}>Drink reminders</Text>
+          <Text style={styles.reminderSub}>
+            {enabled ? "Every ~1.5 hrs, 8 AM–10 PM" : "Off"}
+          </Text>
+        </View>
+        {loading ? (
+          <ActivityIndicator color={colors.primary} />
         ) : (
-          <>
-            <View style={styles.trackingPill}>
-              <Ionicons
-                name="checkmark-circle"
-                size={ms(16)}
-                color={colors.green}
-              />
-              <Text style={styles.trackingText}>
-                Reminders on — every ~1.5 hrs, 8 AM to 10 PM
-              </Text>
-            </View>
-            <TouchableOpacity
-              style={styles.stopBtn}
-              onPress={handleStop}
-              activeOpacity={0.85}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#EF4444" />
-              ) : (
-                <>
-                  <Ionicons name="stop-circle" size={ms(18)} color="#EF4444" />
-                  <Text style={styles.stopBtnText}>Stop Tracking</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </>
+          <Switch
+            value={enabled}
+            onValueChange={(on) => (on ? handleStart() : handleStop())}
+            trackColor={{ true: colors.primary + "88", false: "#E5E7EB" }}
+            thumbColor={enabled ? colors.primary : "#FFFFFF"}
+            accessibilityLabel="Drink reminders"
+          />
         )}
       </AnimCard>
+
+      {/* ── Why it matters: a quiet link, details on tap ── */}
+      <TouchableOpacity
+        style={styles.whyHead}
+        activeOpacity={0.7}
+        onPress={() => setWhyOpen((v) => !v)}
+        hitSlop={6}
+      >
+        <Ionicons name="information-circle-outline" size={ms(16)} color={colors.textLight} />
+        <Text style={styles.whyTitle}>Why hydration matters</Text>
+        <Ionicons
+          name={whyOpen ? "chevron-up" : "chevron-down"}
+          size={ms(15)}
+          color={colors.textLight}
+        />
+      </TouchableOpacity>
+      {whyOpen ? (
+        <View style={styles.whyBody}>
+          <Text style={styles.whyNote}>
+            Your goal is based on your weight ({user?.weight || "—"} kg).
+          </Text>
+          {IMPORTANCE.map((item) => (
+            <View key={item.icon} style={styles.impRow}>
+              <View style={styles.impIcon}>
+                <Ionicons name={item.icon} size={ms(15)} color={colors.primary} />
+              </View>
+              <Text style={styles.impText}>{item.text}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
-  scrollContent: { padding: ms(16), paddingBottom: ms(24) },
+  scrollContent: { padding: ms(16), paddingBottom: ms(24), gap: ms(12) },
 
+  // Flat white cards with a hairline border (no tinted shadows).
   card: {
     backgroundColor: "#FFFFFF",
-    borderRadius: ms(20),
-    padding: ms(18),
-    marginBottom: ms(14),
+    borderRadius: ms(18),
+    padding: ms(16),
     borderWidth: 1,
-    borderColor: "#F0E6E0",
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.07,
-    shadowRadius: 12,
-    elevation: 2,
+    borderColor: "#EEF0F4",
   },
-  cardTitle: {
-    fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(16),
-    color: colors.text,
-    marginBottom: ms(6),
+
+  // ── Today ──
+  todayTop: { flexDirection: "row", alignItems: "center", gap: ms(12), marginBottom: ms(12) },
+  plant: { fontSize: ms(38) },
+  todayTitle: { fontFamily: "OpenSans_700Bold", fontSize: ms(18), color: colors.text },
+  todaySub: { fontFamily: "OpenSans_500Medium", fontSize: ms(12), color: colors.textLight, marginTop: 1 },
+  todayPercent: { fontFamily: "OpenSans_700Bold", fontSize: ms(15), color: colors.primary },
+  progressTrack: {
+    height: ms(10),
+    backgroundColor: "#F1EDEA",
+    borderRadius: ms(999),
+    overflow: "hidden",
   },
-  cardLead: {
-    fontFamily: "OpenSans_400Regular",
-    fontSize: ms(12),
-    color: colors.textLight,
-    lineHeight: ms(18),
-    marginBottom: ms(12),
+  progressFill: { height: "100%", backgroundColor: colors.primary, borderRadius: ms(999) },
+  logRow: { flexDirection: "row", alignItems: "center", gap: ms(10), marginTop: ms(14) },
+  minusBtn: {
+    width: ms(48),
+    height: ms(48),
+    borderRadius: ms(14),
+    backgroundColor: "#F4F6F8",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  impRow: {
+  addBtn: {
+    height: ms(48),
+    borderRadius: ms(14),
+    backgroundColor: colors.primary,
     flexDirection: "row",
     alignItems: "center",
-    gap: ms(10),
-    marginBottom: ms(10),
+    justifyContent: "center",
+    gap: ms(8),
   },
+  addBtnText: { fontFamily: "OpenSans_700Bold", fontSize: ms(14), color: "#FFFFFF" },
+
+  // ── Reminders ──
+  reminderRow: { flexDirection: "row", alignItems: "center", gap: ms(12), paddingVertical: ms(12) },
+  reminderIcon: {
+    width: ms(36),
+    height: ms(36),
+    borderRadius: ms(18),
+    backgroundColor: "#FFF1EA",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reminderTitle: { fontFamily: "OpenSans_600SemiBold", fontSize: ms(14), color: colors.text },
+  reminderSub: { fontFamily: "OpenSans_400Regular", fontSize: ms(12), color: colors.textLight, marginTop: 1 },
+
+  // ── Why it matters ──
+  whyHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "center",
+    gap: ms(6),
+    paddingVertical: ms(6),
+    paddingHorizontal: ms(8),
+  },
+  whyTitle: { fontFamily: "OpenSans_600SemiBold", fontSize: ms(12.5), color: colors.textLight },
+  whyBody: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: ms(16),
+    borderWidth: 1,
+    borderColor: "#EEF0F4",
+    padding: ms(14),
+    gap: ms(10),
+  },
+  whyNote: { fontFamily: "OpenSans_500Medium", fontSize: ms(12), color: colors.textLight },
+  impRow: { flexDirection: "row", alignItems: "center", gap: ms(10) },
   impIcon: {
     width: ms(30),
     height: ms(30),
@@ -430,163 +448,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  impText: {
-    flex: 1,
-    fontFamily: "OpenSans_500Medium",
-    fontSize: ms(12.5),
-    color: colors.text,
-  },
-
-  goalCard: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-    alignItems: "center",
-  },
-  goalLabel: {
-    fontFamily: "OpenSans_600SemiBold",
-    fontSize: ms(12),
-    color: "rgba(255,255,255,0.85)",
-  },
-  goalValue: {
-    fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(34),
-    color: "#FFFFFF",
-    marginTop: ms(4),
-  },
-  goalGlasses: {
-    fontFamily: "OpenSans_700Bold",
-    fontSize: ms(13),
-    color: "#FFFFFF",
-    marginTop: ms(2),
-  },
-  goalNote: {
-    fontFamily: "OpenSans_500Medium",
-    fontSize: ms(11),
-    color: "rgba(255,255,255,0.8)",
-    marginTop: ms(8),
-    textAlign: "center",
-  },
-
-  plant: { fontSize: ms(64), textAlign: "center" },
-  plantLabel: {
-    fontFamily: "OpenSans_700Bold",
-    fontSize: ms(13),
-    textAlign: "center",
-    marginTop: ms(6),
-    marginBottom: ms(16),
-  },
-  progressHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: ms(8),
-  },
-  progressGlasses: {
-    fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(14),
-    color: colors.text,
-  },
-  progressPercent: {
-    fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(14),
-    color: colors.primary,
-  },
-  progressTrack: {
-    height: ms(12),
-    backgroundColor: "#F0E6E0",
-    borderRadius: ms(999),
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    backgroundColor: colors.primary,
-    borderRadius: ms(999),
-  },
-  logRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: ms(10),
-    marginTop: ms(16),
-  },
-  minusBtn: {
-    width: ms(50),
-    height: ms(50),
-    borderRadius: ms(15),
-    backgroundColor: "#FFF0EB",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#F0E6E0",
-  },
-  addBtn: {
-    height: ms(50),
-    borderRadius: ms(15),
-    backgroundColor: colors.primary,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: ms(8),
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  addBtnText: {
-    fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(14),
-    color: "#FFFFFF",
-  },
-
-  startBtn: {
-    height: ms(54),
-    borderRadius: ms(16),
-    backgroundColor: colors.primary,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: ms(8),
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.28,
-    shadowRadius: 14,
-    elevation: 6,
-  },
-  startBtnText: {
-    fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(15),
-    color: "#FFFFFF",
-  },
-  trackingPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: ms(8),
-    backgroundColor: colors.green + "14",
-    borderRadius: ms(14),
-    paddingHorizontal: ms(14),
-    paddingVertical: ms(12),
-    marginBottom: ms(10),
-  },
-  trackingText: {
-    flex: 1,
-    fontFamily: "OpenSans_600SemiBold",
-    fontSize: ms(12),
-    color: colors.text,
-  },
-  stopBtn: {
-    height: ms(50),
-    borderRadius: ms(16),
-    backgroundColor: "#FEECEC",
-    borderWidth: 1,
-    borderColor: "#FCA5A5",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: ms(8),
-  },
-  stopBtnText: {
-    fontFamily: "OpenSans_800ExtraBold",
-    fontSize: ms(14),
-    color: "#EF4444",
-  },
+  impText: { flex: 1, fontFamily: "OpenSans_500Medium", fontSize: ms(12.5), color: colors.text },
 });
+

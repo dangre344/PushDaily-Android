@@ -374,6 +374,76 @@ export default function ProgressScreen() {
 
   const isFutureDay = selectedDate > todayKey;
 
+  // ── An empty day reads the week, not just the day ──
+  // "Rest day" is only true when they actually trained around it; an empty
+  // week deserves a (friendly) poke instead. Jack's mood follows.
+  const emptyDay = useMemo(() => {
+    const trained = new Set(workoutDates);
+    const keyOf = (d) => localDayKey(d);
+    const [y, m, dd] = selectedDate.split("-").map(Number);
+    const base = new Date(y, m - 1, dd);
+    // Workout days in the 7 days ending on the selected day.
+    let week = 0;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(base);
+      d.setDate(d.getDate() - i);
+      if (trained.has(keyOf(d))) week++;
+    }
+    // Current streak: consecutive days back from today (or yesterday, if
+    // today hasn't been trained yet — the streak is still alive until midnight).
+    let streak = 0;
+    const cur = new Date();
+    if (!trained.has(keyOf(cur))) cur.setDate(cur.getDate() - 1);
+    while (trained.has(keyOf(cur))) {
+      streak++;
+      cur.setDate(cur.getDate() - 1);
+    }
+    const ever = trained.size > 0;
+    // A stable pick per date, so the line doesn't change on every re-render.
+    const pick = (arr) => arr[(base.getDate() + base.getMonth()) % arr.length];
+    const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+
+    const SNARK = [
+      "Even your shoes are wondering where you went 👟",
+      "Your mat is starting to look like home décor 🙃",
+      "The couch called. It says thanks for the company 🛋️",
+      "Your muscles filed a missing-person report 🚨",
+    ];
+
+    if (isToday(selectedDate)) {
+      if (streak > 0)
+        return {
+          jack: "wow",
+          title: `🔥 ${plural(streak, "day")} streak on the line`,
+          sub: "Don't let it die today. Even 10 minutes counts.",
+        };
+      if (!ever)
+        return {
+          jack: "hi",
+          title: "No workouts logged yet",
+          sub: "Day one is the hardest. Also the best story later 😉",
+        };
+      if (week === 0) return { jack: "sad", title: "No workouts this week", sub: pick(SNARK) };
+      return {
+        jack: "wink",
+        title: "Nothing yet today",
+        sub: `${plural(week, "workout")} this week. Make it ${week + 1}? 😏`,
+      };
+    }
+    if (week === 0) return { jack: "sad", title: "No workouts logged", sub: pick(SNARK) };
+    if (week <= 2)
+      return {
+        jack: "wink",
+        title: "Day off",
+        sub: `${plural(week, "workout")} that week. Cute start — consistency is the real flex 😉`,
+      };
+    return {
+      jack: "sleepy",
+      title: "Rest day, well earned 😴",
+      sub: `${plural(week, "workout")} that week. Recovery is part of training.`,
+    };
+  }, [selectedDate, workoutDates]);
+
   const HeaderContent = useCallback(
     () => (
       <>
@@ -500,11 +570,7 @@ export default function ProgressScreen() {
             <View style={styles.dayEmpty}>
               <Image
                 source={
-                  isToday(selectedDate)
-                    ? EXPRESSION_IMAGES.hi
-                    : isFutureDay
-                      ? EXPRESSION_IMAGES.think
-                      : EXPRESSION_IMAGES.sleepy
+                  isFutureDay ? EXPRESSION_IMAGES.think : EXPRESSION_IMAGES[emptyDay.jack]
                 }
                 style={styles.dayEmptyMascot}
                 contentFit="contain"
@@ -515,18 +581,10 @@ export default function ProgressScreen() {
                   {formatShortDate(selectedDate)}
                 </Text>
                 <Text style={styles.dayHeadline}>
-                  {isToday(selectedDate)
-                    ? "Nothing yet today"
-                    : isFutureDay
-                      ? "Still ahead"
-                      : "Rest day 😴"}
+                  {isFutureDay ? "Still ahead" : emptyDay.title}
                 </Text>
                 <Text style={styles.dayEmptySub}>
-                  {isToday(selectedDate)
-                    ? "One session keeps the streak alive."
-                    : isFutureDay
-                      ? "Come back after your workout 💪"
-                      : "Recovery is part of training."}
+                  {isFutureDay ? "Come back after your workout 💪" : emptyDay.sub}
                 </Text>
                 {isToday(selectedDate) ? (
                   <Pressable
@@ -557,6 +615,7 @@ export default function ProgressScreen() {
       loading,
       monthDays,
       isFutureDay,
+      emptyDay,
     ],
   );
 
@@ -655,7 +714,7 @@ const styles = StyleSheet.create({
   },
 
   monthChipText: {
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     fontSize: scaleWidth(11.5),
     color: colors.primary,
   },
@@ -701,7 +760,7 @@ const styles = StyleSheet.create({
   },
 
   codeLegendCode: {
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     color: colors.green,
   },
 
@@ -723,13 +782,13 @@ const styles = StyleSheet.create({
   },
 
   dayDate: {
-    fontFamily: "OpenSans_700Bold",
+    fontFamily: "OpenSans_600SemiBold",
     fontSize: scaleWidth(11.5),
     color: colors.textLight,
   },
 
   dayHeadline: {
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     fontSize: scaleWidth(17),
     lineHeight: scaleWidth(23),
     color: colors.text,
@@ -742,7 +801,7 @@ const styles = StyleSheet.create({
   },
 
   dayNumber: {
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     fontSize: scaleWidth(15),
     color: colors.text,
   },
@@ -789,13 +848,13 @@ const styles = StyleSheet.create({
   },
 
   startBtnText: {
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     fontSize: scaleWidth(12.5),
     color: "#FFFFFF",
   },
 
   calendarMonthTitle: {
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     fontSize: scaleWidth(15),
     color: colors.text,
   },
@@ -840,7 +899,7 @@ const styles = StyleSheet.create({
 
   workoutSectionTitle: {
     fontSize: scaleWidth(15.5),
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     color: colors.text,
   },
 
@@ -891,13 +950,13 @@ const cardStyles = StyleSheet.create({
   },
 
   name: {
-    fontFamily: "OpenSans_700Bold",
+    fontFamily: "OpenSans_600SemiBold",
     fontSize: scaleWidth(13.5),
     color: colors.text,
   },
 
   levelText: {
-    fontFamily: "OpenSans_700Bold",
+    fontFamily: "OpenSans_600SemiBold",
     fontSize: scaleWidth(11),
     marginTop: 2,
   },
@@ -909,7 +968,7 @@ const cardStyles = StyleSheet.create({
   },
 
   calNum: {
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     fontSize: scaleWidth(16),
     color: colors.text,
   },
@@ -957,22 +1016,22 @@ const dayStyles = StyleSheet.create({
     color: "#CBD5E1",
   },
   numDone: {
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     color: colors.green,
   },
   numToday: {
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     color: colors.primary,
   },
   numSelected: {
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     color: "#FFFFFF",
   },
   code: {
     marginTop: 1,
     height: scaleWidth(12),
     lineHeight: scaleWidth(12),
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     fontSize: scaleWidth(8.5),
     color: colors.green,
   },

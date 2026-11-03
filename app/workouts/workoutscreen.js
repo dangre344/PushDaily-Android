@@ -1,19 +1,35 @@
 import { Logger } from "@/constants/Logger";
 import { useFocusEffect, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { MotiView } from "moti";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Animated, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  FlatList,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { maybeAskForReview } from "../../constants/appReview";
 import { bubbleScrollFade } from "../../constants/bubbleMessage";
 import { colors } from "../../constants/colors";
-import { tapHaptic } from "../../constants/haptics";
 import { bodyParts, workoutListGlobal } from "../../constants/Constants";
+import { tapHaptic } from "../../constants/haptics";
+import {
+  badgeForSnapshot,
+  getHomeSnapshot,
+  peekHomeSnapshot,
+  readHomeSnapshot,
+} from "../../constants/homeSnapshot";
 import { registerLevelPicker } from "../../constants/levelPicker";
+import {
+  getQuickStartOrder,
+  sortByQuickStartOrder,
+} from "../../constants/quickStartOrder";
 import { useUser } from "../../constants/UserContext";
 import { scaling } from "../../constants/useScaling";
 import {
@@ -21,17 +37,16 @@ import {
   markWaterPromptShown,
   pickWellnessPrompt,
 } from "../../constants/waterReminder";
-import {
-  getAllWorkouts,
-  getCurrentStreak,
-  getDaysSinceLastWorkout,
-  getProfileStats,
-  initDB,
-} from "../../offlinedb/workoutdb";
 import BadgeLevelUpModal from "../home/BadgeLevelUpModal";
-import WorkoutBadgeInfo, { BADGE_DETAILS, BADGE_ORDER, getUserBadge } from "../home/WorkoutBadgeInfo";
+import WorkoutBadgeInfo, {
+  BADGE_DETAILS,
+  BADGE_ORDER,
+} from "../home/WorkoutBadgeInfo";
 import BodyPartGrid from "./Componenets/BodyPartGrid";
-import HIITCard, { HIIT_CARD_GAP, HIIT_CARD_WIDTH } from "./Componenets/HIITCard";
+import HIITCard, {
+  HIIT_CARD_GAP,
+  HIIT_CARD_WIDTH,
+} from "./Componenets/HIITCard";
 import ScanButton from "./Componenets/ScanButton";
 import TodayCard from "./Componenets/TodayCard";
 import WaterPromptModal from "./Componenets/WaterPromptModal";
@@ -42,7 +57,8 @@ const { scaleHeight, moderateScale: ms } = scaling();
 // Shown in the same order people tend to think about training.
 const BODY_PART_ORDER = ["Chest", "Abs", "Legs", "Arms", "Shoulder", "Back"];
 const orderedBodyParts = [...bodyParts].sort(
-  (a, b) => BODY_PART_ORDER.indexOf(a.bodyPart) - BODY_PART_ORDER.indexOf(b.bodyPart),
+  (a, b) =>
+    BODY_PART_ORDER.indexOf(a.bodyPart) - BODY_PART_ORDER.indexOf(b.bodyPart),
 );
 
 const greetingKey = () => {
@@ -52,28 +68,31 @@ const greetingKey = () => {
   return "goodEvening";
 };
 
-function SectionHeader({ title, subtitle, delay = 0 }) {
+// Type scale for this screen: the name is the only ExtraBold text; section
+// titles are Bold, card titles SemiBold, supporting copy Regular.
+function SectionHeader({ title, subtitle, icon }) {
   return (
-    <MotiView
-      from={{ opacity: 0, translateY: 8 }}
-      animate={{ opacity: 1, translateY: 0 }}
-      transition={{ type: "timing", duration: 300, delay }}
-      style={styles.section}
-    >
-      <Text style={styles.sectionTitle}>{title}</Text>
+    <View style={styles.section}>
+      <View style={styles.sectionRow}>
+        {icon ? (
+          <View style={styles.sectionIcon}>
+            <Ionicons name={icon} size={ms(13)} color={colors.primary} />
+          </View>
+        ) : null}
+        <Text style={styles.sectionTitle}>{title}</Text>
+      </View>
       {subtitle ? <Text style={styles.sectionSub}>{subtitle}</Text> : null}
-    </MotiView>
+    </View>
   );
 }
+
+const EMPTY = [];
+const hiitKey = (item, index) => `hiit-${item.id || index}`;
 
 export default function WorkoutScreen() {
   const { t } = useTranslation();
   const { user } = useUser();
   const router = useRouter();
-
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(22)).current;
-  const scaleAnim = useRef(new Animated.Value(0.96)).current;
 
   const [openModal, setOpenModal] = useState(false);
   const [badgeLevelUpVisible, setBadgeLevelUpVisible] = useState(false);
@@ -86,74 +105,26 @@ export default function WorkoutScreen() {
     newBadge: null,
   });
   const [selectedBodyPart, setSelectedBodyPart] = useState(null);
-  const [allWorkouts, setAllHistoryWorkouts] = useState([]);
-  // Same inputs the home-screen widget is given.
-  const [mascot, setMascot] = useState({ streak: 0, daysSinceLast: -1 });
+  // Workouts data for this screen — see constants/homeSnapshot.js. Starts from
+  // whatever is already in memory, so coming back to the tab paints at once.
+  const [home, setHome] = useState(peekHomeSnapshot);
 
-  const loadData = async () => {
-    try {
-      await initDB();
-
-      const data = await getProfileStats();
-
-      Logger.log("Profile stats--->", data);
-
-      // Nudge for a Play Store in-app review once the habit is forming
-      // (uses the count we just fetched — no extra query).
-      maybeAskForReview(data?.totalWorkouts);
-    } catch (error) {
-      Logger.log("Error loading screen data:", error);
-    }
-  };
-
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 450,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 450,
-          useNativeDriver: true,
-        }),
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          friction: 7,
-          tension: 70,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }, []),
-  );
-
+  // On focus: reuses the snapshot unless a workout was saved or the day
+  // changed — then it runs a few small queries instead of reading every row.
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
-
-      const setup = async () => {
-        await initDB();
-
-        const [allWorkoutsData, currentStreak, daysSince] = await Promise.all([
-          getAllWorkouts(),
-          getCurrentStreak(),
-          getDaysSinceLastWorkout(),
-        ]);
-
-        Logger.log("All workouts after insertion--->", allWorkoutsData);
-
-        if (isActive) {
-          setAllHistoryWorkouts(allWorkoutsData);
-          setMascot({ streak: currentStreak, daysSinceLast: daysSince ?? -1 });
-        }
-      };
-
-      setup();
-
+      (async () => {
+        // Last known numbers first (instant after a relaunch)...
+        const cached = await readHomeSnapshot();
+        if (isActive && cached) setHome((cur) => cur || cached);
+        // ...then the up-to-date ones, only if something changed.
+        const { snapshot, changed } = await getHomeSnapshot();
+        if (!isActive || !snapshot) return;
+        setHome(snapshot);
+        // Play Store review nudge — only worth checking when the count moved.
+        if (changed) maybeAskForReview(snapshot.total);
+      })();
       return () => {
         isActive = false;
       };
@@ -172,7 +143,9 @@ export default function WorkoutScreen() {
     const t = setTimeout(async () => {
       try {
         // Read at fire time: the user profile may load after mount.
-        const which = await pickWellnessPrompt({ includePeriods: isFemaleRef.current });
+        const which = await pickWellnessPrompt({
+          includePeriods: isFemaleRef.current,
+        });
         if (which && active) {
           setPromptTab(which);
           setWaterPromptVisible(true);
@@ -186,7 +159,23 @@ export default function WorkoutScreen() {
     };
   }, []);
 
-  const { hiitWorkouts } = useMemo(() => {
+  // Quick starts order, worked out once when the profile was submitted; the
+  // read is cached after the first time.
+  const [quickStartOrder, setQuickStartOrder] = useState(null);
+  useFocusEffect(
+    useCallback(() => {
+      if (!user) return;
+      let active = true;
+      getQuickStartOrder(user).then((order) => {
+        if (active && order) setQuickStartOrder(order);
+      });
+      return () => {
+        active = false;
+      };
+    }, [user]),
+  );
+
+  const { hiitWorkouts: hiitWorkoutsDefault } = useMemo(() => {
     const targetMuscles = ["Upper Body", "Full Body", "Lower Body"];
     const hiitSet = new Set();
 
@@ -218,20 +207,32 @@ export default function WorkoutScreen() {
     return result;
   }, []);
 
-  const openWorkoutLevelModal = (item) => {
+  const hiitWorkouts = useMemo(
+    () => sortByQuickStartOrder(hiitWorkoutsDefault, quickStartOrder),
+    [hiitWorkoutsDefault, quickStartOrder],
+  );
+
+  const openWorkoutLevelModal = useCallback((item) => {
     setSelectedBodyPart(item);
     setOpenModal(true);
-  };
+  }, []);
 
   // Let other screens (Stats empty state) open this picker after navigating
   // here — they unmount before they could route to it themselves.
-  useEffect(() => registerLevelPicker(openWorkoutLevelModal), []);
+  useEffect(
+    () => registerLevelPicker(openWorkoutLevelModal),
+    [openWorkoutLevelModal],
+  );
 
-  const performedWorkouts = allWorkouts || [];
-  const userBadge = getUserBadge(performedWorkouts);
+  // Badge from the points total (summed in SQL), not by walking every row.
+  const points = home?.points ?? 0;
+  const userBadge = useMemo(() => badgeForSnapshot({ points }), [points]);
+  const homeLoaded = !!home;
 
   const checkBadgeUpgrade = async () => {
-    if (!userBadge?.title) return;
+    // Wait for real data: the 0-point placeholder must never be saved as the
+    // "last badge", or the real one would then look like a level-up.
+    if (!home || !userBadge?.title) return;
 
     const savedBadgeTitle = await AsyncStorage.getItem("lastUserBadgeTitle");
 
@@ -268,8 +269,29 @@ export default function WorkoutScreen() {
   };
 
   useEffect(() => {
-    checkBadgeUpgrade();
-  }, [userBadge?.title]);
+    checkBadgeUpgrade().catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs per badge change
+  }, [userBadge?.title, homeLoaded]);
+
+  // Taps queued up while the JS thread is busy (slow phones) used to arrive
+  // after the badge sheet had closed and open it again, over and over. Ignore
+  // taps while it's open and for a moment after it closes.
+  const badgeInfoClosedAt = useRef(0);
+  const openBadgeInfo = () => {
+    if (badgeInfoVisible || Date.now() - badgeInfoClosedAt.current < 700)
+      return;
+    tapHaptic();
+    setBadgeInfoVisible(true);
+  };
+  const closeBadgeInfo = () => {
+    badgeInfoClosedAt.current = Date.now();
+    setBadgeInfoVisible(false);
+  };
+
+  const renderHiitCard = useCallback(
+    ({ item }) => <HIITCard item={item} onClick={openWorkoutLevelModal} />,
+    [openWorkoutLevelModal],
+  );
 
   const firstName = (user?.name || "").trim().split(/\s+/)[0];
 
@@ -277,15 +299,7 @@ export default function WorkoutScreen() {
     <View style={styles.container}>
       <StatusBar style="dark" backgroundColor="#F7F8FA" />
 
-      <Animated.View
-        style={[
-          styles.animatedContainer,
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
-          },
-        ]}
-      >
+      <View style={styles.animatedContainer}>
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
@@ -303,26 +317,26 @@ export default function WorkoutScreen() {
 
             <View style={styles.headerRight}>
               {userBadge?.title ? (
-                <MotiView
-                  from={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ type: "spring", damping: 14, delay: 150 }}
-                >
+                <View>
                   <Pressable
-                    onPress={() => {
-                      tapHaptic();
-                      setBadgeInfoVisible(true);
-                    }}
-                    style={({ pressed }) => [styles.level, pressed && { opacity: 0.7 }]}
+                    onPress={openBadgeInfo}
+                    style={({ pressed }) => [
+                      styles.level,
+                      pressed && { opacity: 0.7 },
+                    ]}
                     hitSlop={6}
                     accessibilityRole="button"
                     accessibilityLabel={`Your level: ${userBadge.title}. View badges`}
                   >
                     <Text style={styles.levelEmoji}>{userBadge.emoji}</Text>
                     <Text style={styles.levelText}>{userBadge.title}</Text>
-                    <Ionicons name="chevron-forward" size={ms(11)} color={colors.primary} />
+                    <Ionicons
+                      name="chevron-forward"
+                      size={ms(11)}
+                      color={colors.primary}
+                    />
                   </Pressable>
-                </MotiView>
+                </View>
               ) : null}
 
               {/* Food-label scanner — top-right entry point */}
@@ -336,32 +350,22 @@ export default function WorkoutScreen() {
             name={user?.name}
             gender={user?.gender}
             experience={user?.experience}
-            streak={mascot.streak}
-            daysSinceLast={mascot.daysSinceLast}
-            history={allWorkouts}
+            streak={home?.streak ?? 0}
+            daysSinceLast={home?.daysSinceLast ?? -1}
+            history={home?.recent ?? EMPTY}
+            totalCount={home?.total}
             onStart={openWorkoutLevelModal}
           />
 
-          <SectionHeader title={t("trainByBodyPart")} delay={120} />
-          <BodyPartGrid items={orderedBodyParts} onSelect={openWorkoutLevelModal} />
-
-          <SectionHeader title={t("quickStarts")} delay={200} />
+          <SectionHeader title={t("quickStarts")} icon="flash" />
           {/* The original banner cards, unchanged — the posters carry their
               own artwork and text, so they're shown whole. */}
           <FlatList
             horizontal
             showsHorizontalScrollIndicator={false}
             data={hiitWorkouts}
-            keyExtractor={(item, index) => `hiit-${item.id || index}`}
-            renderItem={({ item }) => (
-              <HIITCard
-                item={item}
-                onClick={(selectedItem) => {
-                  Logger.log("Selected HIIT workout--->", selectedItem);
-                  openWorkoutLevelModal(selectedItem);
-                }}
-              />
-            )}
+            keyExtractor={hiitKey}
+            renderItem={renderHiitCard}
             contentContainerStyle={styles.hiitListContent}
             // Snap card-by-card from the left edge, so the next banner always
             // peeks in on the right — "swipe for more" without any text.
@@ -376,8 +380,14 @@ export default function WorkoutScreen() {
               index,
             })}
           />
+
+          <SectionHeader title={t("trainByBodyPart")} />
+          <BodyPartGrid
+            items={orderedBodyParts}
+            onSelect={openWorkoutLevelModal}
+          />
         </ScrollView>
-      </Animated.View>
+      </View>
 
       {openModal ? (
         <WorkoutLevelModal
@@ -402,7 +412,7 @@ export default function WorkoutScreen() {
         <WorkoutBadgeInfo
           userBadge={userBadge}
           visible={badgeInfoVisible}
-          setVisible={setBadgeInfoVisible}
+          setVisible={closeBadgeInfo}
         />
       ) : null}
 
@@ -416,7 +426,9 @@ export default function WorkoutScreen() {
         }}
         onEnable={(tab) => {
           setWaterPromptVisible(false);
-          router.push(tab === "period" ? "/profile/water?tab=period" : "/profile/water");
+          router.push(
+            tab === "period" ? "/profile/water?tab=period" : "/profile/water",
+          );
         }}
       />
     </View>
@@ -434,13 +446,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingTop: ms(10),
+    paddingTop: ms(3),
   },
   headerText: { flex: 1, paddingRight: 10 },
-  hello: { fontSize: ms(11), lineHeight: ms(15), fontFamily: "OpenSans_600SemiBold", color: colors.textLight },
+  hello: {
+    fontSize: ms(12),
+    lineHeight: ms(16),
+    fontFamily: "OpenSans_500Medium",
+    color: colors.textLight,
+  },
   name: {
-    fontSize: ms(18),
-    lineHeight: ms(23),
+    fontSize: ms(14),
+    lineHeight: ms(26),
     fontFamily: "OpenSans_800ExtraBold",
     color: colors.text,
     letterSpacing: -0.4,
@@ -457,12 +474,35 @@ const styles = StyleSheet.create({
     paddingRight: 7,
   },
   levelEmoji: { fontSize: ms(12) },
-  levelText: { fontSize: ms(11), fontFamily: "OpenSans_800ExtraBold", color: colors.primary },
+  levelText: {
+    fontSize: ms(11),
+    fontFamily: "OpenSans_600SemiBold",
+    color: colors.primary,
+  },
 
   // 24 between sections, everywhere on this screen.
-  section: { paddingHorizontal: 20, marginTop: ms(24) },
-  sectionTitle: { fontSize: ms(17), fontFamily: "OpenSans_800ExtraBold", color: colors.text, letterSpacing: -0.3 },
-  sectionSub: { fontSize: ms(11.5), fontFamily: "OpenSans_600SemiBold", color: colors.textLight, marginTop: 1 },
+  section: { paddingHorizontal: 20, marginTop: ms(18) },
+  sectionRow: { flexDirection: "row", alignItems: "center", gap: 7 },
+  sectionIcon: {
+    width: ms(22),
+    height: ms(22),
+    borderRadius: ms(11),
+    backgroundColor: "#FFF1E8",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sectionTitle: {
+    fontSize: ms(16),
+    fontFamily: "OpenSans_700Bold",
+    color: colors.text,
+    letterSpacing: -0.2,
+  },
+  sectionSub: {
+    fontSize: ms(12),
+    fontFamily: "OpenSans_400Regular",
+    color: colors.textLight,
+    marginTop: 2,
+  },
 
   // Original banner list spacing, plus a little top room under the new header.
   // Same 20 side margin as everything above; the trailing card gap already
@@ -471,6 +511,5 @@ const styles = StyleSheet.create({
     paddingLeft: 20,
     paddingRight: 20 - HIIT_CARD_GAP,
     paddingTop: 12,
-    paddingBottom: ms(30),
   },
 });

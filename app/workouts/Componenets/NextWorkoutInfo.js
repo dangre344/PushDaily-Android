@@ -1,310 +1,206 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Image as ExpoImage } from "expo-image";
 import { useEffect, useRef, useState } from "react";
 import {
   Animated,
-  Easing,
-  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import Svg, { Circle } from "react-native-svg";
+import { exercisePhoto } from "../../../components/workout/exercisePhotos";
+import { preloadExerciseVideo } from "../../../components/workout/ExerciseVideoPlayer";
 import { colors } from "../../../constants/colors";
 import { scaling } from "../../../constants/useScaling";
 
-export default function NextWorkoutInfo({
-  workouts,
-  index,
-  setLoadingPage,
-  setIndex,
-  setWorkoutCompletedCount,
-}) {
+const REST_SECONDS = 30;
+const MAX_REST_SECONDS = 600;
+const ADD_OPTIONS = [20, 30, 45];
+
+const RING = scaling().moderateScale(84);
+const STROKE = scaling().moderateScale(6);
+const RADIUS = (RING - STROKE) / 2;
+const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+
+const formatTime = (seconds) => {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+};
+
+// Rest between exercises: a countdown on top, the exercise that's up next
+// below. Laid out to fit the screen without scrolling.
+export default function NextWorkoutInfo({ workouts, index, setLoadingPage }) {
+  const upNext = workouts.workoutList[index];
+
   const [showSteps, setShowSteps] = useState(false);
-
-  const [timeLeft, setTimeLeft] = useState(30); // Initial 30 seconds
-  const [isTimerActive, setIsTimerActive] = useState(true);
+  const [timeLeft, setTimeLeft] = useState(REST_SECONDS);
+  // The ring empties over the whole rest, including any time the user added.
+  const [totalTime, setTotalTime] = useState(REST_SECONDS);
+  const [addedLabel, setAddedLabel] = useState("");
   const timerRef = useRef(null);
-
-  // Animation values
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const buttonScaleAnim = useRef(new Animated.Value(1)).current;
-  const timeAddedAnim = useRef(new Animated.Value(0)).current;
+  const finishedRef = useRef(false);
+  const addedAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    startTimer();
-
-    startPulseAnimation();
-
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-    };
+    // Only counts down — an updater must stay pure, so finishing is handled
+    // by the effect below. (Calling the parent's setLoadingPage from inside
+    // this updater was the "Cannot update a component while rendering a
+    // different component" error.)
+    timerRef.current = setInterval(() => {
+      setTimeLeft((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    // This screen appears between every exercise: leave nothing running.
+    return () => clearInterval(timerRef.current);
   }, []);
 
-  const startTimer = () => {
-    setIsTimerActive(true);
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
+  // Rest is over: stop the clock and go to the next exercise.
+  useEffect(() => {
+    if (timeLeft > 0 || finishedRef.current) return;
+    finishedRef.current = true;
+    clearInterval(timerRef.current);
+    setLoadingPage("play_workout");
+  }, [timeLeft]);
 
-    timerRef.current = setInterval(() => {
-      setTimeLeft((prevTime) => {
-        if (prevTime <= 1) {
-          clearInterval(timerRef.current);
-          setIsTimerActive(false);
-          playTimerCompleteAnimation();
-
-          setLoadingPage("play_workout");
-          return 0;
-        }
-        return prevTime - 1;
-      });
-    }, 1000);
-  };
-
-  const startPulseAnimation = () => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.1,
-          duration: 1000,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1000,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ]),
-    ).start();
-  };
-
-  const playButtonPressAnimation = () => {
-    Animated.sequence([
-      Animated.timing(buttonScaleAnim, {
-        toValue: 0.9,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(buttonScaleAnim, {
-        toValue: 1,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  };
-
-  const playTimeAddedAnimation = () => {
-    timeAddedAnim.setValue(0);
-    Animated.timing(timeAddedAnim, {
-      toValue: 1,
-      duration: 500,
-      useNativeDriver: true,
-    }).start(() => {
-      timeAddedAnim.setValue(0);
-    });
-  };
-
-  const playTimerCompleteAnimation = () => {
-    // Reset pulse animation
-    pulseAnim.setValue(1);
-
-    // Vibrate animation for timer completion
-    Animated.sequence([
-      Animated.timing(pulseAnim, {
-        toValue: 1.2,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(pulseAnim, {
-        toValue: 0.9,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(pulseAnim, {
-        toValue: 1.1,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(pulseAnim, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  };
+  // Have the next clip ready by the time the rest ends.
+  useEffect(() => {
+    preloadExerciseVideo(upNext?.video);
+  }, [upNext?.video]);
 
   const addTime = (seconds) => {
-    if (!isTimerActive) {
-      startTimer();
-    }
+    const next = Math.min(MAX_REST_SECONDS, timeLeft + seconds);
+    setTimeLeft(next);
+    setTotalTime((total) => Math.max(total, next));
 
-    playButtonPressAnimation();
-    playTimeAddedAnimation();
-
-    setTimeLeft((prevTime) => prevTime + seconds);
-
-    // Add visual feedback for the added time
-    setTimeout(() => {
-      // Animation for time addition is handled by playTimeAddedAnimation
-    }, 100);
+    setAddedLabel(`+${seconds}s added`);
+    addedAnim.setValue(0);
+    Animated.timing(addedAnim, {
+      toValue: 1,
+      duration: 900,
+      useNativeDriver: true,
+    }).start();
   };
 
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  };
-
-  const resetTimer = () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
-    setTimeLeft(30);
-    setIsTimerActive(true);
-    startTimer();
-  };
+  const progress = totalTime > 0 ? timeLeft / totalTime : 0;
+  const amount = upNext.reps ? `${upNext.reps} reps` : `${upNext.time}`;
 
   return (
-    <View>
-      <View style={styles.imageCard}>
-        <Image
-          source={workouts.workoutList[index].photo}
-          style={styles.exerciseImage}
-          resizeMode="contain"
-        />
-      </View>
-
-      <View style={styles.exerciseInfo}>
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <Text
-            style={styles.sectionTitle}
-          >{`${workouts.workoutList[index].name} X ${workouts.workoutList[index].reps ? workouts.workoutList[index].reps : workouts.workoutList[index].time}`}</Text>
-          {/* <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Ionicons name="time-outline" size={20} color={colors.primary} />
-                <Text style={styles.statText}>{workout.time}</Text>
-              </View>
-
-              <View style={styles.statItem}>
-                <Ionicons name="flame-outline" size={20} color={colors.primary} />
-                <Text style={styles.statText}>{workout.calories} kcal</Text>
-              </View>
-
-              <View style={styles.statItem}>
-                <Ionicons
-                  name="barbell-outline"
-                  size={20}
-                  color={colors.primary}
-                />
-                <Text style={styles.statText}>6-12 reps</Text>
-              </View>
-            </View> */}
-        </View>
-
-        <View style={styles.muscleFocus}>
-          <View style={styles.muscleTags}>
-            {workouts.workoutList[index].focus.map((muscle, i) => (
-              <View key={i} style={styles.muscleTag}>
-                <Text style={styles.muscleTagText}>{muscle}</Text>
-              </View>
-            ))}
+    <View style={styles.root}>
+      {/* ── Rest countdown ───────────────────────────────────────────── */}
+      <View style={[styles.card, styles.restCard]}>
+        <View style={styles.ring}>
+          <Svg width={RING} height={RING}>
+            <Circle
+              cx={RING / 2}
+              cy={RING / 2}
+              r={RADIUS}
+              stroke="#FFE7DD"
+              strokeWidth={STROKE}
+              fill="none"
+            />
+            <Circle
+              cx={RING / 2}
+              cy={RING / 2}
+              r={RADIUS}
+              stroke={colors.primary}
+              strokeWidth={STROKE}
+              strokeLinecap="round"
+              fill="none"
+              strokeDasharray={CIRCUMFERENCE}
+              strokeDashoffset={CIRCUMFERENCE * (1 - progress)}
+              // Start at 12 o'clock.
+              transform={`rotate(-90 ${RING / 2} ${RING / 2})`}
+            />
+          </Svg>
+          <View style={styles.ringCenter} pointerEvents="none">
+            <Text style={styles.timer}>{formatTime(timeLeft)}</Text>
           </View>
         </View>
 
-        <View style={styles.timerSection}>
-          <Text style={styles.timerTitle}>Next Set Starts In</Text>
-          <Animated.View
-            style={[
-              styles.timerContainer,
-              {
-                transform: [{ scale: pulseAnim }],
-              },
-            ]}
-          >
-            <Text
-              style={[
-                styles.timer,
-                timeLeft <= 10 && styles.timerWarning,
-                timeLeft === 0 && styles.timerComplete,
-              ]}
-            >
-              {formatTime(timeLeft)}
-            </Text>
-
+        <View style={styles.restSide}>
+          <View style={styles.restHeading}>
+            <Text style={[styles.eyebrow, styles.eyebrowLeft]}>REST</Text>
             <Animated.Text
               style={[
-                styles.timeAddedFeedback,
+                styles.addedFeedback,
                 {
-                  opacity: timeAddedAnim.interpolate({
-                    inputRange: [0, 0.5, 1],
-                    outputRange: [0, 1, 0],
+                  opacity: addedAnim.interpolate({
+                    inputRange: [0, 0.2, 0.8, 1],
+                    outputRange: [0, 1, 1, 0],
                   }),
-                  transform: [
-                    {
-                      translateY: timeAddedAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0, -20],
-                      }),
-                    },
-                  ],
                 },
               ]}
             >
-              + Time Added!
+              {addedLabel}
             </Animated.Text>
-          </Animated.View>
+          </View>
+          <Text style={styles.timerHint}>Next set starts automatically</Text>
 
-          <View style={styles.timeButtons}>
-            {[20, 30, 45].map((seconds) => (
-              <Animated.View
+          <View style={styles.addRow}>
+            {ADD_OPTIONS.map((seconds) => (
+              <TouchableOpacity
                 key={seconds}
-                style={{
-                  transform: [{ scale: buttonScaleAnim }],
-                }}
+                style={styles.addPill}
+                onPress={() => addTime(seconds)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={`Add ${seconds} seconds of rest`}
               >
-                <TouchableOpacity
-                  style={styles.timeButton}
-                  onPress={() => addTime(seconds)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.timeButtonText}>+{seconds}s</Text>
-                </TouchableOpacity>
-              </Animated.View>
+                <Text style={styles.addPillText}>+{seconds}s</Text>
+              </TouchableOpacity>
             ))}
           </View>
         </View>
+      </View>
 
-        {/* <Text style={styles.exerciseDescription}>{workout.description}</Text> */}
+      {/* ── Up next ──────────────────────────────────────────────────── */}
+      <View style={[styles.card, styles.nextCard]}>
+        <View style={styles.photoWrap}>
+          <ExpoImage
+            source={exercisePhoto(upNext.photo)}
+            style={styles.photo}
+            contentFit="contain"
+            transition={0}
+          />
+        </View>
 
-        <TouchableOpacity
-          style={styles.stepsToggle}
-          onPress={() => setShowSteps(!showSteps)}
-        >
-          <View style={styles.stepsToggleHeader}>
-            <Text style={styles.stepsToggleText}>
-              {showSteps ? "Hide" : "Show"} Steps & Video
+        <View style={styles.nextBody}>
+          <Text style={[styles.eyebrow, styles.eyebrowLeft]}>UP NEXT</Text>
+          <View style={styles.nextTitleRow}>
+            <Text style={styles.nextName} numberOfLines={2}>
+              {upNext.name}
             </Text>
+            <View style={styles.amountBadge}>
+              <Ionicons
+                name={upNext.reps ? "repeat" : "time-outline"}
+                size={scaling().moderateScale(13)}
+                color={colors.primary}
+              />
+              <Text style={styles.amountText}>{amount}</Text>
+            </View>
+          </View>
+          {upNext.focus?.length ? (
+            <Text style={styles.focus} numberOfLines={1}>
+              {upNext.focus.join(" · ")}
+            </Text>
+          ) : null}
+
+          <TouchableOpacity
+            style={styles.stepsToggle}
+            onPress={() => setShowSteps((v) => !v)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.stepsToggleText}>How to do it</Text>
             <Ionicons
               name={showSteps ? "chevron-up" : "chevron-down"}
-              size={20}
+              size={scaling().moderateScale(16)}
               color={colors.primary}
             />
-          </View>
-        </TouchableOpacity>
+          </TouchableOpacity>
 
-        {showSteps && (
-          <View style={styles.stepsContainer}>
-            {workouts.workoutList[index].steps.map((step, i) => (
+          {showSteps &&
+            upNext.steps?.map((step, i) => (
               <View key={i} style={styles.stepItem}>
                 <View style={styles.stepNumber}>
                   <Text style={styles.stepNumberText}>{i + 1}</Text>
@@ -312,506 +208,202 @@ export default function NextWorkoutInfo({
                 <Text style={styles.stepText}>{step}</Text>
               </View>
             ))}
-
-            <TouchableOpacity style={styles.videoButton}>
-              <Ionicons name="play-circle" size={24} color={colors.primary} />
-              <Text style={styles.videoButtonText}>
-                Watch Video Demonstration
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
+        </View>
       </View>
     </View>
   );
 }
 
-export const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.textLight,
+const styles = StyleSheet.create({
+  // flexGrow (not flex): fills the screen, yet can grow past it — and scroll —
+  // when the steps are opened.
+  root: {
+    flexGrow: 1,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 12,
+    gap: 12,
   },
 
-  // Header
-  header: {
+  card: {
+    backgroundColor: colors.white,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "#EEF1F4",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: "center",
+  },
+
+  eyebrow: {
+    fontFamily: "OpenSans_700Bold",
+    fontSize: scaling().moderateScale(11),
+    letterSpacing: 1.2,
+    color: colors.primary,
+  },
+  eyebrowLeft: {
+    alignSelf: "flex-start",
+  },
+
+  // Countdown: one compact row, so the photo below gets the height.
+  restCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    paddingVertical: 12,
+  },
+  ring: {
+    width: RING,
+    height: RING,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  restSide: {
+    flex: 1,
+  },
+  restHeading: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 15,
-    backgroundColor: colors.textLight,
   },
-
-  backButton: {
-    padding: 8,
-    borderRadius: 12,
-    backgroundColor: "rgba(255, 107, 53, 0.1)",
-  },
-
-  headerCenter: {
+  ringCenter: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: "center",
+    justifyContent: "center",
   },
-
-  headerTitle: {
-    fontFamily: "OpenSans_700Bold",
-    fontSize: 18,
-    color: colors.secondary,
+  timer: {
+    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: scaling().moderateScale(22),
+    color: colors.text,
+    fontVariant: ["tabular-nums"],
   },
-
-  headerSubtitle: {
-    fontFamily: "OpenSans_400Regular",
-    fontSize: 12,
-    color: "#718096",
+  timerHint: {
+    fontFamily: "OpenSans_500Medium",
+    fontSize: scaling().moderateScale(12),
+    color: colors.muted,
     marginTop: 2,
   },
-
-  skipButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-
-  skipText: {
-    fontFamily: "OpenSans_500Medium",
-    fontSize: 14,
-    color: colors.secondary,
-  },
-
-  // ScrollView
-  scrollView: {
-    flex: 1,
-  },
-
-  // Progress
-  progressContainer: {
-    paddingHorizontal: 20,
-    marginTop: 5,
-  },
-
-  progressHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-
-  progressText: {
+  addedFeedback: {
     fontFamily: "OpenSans_600SemiBold",
-    fontSize: 14,
-    color: colors.secondary,
+    fontSize: scaling().moderateScale(11),
+    color: colors.success,
   },
-
-  progressDots: {
+  addRow: {
     flexDirection: "row",
-  },
-
-  progressDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#E2E8F0",
-    marginHorizontal: 3,
-  },
-
-  progressDotActive: {
-    backgroundColor: colors.primary,
-    width: 16,
-  },
-
-  progressDotCompleted: {
-    backgroundColor: "#48BB78",
-  },
-
-  progressBar: {
-    height: 4,
-    backgroundColor: "#E2E8F0",
-    borderRadius: 2,
-    overflow: "hidden",
-  },
-
-  progressFill: {
-    height: "100%",
-    backgroundColor: colors.primary,
-    borderRadius: 2,
-  },
-
-  // Image Card
-  imageCard: {
-    height: scaling().scaleHeight(200),
-    marginHorizontal: 20,
+    gap: 6,
     marginTop: 10,
-    borderRadius: 20,
-    overflow: "hidden",
   },
-
-  exerciseImage: {
-    width: "100%",
-    height: "100%",
-  },
-
-  imageGradient: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 120,
-    padding: 16,
-    justifyContent: "flex-end",
-  },
-
-  imageBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: colors.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-
-  imageBadgeText: {
-    fontFamily: "OpenSans_600SemiBold",
-    fontSize: 12,
-    color: "#FFFFFF",
-  },
-
-  // Exercise Info
-  exerciseInfo: {
-    paddingHorizontal: 20,
-    paddingTop: 15,
-    paddingBottom: 30,
-  },
-
-  exerciseName: {
-    fontFamily: "opensans_700bold",
-    fontSize: 18,
-    color: colors.text,
-    marginBottom: 10,
-  },
-
-  statsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 20,
-  },
-
-  statItem: {
+  addPill: {
+    flex: 1,
     alignItems: "center",
-    backgroundColor: "rgba(255, 107, 53, 0.08)",
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    borderRadius: 12,
-    marginEnd: 10,
-  },
-
-  statText: {
-    fontFamily: "OpenSans_600SemiBold",
-    fontSize: 12,
-    color: colors.secondary,
-    marginTop: 5,
-  },
-
-  exerciseDescription: {
-    fontFamily: "OpenSans_400Regular",
-    fontSize: 12,
-
-    color: "#4A5568",
-    marginBottom: 15,
-  },
-
-  // Muscle Focus
-  muscleFocus: {
-    marginBottom: 10,
-  },
-
-  sectionTitle: {
-    fontFamily: "OpenSans_600SemiBold",
-    fontSize: scaling().moderateScale(16),
-    color: colors.text,
-    marginBottom: 5,
-  },
-
-  muscleTags: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-
-  muscleTag: {
-    borderColor: colors.border,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: "#FFF3EE",
     borderWidth: 1,
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
+    borderColor: "#FFD9C9",
   },
-
-  muscleTagText: {
-    fontFamily: "OpenSans_500Medium",
-    fontSize: 10,
+  addPillText: {
+    fontFamily: "OpenSans_700Bold",
+    fontSize: scaling().moderateScale(13),
     color: colors.primary,
   },
 
-  // Steps
-  stepsToggle: {
-    marginBottom: 20,
-    marginTop: 10,
+  // Up next
+  nextCard: {
+    flexGrow: 1,
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+    overflow: "hidden",
+    alignItems: "stretch",
   },
-
-  stepsToggleHeader: {
+  // Takes whatever height is left, so the whole screen fits without a scroll.
+  photoWrap: {
+    flexGrow: 1,
+    minHeight: scaling().scaleHeight(200),
+    backgroundColor: colors.lightColor,
+  },
+  photo: {
+    position: "absolute",
+    top: 4,
+    left: 4,
+    right: 4,
+    bottom: 4,
+  },
+  nextBody: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  nextTitleRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E2E8F0",
+    gap: 10,
+    marginTop: 2,
   },
-
+  nextName: {
+    flex: 1,
+    fontFamily: "OpenSans_700Bold",
+    fontSize: scaling().moderateScale(17),
+    color: colors.text,
+  },
+  amountBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: "#FFF3EE",
+  },
+  amountText: {
+    fontFamily: "OpenSans_700Bold",
+    fontSize: scaling().moderateScale(12),
+    color: colors.primary,
+  },
+  focus: {
+    marginTop: 4,
+    fontFamily: "OpenSans_500Medium",
+    fontSize: scaling().moderateScale(12),
+    color: colors.muted,
+  },
+  stepsToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 10,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: "#EEF1F4",
+  },
   stepsToggleText: {
     fontFamily: "OpenSans_600SemiBold",
-    fontSize: 16,
+    fontSize: scaling().moderateScale(13),
     color: colors.primary,
   },
-
-  stepsContainer: {
-    marginBottom: 25,
-  },
-
   stepItem: {
     flexDirection: "row",
     alignItems: "flex-start",
-    marginBottom: 16,
+    gap: 10,
+    paddingVertical: 6,
   },
-
   stepNumber: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: colors.primary,
-    justifyContent: "center",
+    width: scaling().moderateScale(22),
+    height: scaling().moderateScale(22),
+    borderRadius: 999,
+    backgroundColor: "#FFF3EE",
     alignItems: "center",
-    marginRight: 12,
-    marginTop: 2,
+    justifyContent: "center",
   },
-
   stepNumberText: {
     fontFamily: "OpenSans_700Bold",
-    fontSize: 14,
-    color: "#FFFFFF",
+    fontSize: scaling().moderateScale(11),
+    color: colors.primary,
   },
-
   stepText: {
     flex: 1,
     fontFamily: "OpenSans_400Regular",
-    fontSize: 16,
-    color: "#4A5568",
-    lineHeight: 24,
-  },
-
-  videoButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255, 107, 53, 0.1)",
-    paddingVertical: 16,
-    borderRadius: 12,
-    marginTop: 10,
-    gap: 8,
-  },
-
-  videoButtonText: {
-    fontFamily: "OpenSans_600SemiBold",
-    fontSize: 16,
-    color: colors.primary,
-  },
-
-  // Timer
-  timerSection: {
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    padding: 25,
-    borderRadius: 20,
-    marginTop: 5,
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-  },
-
-  timeButtons: {
-    flexDirection: "row",
-    gap: 12,
-  },
-
-  timeButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    backgroundColor: "#F7FAFC",
-  },
-
-  timeButtonText: {
-    fontFamily: "OpenSans_500Medium",
-    fontSize: 14,
-    color: colors.white,
-  },
-
-  // Footer Navigation
-  footer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: colors.textLight,
-    borderTopWidth: 1,
-    borderTopColor: "#E2E8F0",
-  },
-
-  navButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 16,
-    minWidth: 140,
-    justifyContent: "center",
-    gap: 8,
-  },
-
-  prevButton: {
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    backgroundColor: "#FFFFFF",
-  },
-
-  nextButton: {
-    backgroundColor: colors.primary,
-  },
-
-  disabledButton: {
-    opacity: 0.5,
-  },
-
-  navButtonText: {
-    fontFamily: "OpenSans_600SemiBold",
-    fontSize: 16,
-    color: colors.secondary,
-  },
-
-  nextButtonText: {
-    fontFamily: "OpenSans_600SemiBold",
-    fontSize: 16,
-    color: "#FFFFFF",
-  },
-
-  disabledButtonText: {
-    color: "#CBD5E1",
-  },
-
-  timerTitle: {
-    fontSize: 16,
-    fontFamily: "OpenSans_600SemiBold",
+    fontSize: scaling().moderateScale(13),
+    lineHeight: scaling().moderateScale(19),
     color: colors.text,
-    textAlign: "center",
-    marginBottom: 12,
-  },
-
-  timerContainer: {
-    alignItems: "center",
-    marginBottom: 16,
-  },
-
-  timer: {
-    fontSize: 40,
-    fontFamily: "OpenSans_700Bold",
-    color: colors.text,
-    textAlign: "center",
-  },
-
-  timerWarning: {
-    color: "#FF6B35", // Orange color for warning
-  },
-
-  timerComplete: {
-    color: "#4CAF50", // Green color for complete
-  },
-
-  timeAddedFeedback: {
-    position: "absolute",
-    top: -10,
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#4CAF50",
-  },
-
-  timeButtons: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 12,
-    marginBottom: 16,
-  },
-
-  timeButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 12,
-    minWidth: 80,
-    alignItems: "center",
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-
-  resetButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 10,
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-
-  resetButtonText: {
-    color: colors.primary,
-    fontSize: 14,
-    fontWeight: "600",
-  },
-
-  timerStatus: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-
-  statusIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-
-  statusActive: {
-    backgroundColor: "#4CAF50",
-  },
-
-  statusPaused: {
-    backgroundColor: "#FF6B35",
-  },
-
-  statusText: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    fontWeight: "500",
   },
 });
