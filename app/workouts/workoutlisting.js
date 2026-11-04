@@ -1,4 +1,4 @@
-import { Ionicons, Octicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useNavigation } from "@react-navigation/native";
 import { Image as ExpoImage } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -419,7 +419,7 @@ export default function WorkoutListingScreen({ route }) {
               <View style={styles.workoutDetails}>
                 <IconWithText
                   icon={
-                    <Octicons name="clock" size={14} color={colors.primary} />
+                    <Ionicons name="time-outline" size={14} color={colors.primary} />
                   }
                   label={item.time}
                   size={12}

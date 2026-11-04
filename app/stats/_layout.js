@@ -1,4 +1,4 @@
-import { AntDesign, Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -681,7 +681,7 @@ export default function StatsScreen({ onPickBodyPart, hideHeader = false }) {
                     { backgroundColor: colors.primary + "20" },
                   ]}
                 >
-                  <AntDesign name="fire" size={ms(14)} color={colors.primary} />
+                  <Ionicons name="flame" size={ms(14)} color={colors.primary} />
                 </View>
                 <Text style={cardStyles.title}>Calories Burned</Text>
                 <Text style={cardStyles.subtitle}>Last 7 days</Text>

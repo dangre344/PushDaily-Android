@@ -35,7 +35,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as Notifications from "expo-notifications";
 
 import { scaling } from "@/constants/useScaling.js";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import * as yup from "yup";
 import { OptionCardController } from "../../components/ui/OptionCard.js";
 import AgeField from "../../components/ui/AgeField.js";

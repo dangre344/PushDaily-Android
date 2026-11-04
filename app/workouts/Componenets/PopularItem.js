@@ -1,4 +1,4 @@
-import { AntDesign, Octicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image, StyleSheet, Text, View } from "react-native";
 import IconWithText from "../../../components/ui/IconWithText";
 import { colors } from "../../../constants/colors";
@@ -39,7 +39,7 @@ export default function PopularItem({ item }) {
           }}
         >
           <IconWithText
-            icon={<Octicons name="clock" size={24} color={colors.textLight} />}
+            icon={<Ionicons name="time-outline" size={24} color={colors.textLight} />}
             label={item.time}
             size={12}
             textStyle={{ fontSize: moderateScale(10) }}
@@ -48,7 +48,7 @@ export default function PopularItem({ item }) {
           />
 
           <IconWithText
-            icon={<AntDesign name="fire" size={10} color={colors.textLight} />}
+            icon={<Ionicons name="flame" size={10} color={colors.textLight} />}
             label="280 Cal"
             size={12}
             textStyle={{ fontSize: moderateScale(10) }}

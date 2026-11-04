@@ -1,4 +1,4 @@
-import { AntDesign, Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useEffect, useRef } from "react";
 import {
   Animated,
@@ -465,7 +465,7 @@ export default function WorkoutBadgeInfo({ userBadge, visible, setVisible }) {
             {LEVEL_WEIGHTS.map((item) => (
               <View key={item.level} style={styles.weightRow}>
                 <View style={styles.weightIcon}>
-                  <AntDesign name="star" size={15} color={colors.primary} />
+                  <Ionicons name="star" size={15} color={colors.primary} />
                 </View>
 
                 <View style={{ flex: 1 }}>

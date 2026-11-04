@@ -1,4 +1,4 @@
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
 import { AnimatePresence, MotiView } from "moti";
 import { useEffect, useRef, useState } from "react";
@@ -104,8 +104,8 @@ export default function WaterPromptModal({
           {showPeriods ? (
             <View style={styles.segment}>
               {[
-                { id: "water", label: "Water", icon: "cup-water", color: "#2E90FA" },
-                { id: "period", label: "Periods", icon: "water", color: "#DC2626" },
+                { id: "water", label: "Water", icon: "water", color: "#2E90FA" },
+                { id: "period", label: "Periods", icon: "heart", color: "#DC2626" },
               ].map((t) => {
                 const on = tab === t.id;
                 return (
@@ -117,7 +117,7 @@ export default function WaterPromptModal({
                     }}
                     style={[styles.segmentBtn, on && styles.segmentBtnOn]}
                   >
-                    <MaterialCommunityIcons name={t.icon} size={ms(16)} color={t.color} style={{ opacity: on ? 1 : 0.5 }} />
+                    <Ionicons name={t.icon} size={ms(16)} color={t.color} style={{ opacity: on ? 1 : 0.5 }} />
                     <Text style={[styles.segmentText, on && styles.segmentTextOn]}>{t.label}</Text>
                   </Pressable>
                 );

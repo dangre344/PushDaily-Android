@@ -1,4 +1,4 @@
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from "react-native";
@@ -21,8 +21,8 @@ const ms = (n) => scaling().moderateScale(n);
 // drops), and each keeps its own colour even when not selected, so the tabs
 // never look alike.
 const TABS = [
-  { id: "water", label: "Water", icon: "cup-water", color: "#2E90FA" },
-  { id: "period", label: "Periods", icon: "water", color: "#DC2626" },
+  { id: "water", label: "Water", icon: "water", color: "#2E90FA" },
+  { id: "period", label: "Periods", icon: "heart", color: "#DC2626" },
 ];
 
 /**
@@ -109,7 +109,7 @@ export default function WaterAndPeriodsScreen() {
                   accessibilityRole="tab"
                   accessibilityState={{ selected: on }}
                 >
-                  <MaterialCommunityIcons
+                  <Ionicons
                     name={t.icon}
                     size={ms(17)}
                     color={t.color}

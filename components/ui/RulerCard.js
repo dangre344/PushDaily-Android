@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { MotiView } from "moti";
 import { useEffect, useRef, useState } from "react";
 import {

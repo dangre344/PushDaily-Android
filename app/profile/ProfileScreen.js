@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { nativeApplicationVersion, nativeBuildVersion } from "expo-application";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Notifications from "expo-notifications";

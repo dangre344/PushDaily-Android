@@ -1,13 +1,12 @@
 import CustomSplashScreen from "@/components/CustomSplashScreen";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import {
-  OpenSans_400Regular,
-  OpenSans_500Medium,
-  OpenSans_600SemiBold,
-  OpenSans_700Bold,
-  OpenSans_800ExtraBold,
-  useFonts,
-} from "@expo-google-fonts/open-sans";
+// Per-weight imports: the package root bundles all 12 files (italics included).
+import { OpenSans_400Regular } from "@expo-google-fonts/open-sans/400Regular";
+import { OpenSans_500Medium } from "@expo-google-fonts/open-sans/500Medium";
+import { OpenSans_600SemiBold } from "@expo-google-fonts/open-sans/600SemiBold";
+import { OpenSans_700Bold } from "@expo-google-fonts/open-sans/700Bold";
+import { OpenSans_800ExtraBold } from "@expo-google-fonts/open-sans/800ExtraBold";
+import { useFonts } from "@expo-google-fonts/open-sans/useFonts";
 import {
   DarkTheme,
   DefaultTheme,

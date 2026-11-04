@@ -1,4 +1,4 @@
-import { FontAwesome5, Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
 import LottieView from "lottie-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -336,7 +336,7 @@ const CongratsScreen = ({
       >
         <View style={styles.caloriesHeader}>
           <View style={styles.modalIconCircle}>
-            <FontAwesome5 name="fire" size={22} color={colors.primary} />
+            <Ionicons name="flame" size={22} color={colors.primary} />
           </View>
 
           <Text style={styles.caloriesDetailsTitle}>Calories Burned</Text>

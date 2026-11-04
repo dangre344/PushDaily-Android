@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { AnimatePresence, MotiView } from "moti";
 import { useState } from "react";
 import { Controller } from "react-hook-form";
