@@ -50,6 +50,7 @@ import {
 import UserProvider from "../constants/UserContext";
 import {
   listenForJackTaps,
+  navigateWhenReady,
   openFromNotification,
 } from "../constants/jackNotifications";
 import {
@@ -258,7 +259,7 @@ export default function RootLayout() {
         // "Show me details" on a water reminder → the Water screen.
         if (resp.actionIdentifier === WATER_ACTION_DETAILS) {
           dismiss();
-          router.push("/profile/water");
+          navigateWhenReady(() => router.push("/profile/water"));
           return;
         }
 

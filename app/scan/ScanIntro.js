@@ -17,8 +17,12 @@ import { BarcodeMock, NutritionTableMock } from "./LabelMocks";
 
 const ms = (n) => scaling().moderateScale(n);
 
-const DO = ["Fill the frame", "Good light", "Hold flat & steady"];
-const DONT = ["No angles", "Don't crop rows", "Not through wrap"];
+// Three short tips instead of Do / Don't lists.
+const TIPS = [
+  { icon: "scan-outline", text: "Fill the frame" },
+  { icon: "sunny-outline", text: "Good light" },
+  { icon: "hand-left-outline", text: "Hold steady" },
+];
 
 /**
  * Explainer for the scanner. Shown once before the camera on first run, and
@@ -26,7 +30,6 @@ const DONT = ["No angles", "Don't crop rows", "Not through wrap"];
  */
 export default function ScanIntro({ onStart, ctaLabel = "Got it — start scanning" }) {
   const enter = useRef(new Animated.Value(0)).current;
-  const pulse = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.timing(enter, {
@@ -36,25 +39,7 @@ export default function ScanIntro({ onStart, ctaLabel = "Got it — start scanni
       useNativeDriver: true,
     }).start();
 
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, {
-          toValue: 1,
-          duration: 1200,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulse, {
-          toValue: 0,
-          duration: 1200,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [enter, pulse]);
+  }, [enter]);
 
   return (
     <SafeAreaView style={styles.screen} edges={["top", "bottom"]}>
@@ -75,28 +60,12 @@ export default function ScanIntro({ onStart, ctaLabel = "Got it — start scanni
             ],
           }}
         >
-          <Animated.View
-            style={[
-              styles.iconWrap,
-              {
-                transform: [
-                  {
-                    scale: pulse.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [1, 1.08],
-                    }),
-                  },
-                ],
-              },
-            ]}
-          >
+          <View style={styles.iconWrap}>
             <Text style={styles.bigEmoji}>🔍</Text>
-          </Animated.View>
+          </View>
 
-          <Text style={styles.title}>Packet food scanner</Text>
-          <Text style={styles.sub}>
-            Point at one of these and we&apos;ll tell you if it&apos;s healthy.
-          </Text>
+          <Text style={styles.title}>Scan a food packet</Text>
+          <Text style={styles.sub}>We&apos;ll tell you if it&apos;s healthy.</Text>
 
           {/* What to actually point at — drawn, not described. */}
           <View style={styles.refRow}>
@@ -109,7 +78,7 @@ export default function ScanIntro({ onStart, ctaLabel = "Got it — start scanni
                 <BarcodeMock />
               </View>
               <Text style={styles.refTitle}>Barcode</Text>
-              <Text style={styles.refText}>Fastest &amp; most accurate</Text>
+              <Text style={styles.refText}>Scan this first</Text>
             </View>
 
             <View style={styles.refCard}>
@@ -117,43 +86,23 @@ export default function ScanIntro({ onStart, ctaLabel = "Got it — start scanni
                 <NutritionTableMock />
               </View>
               <Text style={styles.refTitle}>Nutrition table</Text>
-              <Text style={styles.refText}>Use if no barcode</Text>
+              <Text style={styles.refText}>No barcode? Snap this</Text>
             </View>
           </View>
 
-          <View style={styles.fallbackNote}>
-            <Text style={styles.fallbackEmoji}>📸</Text>
-            <Text style={styles.fallbackText}>
-              <Text style={styles.fallbackStrong}>Barcode didn&apos;t work?</Text>{" "}
-              Photograph the nutrition table instead — that&apos;s the small
-              grid of Energy, Sugar, Fat and Salt values.
-            </Text>
-          </View>
-
-          <View style={styles.twoCol}>
-            <View style={[styles.tipCard, styles.doCard]}>
-              <Text style={styles.tipHead}>✅ Do</Text>
-              {DO.map((d) => (
-                <Text key={d} style={styles.tipLine}>
-                  • {d}
-                </Text>
-              ))}
-            </View>
-
-            <View style={[styles.tipCard, styles.dontCard]}>
-              <Text style={styles.tipHead}>❌ Don&apos;t</Text>
-              {DONT.map((d) => (
-                <Text key={d} style={styles.tipLine}>
-                  • {d}
-                </Text>
-              ))}
-            </View>
+          <View style={styles.tipsRow}>
+            {TIPS.map((t) => (
+              <View key={t.text} style={styles.tipChip}>
+                <Ionicons name={t.icon} size={ms(14)} color={colors.primary} />
+                <Text style={styles.tipChipText}>{t.text}</Text>
+              </View>
+            ))}
           </View>
 
           <View style={styles.warn}>
             <Ionicons name="alert-circle" size={ms(15)} color="#B45309" />
             <Text style={styles.warnText}>
-              Never rely on this for a serious allergy — always check the packet.
+              Allergies? Always check the packet.
             </Text>
           </View>
         </Animated.View>
@@ -168,6 +117,23 @@ export default function ScanIntro({ onStart, ctaLabel = "Got it — start scanni
 }
 
 const styles = StyleSheet.create({
+  tipsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: ms(8),
+    marginTop: ms(16),
+  },
+  tipChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: ms(5),
+    paddingHorizontal: ms(10),
+    paddingVertical: ms(6),
+    borderRadius: 999,
+    backgroundColor: "#FFF1EA",
+  },
+  tipChipText: { fontFamily: "OpenSans_600SemiBold", fontSize: ms(12), color: colors.text },
   screen: { flex: 1, backgroundColor: "#F7F8FA" },
   body: { padding: ms(20), paddingBottom: ms(10) },
 

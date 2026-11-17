@@ -29,6 +29,8 @@ import { registerLevelPicker } from "../../constants/levelPicker";
 import {
   getQuickStartOrder,
   sortByQuickStartOrder,
+  quickStartNote,
+  trendingQuickStart,
 } from "../../constants/quickStartOrder";
 import { useUser } from "../../constants/UserContext";
 import { scaling } from "../../constants/useScaling";
@@ -196,6 +198,14 @@ export default function WorkoutScreen() {
         hiitCategory = "Glutes";
       } else if (item.bodyPart === "Posture Correction") {
         hiitCategory = "Posture Correction";
+      } else if (item.bodyPart === "Kegel Stamina") {
+        hiitCategory = "Kegel Stamina";
+      } else if (item.bodyPart === "Mobility & Flexibility") {
+        hiitCategory = "Mobility & Flexibility";
+      } else if (item.bodyPart === "Pregnancy") {
+        hiitCategory = "Pregnancy";
+      } else if (item.bodyPart === "Post Pregnancy") {
+        hiitCategory = "Post Pregnancy";
       }
 
       if (hiitCategory && !hiitSet.has(hiitCategory)) {
@@ -206,6 +216,32 @@ export default function WorkoutScreen() {
 
     return result;
   }, []);
+
+  // Recover from Injury: one gentle plan per area, no level picker.
+  const recoveryWorkouts = useMemo(
+    () => workoutListGlobal.filter((item) => item.recovery),
+    [],
+  );
+  const openRecovery = useCallback(
+    (item) => {
+      tapHaptic();
+      router.push({
+        pathname: "/workouts/workoutlisting",
+        params: {
+          selectedBodyPart: JSON.stringify({
+            id: item.id,
+            name: item.bodyPart,
+            level: item.level,
+          }),
+        },
+      });
+    },
+    [router],
+  );
+  const renderRecoveryCard = useCallback(
+    ({ item }) => <HIITCard item={item} onClick={openRecovery} />,
+    [openRecovery],
+  );
 
   const hiitWorkouts = useMemo(
     () => sortByQuickStartOrder(hiitWorkoutsDefault, quickStartOrder),
@@ -288,9 +324,17 @@ export default function WorkoutScreen() {
     setBadgeInfoVisible(false);
   };
 
+  const trending = trendingQuickStart(user);
   const renderHiitCard = useCallback(
-    ({ item }) => <HIITCard item={item} onClick={openWorkoutLevelModal} />,
-    [openWorkoutLevelModal],
+    ({ item }) => (
+      <HIITCard
+        item={item}
+        onClick={openWorkoutLevelModal}
+        trending={item.bodyPart === trending}
+        note={quickStartNote(user, item.bodyPart)}
+      />
+    ),
+    [openWorkoutLevelModal, trending, user],
   );
 
   const firstName = (user?.name || "").trim().split(/\s+/)[0];
@@ -385,6 +429,24 @@ export default function WorkoutScreen() {
           <BodyPartGrid
             items={orderedBodyParts}
             onSelect={openWorkoutLevelModal}
+          />
+
+          <SectionHeader
+            title="Recover from Injury"
+            subtitle="Gentle moves for back, shoulder and knee recovery"
+            icon="medkit-outline"
+          />
+          <FlatList
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            data={recoveryWorkouts}
+            keyExtractor={hiitKey}
+            renderItem={renderRecoveryCard}
+            contentContainerStyle={styles.hiitListContent}
+            snapToInterval={HIIT_CARD_WIDTH + HIIT_CARD_GAP}
+            snapToAlignment="start"
+            decelerationRate="fast"
+            bounces={false}
           />
         </ScrollView>
       </View>

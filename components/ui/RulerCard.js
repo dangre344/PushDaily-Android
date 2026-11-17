@@ -331,8 +331,8 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: "#FFFFFF",
     borderRadius: 24,
-    paddingTop: 16,
-    paddingBottom: 14,
+    paddingTop: 12,
+    paddingBottom: 8,
     borderWidth: 1,
     borderColor: "#EEF0F4",
     shadowColor: "#1F2937",
@@ -382,14 +382,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    marginTop: 14,
-    marginBottom: 4,
+    marginTop: 8,
+    marginBottom: 2,
   },
   valueCol: { flex: 1, alignItems: "center", paddingHorizontal: 6 },
   valuePress: { flexDirection: "row", alignItems: "center" },
   value: {
-    fontSize: ms(38),
-    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: ms(30),
+    fontFamily: "OpenSans_700Bold",
     color: colors.text,
     letterSpacing: -1,
     // digits stay the same width, so the number doesn't jitter while dragging
@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
   },
   pencil: { marginLeft: 6, marginTop: 6 },
   secondary: {
-    marginTop: 2,
+    marginTop: 0,
     fontSize: ms(12.5),
     fontFamily: "OpenSans_600SemiBold",
     color: colors.textLight,
@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
   editInput: {
     minWidth: ms(92),
     textAlign: "center",
-    fontSize: ms(34),
+    fontSize: ms(28),
     fontFamily: "OpenSans_800ExtraBold",
     color: colors.text,
     borderBottomWidth: 2,
@@ -424,9 +424,9 @@ const styles = StyleSheet.create({
   },
 
   stepper: {
-    width: ms(44),
-    height: ms(44),
-    borderRadius: ms(22),
+    width: ms(40),
+    height: ms(40),
+    borderRadius: ms(20),
     backgroundColor: colors.primary + "14",
     alignItems: "center",
     justifyContent: "center",

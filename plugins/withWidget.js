@@ -111,6 +111,7 @@ ${BUCKET_KT}
             if (trainedToday) return bucket("done_today")
             if (!everTrained) return bucket("welcome")
             // Genuinely lapsed, not merely resting — see widgetData.js.
+            if (daysSinceLast >= 7) return bucket("long_gone")
             if (daysSinceLast >= 3) return bucket("comeback")
             // Morning greeting outranks streak copy: point at today, not
             // yesterday.
@@ -197,7 +198,8 @@ ${BUCKET_KT}
                 views.setTextViewTextSize(R.id.widget_message, TypedValue.COMPLEX_UNIT_SP, 11f)
             } else {
                 views.setViewVisibility(R.id.widget_streak, View.GONE)
-                views.setTextViewTextSize(R.id.widget_message, TypedValue.COMPLEX_UNIT_SP, 15f)
+                // 13sp, not 15: at 15 anything past ~26 characters was cut off.
+                views.setTextViewTextSize(R.id.widget_message, TypedValue.COMPLEX_UNIT_SP, 13f)
             }
 
             // Whole widget is the tap target. Deep-links straight to the
@@ -257,7 +259,7 @@ const LAYOUT_XML = `<?xml version="1.0" encoding="utf-8"?>
     <ImageView
         android:id="@+id/widget_character"
         android:layout_width="match_parent"
-        android:layout_height="104dp"
+        android:layout_height="96dp"
         android:layout_gravity="bottom|center_horizontal"
         android:layout_marginBottom="-10dp"
         android:scaleType="fitCenter"
@@ -271,7 +273,19 @@ const LAYOUT_XML = `<?xml version="1.0" encoding="utf-8"?>
         android:orientation="vertical"
         android:paddingStart="13dp"
         android:paddingEnd="13dp"
-        android:paddingTop="11dp">
+        android:paddingTop="9dp">
+
+        <!-- The app's name, small, so the widget is recognisable at a glance. -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="PUSH DAILY"
+            android:textColor="#8A6A00"
+            android:textSize="8.5sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.1"
+            android:includeFontPadding="false"
+            android:layout_marginBottom="3dp" />
 
         <!-- Hidden by the provider when there is no streak to show. -->
         <LinearLayout

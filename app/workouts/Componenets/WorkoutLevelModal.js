@@ -115,6 +115,21 @@ const WorkoutLevelModal = ({
 
             <Text style={styles.title}>{t("yourFitnessLevel")}</Text>
             <Text style={styles.subtitle}>{t("selectExpLevel")}</Text>
+            {selectedBodyPart?.bodyPart === "Kegel Stamina" ? (
+              <Text style={styles.healthNote}>
+                Pregnant, postpartum or have pelvic pain? Check with a doctor first.
+              </Text>
+            ) : null}
+            {selectedBodyPart?.bodyPart === "Pregnancy" ? (
+              <Text style={styles.healthNote}>
+                Check with your doctor before you start. Stop if you feel pain, dizziness, bleeding or contractions.
+              </Text>
+            ) : null}
+            {selectedBodyPart?.bodyPart === "Post Pregnancy" ? (
+              <Text style={styles.healthNote}>
+                Start only after your doctor clears you (often around 6 weeks, longer after a C-section). Stop if you feel pain, heaviness or bleeding.
+              </Text>
+            ) : null}
 
             <View style={styles.optionsContainer}>
               <OptionCardController
@@ -175,6 +190,17 @@ const WorkoutLevelModal = ({
 };
 
 const styles = StyleSheet.create({
+  healthNote: {
+    fontFamily: "OpenSans_500Medium",
+    fontSize: 12,
+    color: "#B45309",
+    backgroundColor: "#FFF7ED",
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginTop: 8,
+    textAlign: "center",
+  },
   safeArea: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",

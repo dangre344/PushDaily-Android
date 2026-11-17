@@ -6,6 +6,7 @@ import {
   Animated,
   Dimensions,
   Easing,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -27,8 +28,14 @@ import { colors } from "../../../constants/colors";
 import { useUser } from "../../../constants/UserContext";
 import { Logger } from "../../../constants/Logger";
 import { trackEvent } from "../../../constants/mixpanel";
+import { markMotherhoodWorkout } from "../../../constants/motherhood";
 import { scaling } from "../../../constants/useScaling";
-import { EXPRESSION_IMAGES } from "../../../constants/widgetPromo";
+import {
+  EXPRESSION_IMAGES,
+  getWidgetPromoState,
+  trackWidgetGuideOpened,
+} from "../../../constants/widgetPromo";
+import WidgetGuideModal from "../../profile/WidgetGuideModal";
 import { getAllWorkouts, initDB } from "../../../offlinedb/workoutdb";
 import {
   getNextBadgeProgress,
@@ -62,6 +69,19 @@ const CongratsScreen = ({
 
   const [showCaloriesDetails, setShowCaloriesDetails] = useState(false);
   const [showShareCard, setShowShareCard] = useState(false);
+  const [widgetGuideVisible, setWidgetGuideVisible] = useState(false);
+  // The widget is Android-only; hidden once they say they've added it.
+  const [showWidgetPromo, setShowWidgetPromo] = useState(false);
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+    let alive = true;
+    getWidgetPromoState()
+      .then((st) => alive && setShowWidgetPromo(!st?.markedAdded))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // ─── Workout rating ──────────────────────────────────────────────────────
   const [ratingStars, setRatingStars] = useState(0);
@@ -144,6 +164,9 @@ const CongratsScreen = ({
       durationSec,
       durationMinutes: Math.round((durationSec / 60) * 10) / 10,
     });
+
+    // Lets Jack tailor chat advice for moms (stored on the device only).
+    markMotherhoodWorkout(workouts?.bodyPart, user?.gender);
 
     InterstitialAdManager.getInstance().show();
 
@@ -406,187 +429,96 @@ const CongratsScreen = ({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* ─── Hero: Jack, proud ─── */}
+        {/* ─── Workout complete: Jack, the numbers and Share, in one card ─── */}
         <Animated.View
           style={[
-            styles.heroCard,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideUpAnim }],
-            },
+            styles.doneCard,
+            { opacity: fadeAnim, transform: [{ translateY: slideUpAnim }] },
           ]}
         >
-          <BrandGradient style={styles.heroGradient}>
-            <Animated.View
-              style={[
-                styles.mascotWrap,
-                { transform: [{ scale: Animated.multiply(scaleAnim, pulseAnim) }] },
-              ]}
-            >
-              <View style={styles.mascotHalo} />
-              <Image
-                source={EXPRESSION_IMAGES.proud}
-                style={styles.mascot}
-                contentFit="contain"
-              />
-            </Animated.View>
-
-            <Text style={styles.congratsTitle}>Workout complete!</Text>
-            <Text style={styles.congratsSubtitle}>{cheer}</Text>
-
-            <View style={styles.workoutNameContainer}>
-              <Icon name="fitness-outline" size={15} color="#FFFFFF" />
-              <Text style={styles.workoutName}>
-                {workouts?.bodyPart || "Workout"} • {workouts?.level || "Level"}
-              </Text>
-            </View>
-          </BrandGradient>
-        </Animated.View>
-
-        {/* ─── Stats: one clean card, three numbers ─── */}
-        <Animated.View
-          style={[
-            styles.statsCard,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: cardSlideAnim }],
-            },
-          ]}
-        >
-          <TouchableOpacity
-            style={styles.statCol}
-            activeOpacity={0.7}
-            onPress={() => setShowCaloriesDetails(true)}
+          <Animated.View
+            style={{ transform: [{ scale: Animated.multiply(scaleAnim, pulseAnim) }] }}
           >
-            <View style={[styles.statIcon, { backgroundColor: "#FFF1EA" }]}>
-              <Icon name="flame" size={18} color={colors.primary} />
+            <Image source={EXPRESSION_IMAGES.proud} style={styles.doneMascot} contentFit="contain" />
+          </Animated.View>
+          <Text style={styles.doneTitle}>Workout complete!</Text>
+          <Text style={styles.doneCheer}>{cheer}</Text>
+          <View style={styles.donePill}>
+            <Icon name="fitness-outline" size={13} color={colors.primary} />
+            <Text style={styles.donePillText}>
+              {workouts?.bodyPart || "Workout"} · {workouts?.level || "Level"}
+            </Text>
+          </View>
+
+          <View style={styles.statsCard}>
+            <TouchableOpacity
+              style={styles.statCol}
+              activeOpacity={0.7}
+              onPress={() => setShowCaloriesDetails(true)}
+            >
+              <Animated.Text style={styles.statValue}>
+                {animatedCalories.interpolate({
+                  inputRange: [0, Math.max(safeCalories, 1)],
+                  outputRange: ["0", String(safeCalories)],
+                })}
+              </Animated.Text>
+              <View style={styles.statLabelRow}>
+                <Text style={styles.statLabel}>kcal</Text>
+                <Icon name="information-circle-outline" size={12} color={colors.textLight} />
+              </View>
+            </TouchableOpacity>
+            <View style={styles.statDivider} />
+            <View style={styles.statCol}>
+              <Animated.Text style={styles.statValue}>
+                {animatedWorkouts.interpolate({
+                  inputRange: [0, Math.max(completedCount, 1)],
+                  outputRange: ["0", String(completedCount)],
+                })}
+              </Animated.Text>
+              <Text style={styles.statLabel}>exercises</Text>
             </View>
-            <Animated.Text style={styles.statValue}>
-              {animatedCalories.interpolate({
-                inputRange: [0, Math.max(safeCalories, 1)],
-                outputRange: ["0", String(safeCalories)],
-              })}
-            </Animated.Text>
-            <View style={styles.statLabelRow}>
-              <Text style={styles.statLabel}>kcal</Text>
-              <Icon name="information-circle-outline" size={12} color={colors.textLight} />
+            <View style={styles.statDivider} />
+            <View style={styles.statCol}>
+              <Text style={styles.statValue}>{minutes ?? "–"}</Text>
+              <Text style={styles.statLabel}>minutes</Text>
             </View>
+          </View>
+
+          {progressPercent < 100 ? (
+            <Text style={styles.donePartial}>
+              {completedCount} of {totalWorkoutCount} exercises done
+            </Text>
+          ) : null}
+
+          <TouchableOpacity
+            style={styles.doneShare}
+            activeOpacity={0.85}
+            onPress={() => setShowShareCard(true)}
+          >
+            <Icon name="share-social-outline" size={17} color={colors.primary} />
+            <Text style={styles.doneShareText}>Share achievement</Text>
           </TouchableOpacity>
-
-          <View style={styles.statDivider} />
-
-          <View style={styles.statCol}>
-            <View style={[styles.statIcon, { backgroundColor: "#E9F7EF" }]}>
-              <Icon name="checkmark-done" size={18} color="#16A34A" />
-            </View>
-            <Animated.Text style={styles.statValue}>
-              {animatedWorkouts.interpolate({
-                inputRange: [0, Math.max(completedCount, 1)],
-                outputRange: ["0", String(completedCount)],
-              })}
-            </Animated.Text>
-            <Text style={styles.statLabel}>exercises</Text>
-          </View>
-
-          <View style={styles.statDivider} />
-
-          <View style={styles.statCol}>
-            <View style={[styles.statIcon, { backgroundColor: "#EEF2FF" }]}>
-              <Icon name="time" size={18} color="#4F46E5" />
-            </View>
-            <Text style={styles.statValue}>{minutes ?? "–"}</Text>
-            <Text style={styles.statLabel}>minutes</Text>
-          </View>
         </Animated.View>
 
-        <Animated.View
-          style={[
-            styles.progressContainer,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: cardSlideAnim }],
-            },
-          ]}
-        >
-          <View style={styles.progressHeader}>
-            <View>
-              <Text style={styles.progressTitle}>Session Progress</Text>
-              <Text style={styles.progressSubTitle}>
-                {completedCount} of {totalWorkoutCount} exercises completed
-              </Text>
-            </View>
-
-            <View style={styles.progressPercentBadge}>
-              <Text style={styles.progressPercentText}>{progressPercent}%</Text>
-            </View>
-          </View>
-
-          <View style={styles.progressBarContainer}>
-            <Animated.View
-              style={[
-                styles.progressFill,
-                {
-                  width: progressAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ["0%", "100%"],
-                  }),
-                },
-              ]}
-            />
-          </View>
-
-          <Text style={styles.progressText}>
-            📅 One workout a day this week. Consistency beats intensity.
-          </Text>
-        </Animated.View>
-
-        {badge && (
+        {/* ─── Badge: one compact row + bar ─── */}
+        {badge ? (
           <Animated.View
             style={[
-              styles.badgeCard,
-              {
-                opacity: fadeAnim,
-                transform: [{ translateY: cardSlideAnim }],
-              },
+              styles.badgeRowCard,
+              { opacity: fadeAnim, transform: [{ translateY: cardSlideAnim }] },
             ]}
           >
-            <View style={styles.badgeCardHeader}>
-              <View style={styles.badgeEmojiCircle}>
-                <Text style={styles.badgeEmoji}>{badge.emoji || "🏅"}</Text>
-              </View>
-
-              <View style={{ flex: 1 }}>
-                <Text style={styles.badgeCardTitle}>{badge.title}</Text>
-                <Text style={styles.badgeCardSubtitle}>
-                  {badge.subtitle} • {badge.score} pts
-                </Text>
-              </View>
-
-              {pointsEarned > 0 && (
-                <View style={styles.pointsPill}>
-                  <Icon name="add" size={13} color="#FFFFFF" />
-                  <Animated.Text style={styles.pointsPillText}>
-                    {animatedPoints.interpolate({
-                      inputRange: [0, Math.max(pointsEarned, 1)],
-                      outputRange: ["0", String(pointsEarned)],
-                    })}
-                  </Animated.Text>
-                  <Text style={styles.pointsPillText}> pts</Text>
+            <View style={styles.badgeRowTop}>
+              <Text style={styles.badgeRowEmoji}>{badge.emoji || "🏅"}</Text>
+              <Text style={styles.badgeRowTitle} numberOfLines={1}>
+                {badge.title} · {badge.score} pts
+              </Text>
+              {pointsEarned > 0 ? (
+                <View style={styles.badgeRowPill}>
+                  <Text style={styles.badgeRowPillText}>+{pointsEarned} pts</Text>
                 </View>
-              )}
+              ) : null}
             </View>
-
-            <View style={styles.badgeProgressHeader}>
-              <Text style={styles.badgeProgressLabel}>
-                {badgeProgress.nextTitle === "Max Level"
-                  ? "Highest badge reached"
-                  : `Next badge: ${badgeProgress.nextTitle}`}
-              </Text>
-              <Text style={styles.badgeProgressPercent}>
-                {badgeProgressPercent}%
-              </Text>
-            </View>
-
             <View style={styles.badgeProgressTrack}>
               <Animated.View
                 style={[
@@ -600,18 +532,41 @@ const CongratsScreen = ({
                 ]}
               />
             </View>
-
-            <Text style={styles.badgeProgressText}>
+            <Text style={styles.badgeRowHint}>
               {badgeProgress.remainingPoints > 0
-                ? `${pointsPerExercise} pts per ${
-                    workouts?.level || "workout"
-                  } exercise • ${
-                    badgeProgress.remainingPoints
-                  } pts to ${badgeProgress.nextTitle}`
-                : "You've unlocked the strongest badge. Keep the streak alive!"}
+                ? `${badgeProgress.remainingPoints} pts to ${badgeProgress.nextTitle}`
+                : "Highest badge reached"}
             </Text>
           </Animated.View>
-        )}
+        ) : null}
+
+        {/* ─── Widget: Jack asks for a spot on the home screen (Android) ─── */}
+        {showWidgetPromo ? (
+          <Animated.View
+            style={[
+              styles.widgetCard,
+              { opacity: fadeAnim, transform: [{ translateY: cardSlideAnim }] },
+            ]}
+          >
+            <Image source={EXPRESSION_IMAGES.phone} style={styles.widgetMascot} contentFit="contain" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.widgetTitle}>Keep me on your home screen</Text>
+              <Text style={styles.widgetSub}>
+                Seeing your streak every time you unlock your phone makes skipping harder.
+              </Text>
+              <TouchableOpacity
+                style={styles.widgetBtn}
+                activeOpacity={0.85}
+                onPress={() => {
+                  trackWidgetGuideOpened("congrats");
+                  setWidgetGuideVisible(true);
+                }}
+              >
+                <Text style={styles.widgetBtnText}>Add widget</Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        ) : null}
 
         {/* ─── Workout rating ─── */}
         <Animated.View
@@ -635,10 +590,7 @@ const CongratsScreen = ({
             </Animated.View>
           ) : (
             <>
-              <Text style={styles.ratingTitle}>How was your workout?</Text>
-              <Text style={styles.ratingSubtitle}>
-                Rate your session and tell us how you felt
-              </Text>
+              <Text style={styles.ratingTitle}>Rate this workout</Text>
 
               {/* Stars */}
               <View style={styles.starsRow}>
@@ -659,6 +611,8 @@ const CongratsScreen = ({
                 ))}
               </View>
 
+              {ratingStars > 0 ? (
+                <>
               {/* Feeling chips */}
               <View style={styles.feelingsWrap}>
                 {FEELINGS.map((f) => {
@@ -702,33 +656,12 @@ const CongratsScreen = ({
               >
                 <Text style={styles.ratingSubmitText}>Submit Rating</Text>
               </TouchableOpacity>
+                </>
+              ) : null}
             </>
           )}
         </Animated.View>
 
-        {/* ─── Share achievement ─── */}
-        <Animated.View
-          style={[
-            styles.shareCta,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: cardSlideAnim }],
-            },
-          ]}
-        >
-          <TouchableOpacity
-            style={styles.shareCtaBtn}
-            activeOpacity={0.9}
-            onPress={() => setShowShareCard(true)}
-          >
-            <Icon name="share-social" size={20} color="#FFFFFF" />
-            <Text style={styles.shareCtaText}>Share Achievement</Text>
-          </TouchableOpacity>
-
-          <Text style={styles.shareCtaHint}>
-            Inspire a friend to start their journey 💪
-          </Text>
-        </Animated.View>
       </ScrollView>
 
       <View style={styles.bannerContainer}>
@@ -749,6 +682,22 @@ const CongratsScreen = ({
 
       {showCaloriesDetails && <CaloriesDetailsModal />}
 
+      {widgetGuideVisible ? (
+        <WidgetGuideModal
+          visible={widgetGuideVisible}
+          setVisible={(v) => {
+            setWidgetGuideVisible(v);
+            // Re-check: hide the card once they mark it added.
+            if (!v) {
+              getWidgetPromoState()
+                .then((st) => setShowWidgetPromo(!st?.markedAdded))
+                .catch(() => {});
+            }
+          }}
+          name={user?.name}
+        />
+      ) : null}
+
       <ShareAchievementModal
         visible={showShareCard}
         onClose={() => setShowShareCard(false)}
@@ -763,7 +712,112 @@ const CongratsScreen = ({
   );
 };
 
+// Soft brand tint (same as the home plan card).
+const TINT = "#FFF5F0";
+const TINT_BORDER = "#FFE0D3";
+
 const styles = StyleSheet.create({
+  // ── Workout complete card ──
+  doneCard: {
+    backgroundColor: TINT,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: TINT_BORDER,
+    padding: 16,
+    alignItems: "center",
+    marginBottom: 12,
+    alignSelf: "stretch",
+  },
+  doneMascot: { width: 84, height: 84 },
+  doneTitle: { fontFamily: "OpenSans_800ExtraBold", fontSize: 20, color: colors.text, marginTop: 2 },
+  doneCheer: {
+    fontFamily: "OpenSans_500Medium",
+    fontSize: 13,
+    color: colors.textLight,
+    textAlign: "center",
+    marginTop: 2,
+  },
+  donePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: "#FFFFFF",
+  },
+  donePillText: { fontFamily: "OpenSans_600SemiBold", fontSize: 12, color: colors.primary },
+  donePartial: { fontFamily: "OpenSans_500Medium", fontSize: 12, color: colors.textLight, marginTop: 8 },
+  doneShare: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    alignSelf: "stretch",
+    marginTop: 12,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: TINT_BORDER,
+  },
+  doneShareText: { fontFamily: "OpenSans_700Bold", fontSize: 14, color: colors.primary },
+
+  // ── Badge row ──
+  badgeRowCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#EEF0F4",
+    padding: 14,
+    marginBottom: 12,
+    alignSelf: "stretch",
+  },
+  badgeRowTop: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
+  badgeRowEmoji: { fontSize: 20 },
+  badgeRowTitle: { flex: 1, fontFamily: "OpenSans_600SemiBold", fontSize: 14, color: colors.text },
+  badgeRowPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: "#E9F7EF",
+  },
+  badgeRowPillText: { fontFamily: "OpenSans_700Bold", fontSize: 11.5, color: "#15803D" },
+  badgeRowHint: { fontFamily: "OpenSans_400Regular", fontSize: 12, color: colors.textLight, marginTop: 6 },
+
+  // ── Widget promo ──
+  widgetCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#FFFBEA",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+    padding: 14,
+    marginBottom: 12,
+    alignSelf: "stretch",
+  },
+  widgetMascot: { width: 64, height: 64 },
+  widgetTitle: { fontFamily: "OpenSans_700Bold", fontSize: 14, color: colors.text },
+  widgetSub: {
+    fontFamily: "OpenSans_400Regular",
+    fontSize: 12,
+    color: colors.textLight,
+    marginTop: 2,
+    lineHeight: 17,
+  },
+  widgetBtn: {
+    alignSelf: "flex-start",
+    marginTop: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: colors.primary,
+  },
+  widgetBtnText: { fontFamily: "OpenSans_700Bold", fontSize: 12.5, color: "#FFFFFF" },
+
   container: {
     flex: 1,
     backgroundColor: "#F7F8FA",
@@ -840,9 +894,9 @@ const styles = StyleSheet.create({
     width: "100%",
     flexDirection: "row",
     alignItems: "center",
-    marginTop: scaling().scaleHeight(14),
+    marginTop: 12,
     backgroundColor: "#FFFFFF",
-    borderRadius: scaling().moderateScale(22),
+    borderRadius: 16,
     paddingVertical: scaling().moderateScale(14),
     borderWidth: 1,
     borderColor: "#EEF0F4",
@@ -868,8 +922,8 @@ const styles = StyleSheet.create({
   },
 
   statValue: {
-    fontSize: scaling().moderateScale(22),
-    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: scaling().moderateScale(20),
+    fontFamily: "OpenSans_700Bold",
     color: colors.text,
   },
 
@@ -1262,7 +1316,7 @@ const styles = StyleSheet.create({
   // ─── Workout rating card ─────────────────────────────────────────────────
   ratingCard: {
     width: "100%",
-    marginTop: scaling().scaleHeight(16),
+    marginTop: 0,
     backgroundColor: "#FFFFFF",
     borderRadius: scaling().moderateScale(24),
     padding: scaling().moderateScale(18),
@@ -1276,8 +1330,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   ratingTitle: {
-    fontSize: scaling().moderateScale(17),
-    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: scaling().moderateScale(15),
+    fontFamily: "OpenSans_700Bold",
     color: colors.text,
     textAlign: "center",
   },

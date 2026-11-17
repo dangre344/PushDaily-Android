@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { preloadExerciseVideo } from "../../components/workout/ExerciseVideoPlayer";
+import { prepareCoachVoice } from "../../constants/coachVoice";
 import { preloadExercisePhoto } from "../../components/workout/exercisePhotos";
 import { logWorkoutCompleted } from "../../constants/analytics";
 import { colors } from "../../constants/colors";
@@ -98,6 +99,11 @@ export default function WorkoutDetail() {
   useEffect(() => {
     preloadExerciseVideo(firstVideo);
   }, [firstVideo]);
+
+  // Pick the coach's deep voice before the first instruction is spoken.
+  useEffect(() => {
+    prepareCoachVoice();
+  }, []);
 
   // The rest screen after this exercise shows the next one's photo: decode it
   // now so it's on screen the moment the rest starts.

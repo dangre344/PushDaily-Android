@@ -17,7 +17,7 @@ export const HIIT_CARD_GAP = 14;
  * row doesn't dominate the screen, and the same card style as the rest of the
  * screen: white, 16 radius, hairline border, no shadow.
  */
-function HIITCard({ item, onClick }) {
+function HIITCard({ item, onClick, trending = false, note = null }) {
   const { t } = useTranslation();
   return (
     <Pressable
@@ -27,6 +27,17 @@ function HIITCard({ item, onClick }) {
       accessibilityLabel={`${item.bodyPart} quick workout`}
     >
       <ExpoImage style={styles.banner} source={item.img} contentFit="cover" />
+      {trending ? (
+        <View style={styles.trendingTag}>
+          <Text style={styles.trendingText}>🔥 Trending</Text>
+        </View>
+      ) : note ? (
+        <View style={[styles.trendingTag, styles.noteTag]}>
+          <Text style={styles.trendingText} numberOfLines={1}>
+            {note}
+          </Text>
+        </View>
+      ) : null}
 
       <View style={styles.meta}>
         <View style={styles.metaText}>
@@ -77,6 +88,18 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   metaText: { flex: 1 },
+  trendingTag: {
+    position: "absolute",
+    top: 10,
+    left: 10,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: colors.primary,
+  },
+  // Sits over the poster's own top-left label, in the poster's colour.
+  noteTag: { backgroundColor: "#E2547A", maxWidth: HIIT_CARD_WIDTH - 20 },
+  trendingText: { fontFamily: "OpenSans_700Bold", fontSize: ms(11), color: "#FFFFFF" },
   title: {
     fontSize: ms(14),
     fontFamily: "OpenSans_600SemiBold",

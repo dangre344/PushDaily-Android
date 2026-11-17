@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { callBackend } from "./api";
+import { Logger } from "./Logger";
 
 // ─── Push-up leaderboard ──────────────────────────────────────────────────────
 // NO database keys live in the app. Every read/write goes through our
@@ -149,17 +150,53 @@ export const clearLeaderboardCache = () => {
 
 // ── Upload this user's best score (via the Worker) ──
 // The Worker stamps the row in UTC, so the challenge day is global.
+// A score that couldn't be uploaded (offline, timeout, server error) is kept
+// here and sent again the next time the board loads — same UTC day only, since
+// the board is per day.
+const K_PENDING_SCORE = "pushup_pending_score";
+
+const submitScore = async (score) => {
+  const res = await callBackend("submit-score", score);
+  if (!res?.ok) {
+    Logger.log("[Leaderboard] submit failed:", res?.error || res?.detail || "no response");
+    return false;
+  }
+  clearLeaderboardCache(); // their new score shows the next time they look
+  return true;
+};
+
+/** Uploads this user's best for today. Resolves true when the server saved it. */
 export const saveScore = async (id, name, count, country) => {
-  if (!id) return false;
-  const res = await callBackend("submit-score", {
+  if (!id) {
+    Logger.log("[Leaderboard] not submitted: no user id");
+    return false;
+  }
+  const score = {
     id: String(id),
     name: name || "Anonymous",
     count,
     country: country || null,
-  });
-  // Their new score should be on the board the next time they look.
-  if (res?.ok) clearLeaderboardCache();
-  return !!res?.ok;
+  };
+  const ok = await submitScore(score);
+  try {
+    if (ok) await AsyncStorage.removeItem(K_PENDING_SCORE);
+    else await AsyncStorage.setItem(K_PENDING_SCORE, JSON.stringify({ ...score, day: todayKey() }));
+  } catch {}
+  return ok;
+};
+
+/** Re-sends a score that failed earlier today (no-op otherwise). */
+export const flushPendingScore = async () => {
+  try {
+    const raw = await AsyncStorage.getItem(K_PENDING_SCORE);
+    if (!raw) return;
+    const { day, ...score } = JSON.parse(raw);
+    if (day !== todayKey()) {
+      await AsyncStorage.removeItem(K_PENDING_SCORE); // yesterday's board is gone
+      return;
+    }
+    if (await submitScore(score)) await AsyncStorage.removeItem(K_PENDING_SCORE);
+  } catch {}
 };
 
 /**
@@ -172,6 +209,9 @@ export const getLeaderboard = async (userId, userName, { force = false } = {}) =
     getPushupBest(),
     getPushupTotal(),
   ]);
+
+  // A score that failed to upload earlier goes first, so it's on this board.
+  await flushPendingScore();
 
   // Cached board when it's fresh; otherwise one request, then cached.
   const key = boardCacheKey(userId);

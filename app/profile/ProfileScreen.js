@@ -44,6 +44,7 @@ import { AboutModal } from "./privacy/AboutModal";
 import { PrivacyPolicyModal } from "./privacy/PrivacyPolicyModal";
 import StatsModal from "./StatsModal";
 import SupportSheet from "./SupportSheet";
+import FeedbackSheet from "./FeedbackSheet";
 import WidgetGuideModal from "./WidgetGuideModal";
 
 const ms = (n) => scaling().moderateScale(n);
@@ -473,6 +474,7 @@ export default function ProfileScreen() {
   const [statsVisible, setStatsVisible] = useState(false);
   const [widgetGuideVisible, setWidgetGuideVisible] = useState(false);
   const [supportVisible, setSupportVisible] = useState(false);
+  const [feedbackVisible, setFeedbackVisible] = useState(false);
 
   const [notificationDialog, setNotificationDialog] = useState({
     visible: false,
@@ -697,6 +699,28 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* Feature requests → Mixpanel. */}
+          <TouchableOpacity
+            style={styles.feedbackCard}
+            activeOpacity={0.85}
+            onPress={() => {
+              tapHaptic();
+              trackEvent("Feature Feedback Opened", { from: "profile" });
+              setFeedbackVisible(true);
+            }}
+          >
+            <View style={styles.feedbackIcon}>
+              <Ionicons name="bulb" size={ms(18)} color={colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.feedbackTitle}>Request a feature</Text>
+              <Text style={styles.feedbackSub}>
+                Tell us what you&apos;d like to see next
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={ms(16)} color={colors.textLight} />
+          </TouchableOpacity>
+
           {/* Support lives in its own friendly card, not among the settings. */}
           <TouchableOpacity
             style={styles.coffeeCard}
@@ -795,6 +819,14 @@ export default function ProfileScreen() {
 
       {statsVisible ? (
         <StatsModal visible={statsVisible} setVisible={setStatsVisible} />
+      ) : null}
+
+      {feedbackVisible ? (
+        <FeedbackSheet
+          visible={feedbackVisible}
+          setVisible={setFeedbackVisible}
+          user={user}
+        />
       ) : null}
 
       {supportVisible ? (
@@ -1012,6 +1044,38 @@ const styles = StyleSheet.create({
   },
 
   // ── Buy me a coffee
+  feedbackCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: ms(12),
+    backgroundColor: "#FFFFFF",
+    borderRadius: ms(16),
+    borderWidth: 1,
+    borderColor: "#EEF0F4",
+    paddingVertical: ms(13),
+    paddingHorizontal: ms(14),
+    marginHorizontal: ms(16),
+    marginTop: ms(12),
+  },
+  feedbackIcon: {
+    width: ms(36),
+    height: ms(36),
+    borderRadius: ms(12),
+    backgroundColor: colors.primary + "14",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  feedbackTitle: {
+    fontFamily: "OpenSans_700Bold",
+    fontSize: ms(13.5),
+    color: colors.text,
+  },
+  feedbackSub: {
+    fontFamily: "OpenSans_400Regular",
+    fontSize: ms(11.5),
+    color: colors.textLight,
+    marginTop: 1,
+  },
   coffeeCard: {
     flexDirection: "row",
     alignItems: "center",

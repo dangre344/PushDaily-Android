@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { APP_TOKEN, WORKER_URL } from "./api";
 import { Logger } from "./Logger";
+import { getMotherhoodFlag } from "./motherhood";
 
 // Honest status messages shown when Gemini can't answer — we no longer fall
 // back to canned/static replies; every real answer comes from Gemini.
@@ -84,6 +85,7 @@ const callWorker = async (text, user) => {
           height: user?.height,
           goal: user?.goal,
           experience: user?.experience,
+          motherhood: await getMotherhoodFlag(user?.gender),
         },
       }),
       signal: ctrl.signal,
@@ -170,6 +172,7 @@ export const analyzeWorkoutsAI = async (summary, user) => {
           height: user?.height,
           goal: user?.goal,
           experience: user?.experience,
+          motherhood: await getMotherhoodFlag(user?.gender),
         },
       }),
       signal: ctrl.signal,

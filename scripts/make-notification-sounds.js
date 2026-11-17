@@ -31,16 +31,17 @@ function render(notes, totalSec) {
       const t = i / RATE;
       const f = sweepTo ? freq + (sweepTo - freq) * (i / len) : freq;
       phase += (2 * Math.PI * f) / RATE;
-      const attack = Math.min(1, t / 0.008); // 8 ms — no click
+      const attack = Math.min(1, t / 0.02); // 20 ms — a soft start, not a click
       const decay = Math.exp((-4.2 * t) / dur);
-      const tone = Math.sin(phase) + 0.28 * Math.sin(2 * phase) + 0.08 * Math.sin(3 * phase);
+      // Mostly the pure fundamental: fewer bright overtones = less piercing.
+      const tone = Math.sin(phase) + 0.12 * Math.sin(2 * phase);
       buf[s0 + i] += tone * gain * attack * decay;
     }
   }
-  // Normalise to -3 dBFS and fade the very end so it never cuts off abruptly.
+  // Normalise to about -9 dBFS (was -3: too loud next to system sounds) and fade the very end so it never cuts off abruptly.
   let peak = 0;
   for (const v of buf) peak = Math.max(peak, Math.abs(v));
-  const k = peak > 0 ? 0.707 / peak : 1;
+  const k = peak > 0 ? 0.35 / peak : 1;
   const fade = Math.round(0.03 * RATE);
   for (let i = 0; i < n; i++) {
     buf[i] *= k * (i > n - fade ? (n - i) / fade : 1);
@@ -69,27 +70,27 @@ function wav(samples) {
 }
 
 const SOUNDS = {
-  // Jack's call-sign: a bright, friendly two-note "ding-ding" (E6 → A6).
-  // Workout + period reminders, the quiz.
-  jack_ping: render([note(1318.5, 0, 0.35, 0.55), note(1760, 0.13, 0.55, 0.6)], 0.75),
+  // Jack's call-sign: a gentle two-note "do-ding" an octave lower than before
+  // (C5 → G5). Workout + period reminders, the quiz.
+  jack_ping: render([note(523.3, 0, 0.4, 0.5), note(784.0, 0.16, 0.6, 0.55)], 0.8),
 
-  // Celebration: a quick rising major arpeggio (C6 E6 G6 C7).
-  // Push-up challenge / leaderboard and achievements.
+  // Celebration: a rising major arpeggio, an octave lower and softer than
+  // before (C5 E5 G5 C6). Push-up challenge / leaderboard and achievements.
   jack_cheer: render(
     [
-      note(1046.5, 0.0, 0.3, 0.45),
-      note(1318.5, 0.09, 0.3, 0.45),
-      note(1568.0, 0.18, 0.3, 0.5),
-      note(2093.0, 0.27, 0.6, 0.55),
+      note(523.3, 0.0, 0.35, 0.45),
+      note(659.3, 0.11, 0.35, 0.45),
+      note(784.0, 0.22, 0.35, 0.5),
+      note(1046.5, 0.33, 0.6, 0.5),
     ],
-    0.95,
+    1.0,
   ),
 
-  // A water droplet: a short upward "bloop" twice. Water reminders.
+  // A water droplet: a short, round upward "bloop" twice (lower than before). Water reminders.
   jack_drop: render(
     [
-      { freq: 520, sweepTo: 1250, start: 0, dur: 0.16, gain: 0.6 },
-      { freq: 640, sweepTo: 1500, start: 0.2, dur: 0.18, gain: 0.5 },
+      { freq: 330, sweepTo: 700, start: 0, dur: 0.18, gain: 0.6 },
+      { freq: 400, sweepTo: 820, start: 0.22, dur: 0.2, gain: 0.5 },
     ],
     0.5,
   ),

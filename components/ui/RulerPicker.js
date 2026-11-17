@@ -8,7 +8,8 @@ import { selectionHaptic } from "../../constants/haptics";
 // px between two adjacent values. Wide enough to land on a value with a
 // thumb, narrow enough that a flick still covers a useful range.
 const TICK = 12;
-const RULER_HEIGHT = 74;
+// 64 is the least that still fits the tick labels (top 46 + 12sp text).
+const RULER_HEIGHT = 64;
 
 const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
 

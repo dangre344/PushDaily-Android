@@ -241,11 +241,47 @@ export const cancelJack = async (match) => {
 
 // ─── Where a tap goes ────────────────────────────────────────────────────────
 
-const openTab = (tab) => {
-  router.replace("/home");
-  // The tab navigator mounts under /home; select the tab once it exists.
-  setTimeout(() => switchToTab(tab), 450);
+// A tap can arrive before the app can navigate: on a cold start the root
+// layout still shows the splash (no navigator yet) and the user isn't loaded.
+// Navigating then throws ("navigate before mounting the Root Layout") and the
+// app closes. So taps wait in a queue until the home screen has mounted
+// (markNavigationReady, called from app/home/_layout.js), and only the latest
+// tap is kept so two sources (expo + Notifee) can't navigate twice.
+let navReady = false;
+let queuedNav = null;
+
+const runNav = (fn) => {
+  try {
+    fn();
+  } catch (e) {
+    Logger.log("[Jack] notification navigation failed:", String(e));
+  }
 };
+
+/** Runs `fn` now if the app can navigate, otherwise once it can. */
+export const navigateWhenReady = (fn) => {
+  if (navReady) runNav(fn);
+  else queuedNav = fn;
+};
+
+/** Called once the home screen has mounted; runs the queued tap, if any. */
+export const markNavigationReady = () => {
+  if (navReady) return;
+  navReady = true;
+  const fn = queuedNav;
+  queuedNav = null;
+  // Let the home screen's first frame and tab navigator settle first.
+  if (fn) setTimeout(() => runNav(fn), 300);
+};
+
+const openTab = (tab) =>
+  navigateWhenReady(() => {
+    // Already under /home when the app was launched normally; replace keeps
+    // the stack flat if the tap came from another screen.
+    router.replace("/home");
+    // The tab navigator mounts under /home; select the tab once it exists.
+    setTimeout(() => runNav(() => switchToTab(tab)), 450);
+  });
 
 /**
  * Opens the screen a notification is about. Shared by expo-notifications'
@@ -269,13 +305,13 @@ export const openFromNotification = (data = {}) => {
       openTab("Attendance");
       return true;
     case "water":
-      router.push("/profile/water");
+      navigateWhenReady(() => router.push("/profile/water"));
       return true;
     case "period":
-      router.push("/profile/water?tab=period");
+      navigateWhenReady(() => router.push("/profile/water?tab=period"));
       return true;
     case "daily_update":
-      router.replace("/home");
+      navigateWhenReady(() => router.replace("/home"));
       return true;
     default:
       return false;

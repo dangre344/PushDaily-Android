@@ -400,22 +400,21 @@ export default function WorkoutBadgeInfo({ userBadge, visible, setVisible }) {
 
               {badgeProgress.remainingPoints > 0 ? (
                 <Text style={styles.remainingText}>
-                  Complete more workouts to earn {badgeProgress.remainingPoints}{" "}
-                  more point{badgeProgress.remainingPoints > 1 ? "s" : ""} and
-                  unlock {badgeProgress.nextTitle}.
+                  {badgeProgress.remainingPoints} pts to {badgeProgress.nextTitle}
                 </Text>
               ) : (
-                <Text style={styles.remainingText}>
-                  You reached the highest badge level. Keep going to maintain
-                  your streak!
-                </Text>
+                <Text style={styles.remainingText}>Highest badge reached 🏆</Text>
               )}
             </View>
 
             <Text style={styles.sectionTitle}>Badge levels</Text>
 
-            {BADGE_LEVELS.map((item) => {
+            {/* A compact ladder: only the current level keeps its description;
+                levels still ahead are dimmed with a lock. */}
+            {BADGE_LEVELS.map((item, idx) => {
               const isCurrent = userBadge?.title === item.title;
+              const currentIdx = BADGE_LEVELS.findIndex((b) => b.title === userBadge?.title);
+              const locked = currentIdx >= 0 && idx > currentIdx;
 
               return (
                 <View
@@ -423,6 +422,7 @@ export default function WorkoutBadgeInfo({ userBadge, visible, setVisible }) {
                   style={[
                     styles.levelCard,
                     isCurrent && styles.activeLevelCard,
+                    locked && { opacity: 0.55 },
                   ]}
                 >
                   <View style={styles.levelEmojiWrap}>
@@ -444,39 +444,28 @@ export default function WorkoutBadgeInfo({ userBadge, visible, setVisible }) {
                       {item.subtitle} • {item.range}
                     </Text>
 
-                    <Text style={styles.levelDescription}>
-                      {item.description}
-                    </Text>
+                    {isCurrent ? (
+                      <Text style={styles.levelDescription}>{item.description}</Text>
+                    ) : null}
                   </View>
+                  {locked ? (
+                    <Ionicons name="lock-closed" size={14} color={colors.textLight} />
+                  ) : null}
                 </View>
               );
             })}
 
             <Text style={styles.sectionTitle}>How points work</Text>
 
-            <View style={styles.infoBox}>
-              <Text style={styles.infoText}>
-                Every completed workout gives points based on its difficulty
-                level. Harder workouts earn more points — push your level up to
-                unlock badges faster.
-              </Text>
+            {/* Harder levels earn more: one line of chips instead of paragraphs. */}
+            <View style={styles.pointsRow}>
+              {LEVEL_WEIGHTS.map((item) => (
+                <View key={item.level} style={styles.pointsChip}>
+                  <Text style={styles.pointsChipLevel}>{item.level}</Text>
+                  <Text style={styles.pointsChipValue}>+{item.points}</Text>
+                </View>
+              ))}
             </View>
-
-            {LEVEL_WEIGHTS.map((item) => (
-              <View key={item.level} style={styles.weightRow}>
-                <View style={styles.weightIcon}>
-                  <Ionicons name="star" size={15} color={colors.primary} />
-                </View>
-
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.weightTitle}>
-                    {item.level} = {item.points} point
-                    {item.points > 1 ? "s" : ""}
-                  </Text>
-                  <Text style={styles.weightDesc}>{item.description}</Text>
-                </View>
-              </View>
-            ))}
 
             <TouchableOpacity
               activeOpacity={0.9}
@@ -493,6 +482,18 @@ export default function WorkoutBadgeInfo({ userBadge, visible, setVisible }) {
 }
 
 const styles = StyleSheet.create({
+  pointsRow: { flexDirection: "row", gap: 8, marginBottom: 14 },
+  pointsChip: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 10,
+    borderRadius: 14,
+    backgroundColor: "#FFF5F0",
+    borderWidth: 1,
+    borderColor: "#FFE0D3",
+  },
+  pointsChipLevel: { fontFamily: "OpenSans_500Medium", fontSize: 11.5, color: "#636E72" },
+  pointsChipValue: { fontFamily: "OpenSans_700Bold", fontSize: 16, color: "#FF6B35", marginTop: 1 },
   overlay: {
     flex: 1,
     backgroundColor: "rgba(15, 23, 42, 0.55)",

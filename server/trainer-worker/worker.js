@@ -1223,6 +1223,7 @@ export default {
       if (!id || !Number.isFinite(count) || count < 0 || count > 10000) {
         return json({ error: "bad_score" }, 400);
       }
+      lastSupabaseError = null;
       const ok = await supabaseUpsert(env, "scores", {
         id,
         name: String(body.name || "Anonymous").slice(0, 60),
@@ -1230,7 +1231,8 @@ export default {
         country: body.country ? String(body.country).slice(0, 2) : null,
         date: new Date().toISOString(),
       });
-      return json({ ok });
+      // On failure, say why (missing table/column, bad key…) instead of a bare false.
+      return json(ok ? { ok } : { ok, detail: lastSupabaseError });
     }
 
     // Reads a photographed food label into structured JSON. The verdict is
@@ -1406,7 +1408,16 @@ function buildProfileLine(p) {
   if (p.height) bits.push(`${p.height}cm`);
   if (p.goal) bits.push(`goal: ${p.goal}`);
   if (p.experience) bits.push(`level: ${p.experience}`);
-  return bits.length ? `User profile — ${bits.join(", ")}.` : "";
+  let line = bits.length ? `User profile — ${bits.join(", ")}.` : "";
+  // Set by the app when a woman has done the Pregnancy / Post Pregnancy plan.
+  const m = p.motherhood;
+  const since = /^\d{4}-\d{2}-\d{2}$/.test(String(m?.lastDone || "")) ? ` (last on ${m.lastDone})` : "";
+  if (m?.stage === "pregnancy") {
+    line += ` She has been doing the app's Pregnancy workout${since}, so she is likely pregnant: keep workout advice low-impact (no lying flat on the back after the first trimester, no heavy lifting, contact sports or breath-holding), stop on pain, dizziness or bleeding; for diet favour pregnancy-safe foods (folate, iron, calcium, protein, hydration; avoid alcohol, raw/undercooked meat, eggs or fish, unpasteurised dairy, high-mercury fish, excess caffeine) with no aggressive calorie deficits. Remind her to follow her doctor's advice.`;
+  } else if (m?.stage === "postpartum") {
+    line += ` She has been doing the app's Post Pregnancy workout${since}, so she has recently given birth: favour gentle core and pelvic-floor rebuilding, watch for diastasis recti, no high-impact or heavy lifting until her doctor clears her (longer after a C-section); for diet keep a mild deficit at most, enough protein, iron and fluids, and extra calories if breastfeeding. Be warm and encouraging.`;
+  }
+  return line;
 }
 
 async function fetchWithTimeout(url, opts, ms) {

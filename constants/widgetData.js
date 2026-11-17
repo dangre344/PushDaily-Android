@@ -5,10 +5,9 @@
 // The widget's messages used to be duplicated between JS and the plugin; with
 // 12 expressions that drift was a matter of time, so there is now one table.
 //
-// TONE — the Duolingo widget is famous partly for guilt-tripping, and that
-// lands very differently in fitness than in language learning. These lines are
-// cheeky about SHOWING UP, never shaming about being away. Same rule the
-// trainer bubble follows.
+// TONE — Duolingo-style: cheeky, sarcastic and, after a long absence, a
+// playful guilt trip ("long_gone"). The jokes are always about the missed
+// workouts, never about the person or their body.
 
 /**
  * Jack's expressions. `drawable` is the Android resource name; the matching
@@ -58,19 +57,32 @@ const BUCKETS = [
     ],
   },
   {
-    id: "comeback",
+    // 7+ days away: sarcastic guilt trip, Duolingo-style.
+    id: "long_gone",
     expression: "sad",
     lines: [
-      "Been a few days, {name}. Bounce back 💪",
-      "Fresh start today, {name} 🤝",
-      "One session and we're rolling again",
+      "Your muscles miss you, {name} 🕵️",
+      "Push-ups alone again 🥲",
+      "Remember me? Your trainer 😢",
+      "The couch is winning 🛋️",
+    ],
+  },
+  {
+    id: "comeback",
+    expression: "wow",
+    lines: [
+      "Missed you, {name} 🥺",
+      "Rest week's over, {name} 😤",
+      "Few days off. Bounce back 💪",
+      "One session. Let's roll again",
     ],
   },
   {
     id: "morning",
     expression: "water",
     lines: [
-      "Good morning, {name} 💧",
+      "Good morning, {name} ☀️",
+      "Rise and grind, {name} 💪",
       "Water first. Then push-ups 💧",
       "Morning, {name}. Body's ready ⚡",
     ],
@@ -98,8 +110,9 @@ const BUCKETS = [
     expression: "phone",
     lines: [
       "Still scrolling, {name}? I noticed 👀",
-      "The sofa will still be here after 🛋️",
+      "The sofa can wait 🛋️",
       "Excuses burn zero calories 😏",
+      "Excuses lift more than you 😏",
     ],
   },
   {
@@ -174,6 +187,7 @@ function pickBucket({ hour, streak = 0, daysSinceLast = -1 }) {
   // Genuinely lapsed — offer a hand, don't scold. Deliberately NOT keyed on
   // "streak === 0": that is also true on a planned rest day, and greeting
   // someone with "we missed a day" for resting is the nagging we're avoiding.
+  if (daysSinceLast >= 7) return byId("long_gone");
   if (daysSinceLast >= 3) return byId("comeback");
 
   // The morning greeting outranks the streak copy: someone who trained

@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Audio } from "expo-av";
 import { useFocusEffect } from "expo-router";
 import * as Speech from "expo-speech";
+import { coachVoice } from "../../../constants/coachVoice";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useIsFocused } from "@react-navigation/native";
 import {
@@ -187,18 +188,20 @@ export default function CurrentWorkout({
           playTimerComplete();
 
           if (!mutedRef.current && isActive.current) {
-            Speech.speak("Time's up! Moving to the next exercise.", {
-              language: "en-US",
-              pitch: 1.1,
-              rate: 0.8,
-              onDone: () => {
-                Logger.log("isActive.current--->" + isActive.current);
-                Logger.log("onNext--->" + onNext);
-                if (isActive.current && onNext) {
-                  onNext();
-                }
-              },
-            });
+            Speech.speak(
+              "Time's up! Moving to the next exercise.",
+              coachVoice({
+                pitch: 1.1,
+                rate: 0.8,
+                onDone: () => {
+                  Logger.log("isActive.current--->" + isActive.current);
+                  Logger.log("onNext--->" + onNext);
+                  if (isActive.current && onNext) {
+                    onNext();
+                  }
+                },
+              }),
+            );
           } else if (isActive.current && onNext) {
             Logger.log("isActive.current--onNext->" + isActive.current);
             Logger.log("onNext--->" + onNext);
@@ -215,11 +218,13 @@ export default function CurrentWorkout({
         ) {
           const timeText = `${prev} second${prev > 1 ? "s" : ""} remaining`;
 
-          Speech.speak(timeText, {
-            language: "en-US",
-            pitch: prev <= 3 ? 1.2 : 1.0,
-            rate: 0.8,
-          });
+          Speech.speak(
+            timeText,
+            coachVoice({
+              pitch: prev <= 3 ? 1.2 : 1.0,
+              rate: 0.8,
+            }),
+          );
         }
 
         return prev - 1;
@@ -227,60 +232,57 @@ export default function CurrentWorkout({
     }, 1000);
   }, [workout?.time, onNext, playTimerComplete]);
 
-  const playSoundFromAssets = useCallback(
-    async (soundFileName) => {
-      if (mutedRef.current || !isActive.current) return;
+  const playSoundFromAssets = useCallback(async (soundFileName) => {
+    if (mutedRef.current || !isActive.current) return;
 
-      try {
-        const soundFiles = {
-          "workout_start.mp3": require("../../../assets/mp3/refree.mp3"),
-        };
+    try {
+      const soundFiles = {
+        "workout_start.mp3": require("../../../assets/mp3/refree.mp3"),
+      };
 
-        if (soundRef.current) {
-          try {
-            await soundRef.current.unloadAsync();
-          } catch (e) {}
-        }
-
-        return new Promise(async (resolve, reject) => {
-          try {
-            const { sound } = await Audio.Sound.createAsync(
-              soundFiles[soundFileName] || soundFiles["workout_start.mp3"],
-              { shouldPlay: true },
-            );
-
-            soundRef.current = sound;
-
-            sound.setOnPlaybackStatusUpdate(async (status) => {
-              if (!status.isLoaded) return;
-
-              if (status.didJustFinish) {
-                try {
-                  await sound.unloadAsync();
-                } catch (e) {}
-
-                soundRef.current = null;
-                resolve();
-              }
-            });
-          } catch (error) {
-            reject(error);
-          }
-        });
-      } catch (error) {
-        console.error(`Error playing sound ${soundFileName}:`, error);
+      if (soundRef.current) {
+        try {
+          await soundRef.current.unloadAsync();
+        } catch (e) {}
       }
-    },
-    [],
-  );
 
-  const speakText = useCallback(
-    (text) => {
-      if (mutedRef.current || !isActive.current) return Promise.resolve();
+      return new Promise(async (resolve, reject) => {
+        try {
+          const { sound } = await Audio.Sound.createAsync(
+            soundFiles[soundFileName] || soundFiles["workout_start.mp3"],
+            { shouldPlay: true },
+          );
 
-      return new Promise((resolve, reject) => {
-        Speech.speak(text, {
-          language: "en-US",
+          soundRef.current = sound;
+
+          sound.setOnPlaybackStatusUpdate(async (status) => {
+            if (!status.isLoaded) return;
+
+            if (status.didJustFinish) {
+              try {
+                await sound.unloadAsync();
+              } catch (e) {}
+
+              soundRef.current = null;
+              resolve();
+            }
+          });
+        } catch (error) {
+          reject(error);
+        }
+      });
+    } catch (error) {
+      console.error(`Error playing sound ${soundFileName}:`, error);
+    }
+  }, []);
+
+  const speakText = useCallback((text) => {
+    if (mutedRef.current || !isActive.current) return Promise.resolve();
+
+    return new Promise((resolve, reject) => {
+      Speech.speak(
+        text,
+        coachVoice({
           pitch: 1.0,
           rate: 0.8,
           onDone: () => {
@@ -292,11 +294,10 @@ export default function CurrentWorkout({
           onError: (error) => {
             if (isActive.current) reject(error);
           },
-        });
-      });
-    },
-    [],
-  );
+        }),
+      );
+    });
+  }, []);
 
   // Runs for every exercise, muted or not: speakText/beep are no-ops while
   // muted, but the timer for a timed exercise must start either way (it used
@@ -384,7 +385,7 @@ export default function CurrentWorkout({
           : "Keep going!"
         : `${workout?.name || "Keep going"}. ${workout?.reps ? `${workout.reps} reps. ` : ""}You've got this!`;
       Speech.stop();
-      Speech.speak(cue, { language: "en-US", rate: 0.9 });
+      Speech.speak(cue, coachVoice({ rate: 0.9 }));
     }
   }, [workout?.time, workout?.name, workout?.reps, timeLeft]);
 
@@ -480,9 +481,10 @@ export default function CurrentWorkout({
       // Re-announce where we are so the user isn't dropped back into silence.
       if (!mutedRef.current && wasSpeakingRef.current) {
         wasSpeakingRef.current = false;
-        Speech.speak(`Resuming. ${workout?.name || "Keep going"}.`, {
-          language: "en-US",
-        });
+        Speech.speak(
+          `Resuming. ${workout?.name || "Keep going"}.`,
+          coachVoice(),
+        );
       }
       if (pausedByBlurRef.current) {
         pausedByBlurRef.current = false;
@@ -600,9 +602,7 @@ export default function CurrentWorkout({
           </TouchableOpacity>
         </Animated.View>
 
-        <Animated.View
-          style={styles.infoContainer}
-        >
+        <Animated.View style={styles.infoContainer}>
           <View style={styles.titleContainer}>
             <Text style={styles.exerciseName}>
               {isRepsWorkout
@@ -741,7 +741,6 @@ export default function CurrentWorkout({
                   ))}
                 </View>
               )}
-
             </ScrollView>
           </View>
         </View>

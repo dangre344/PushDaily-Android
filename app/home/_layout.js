@@ -12,6 +12,7 @@ import {
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useEffect, useRef, useState } from "react";
+import { markNavigationReady } from "../../constants/jackNotifications";
 import TabTourOverlay, {
   hasSeenTabTour,
 } from "../../components/ui/TabTourOverlay.js";
@@ -215,6 +216,12 @@ const CustomTabBar = ({ state, navigation }) => {
 export default function AppLayout() {
   const [showTour, setShowTour] = useState(false);
   const { user } = useUser();
+
+  // A notification tap that launched the app waits until this screen exists
+  // (navigating earlier closes the app). Release it now.
+  useEffect(() => {
+    markNavigationReady();
+  }, []);
 
   // Period reminders go to everyone; the gender only picks the wording ("your"
   // for women, "her" for anyone tracking a partner). Re-synced on every launch

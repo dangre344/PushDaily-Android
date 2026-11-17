@@ -13,12 +13,25 @@ const CODES = {
   "Upper Body": "UB",
   Glutes: "G",
   "Posture Correction": "P",
+  "Kegel Stamina": "K",
+  "Back Recovery": "BR",
+  "Shoulder Recovery": "SR",
+  "Knee Recovery": "KR",
+  "Mobility & Flexibility": "M",
+  Pregnancy: "Pg",
+  "Post Pregnancy": "PP",
 };
 
 const NAMES = {
   "Full Body": "Full body",
   "Upper Body": "Upper",
   "Posture Correction": "Posture",
+  "Kegel Stamina": "Kegel",
+  "Back Recovery": "Back care",
+  "Shoulder Recovery": "Shoulder care",
+  "Knee Recovery": "Knee care",
+  "Mobility & Flexibility": "Mobility",
+  "Post Pregnancy": "Postpartum",
 };
 
 /** "Chest" → "C", unknown → first two letters. */

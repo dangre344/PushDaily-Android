@@ -42,6 +42,28 @@ const MOTIVATIONS = [
   { text: "The hardest part is pressing Start 👇", expression: "hi" },
 ];
 
+// Warm lines for moms on the Pregnancy and Post Pregnancy plans.
+const MOM_MOTIVATIONS = {
+  Pregnancy: [
+    { text: "Strong mama, healthy baby — let's move gently 🤰", expression: "cheer" },
+    { text: "Every breath you take here is for two 💗", expression: "hi" },
+    { text: "You're growing a whole human. You've got this 🌸", expression: "flex" },
+    { text: "A few gentle minutes now, an easier delivery later 🙌", expression: "dumbbell" },
+    { text: "Listen to your body — slow is perfect today 🌿", expression: "think" },
+  ],
+  "Post Pregnancy": [
+    { text: "You did something amazing. Now a little time for you 💗", expression: "cheer" },
+    { text: "Rebuild slowly, mama — every rep counts 🌸", expression: "flex" },
+    { text: "A stronger you is a happier you for your baby 👶", expression: "hi" },
+    { text: "Small steps, big comeback. Let's begin 🙌", expression: "dumbbell" },
+    { text: "Be proud of your body — it made a miracle ✨", expression: "wink" },
+  ],
+};
+const MOM_HELLO = {
+  Pregnancy: "Hi mama! A gentle workout for you and baby 🤰💗",
+  "Post Pregnancy": "Welcome back, mama! Let's rebuild your strength 💗",
+};
+
 // Long enough to actually read a two-line bubble, then a short breather.
 const MOTIVATION_MS = 6500; // time each line stays on screen
 const MOTIVATION_GAP_MS = 350; // empty beat between lines
@@ -51,7 +73,8 @@ const MOTIVATION_GAP_MS = 350; // empty beat between lines
  * line changing every few seconds re-renders only this, not the whole screen
  * and its list (which caused hitches mid-scroll).
  */
-function CoachStart({ label, onStart }) {
+function CoachStart({ label, onStart, bodyPart }) {
+  const lines = MOM_MOTIVATIONS[bodyPart] || MOTIVATIONS;
   const [motivationIndex, setMotivationIndex] = useState(0);
   const motivationOpacity = useRef(new Animated.Value(0)).current;
   const motivationY = useRef(new Animated.Value(8)).current;
@@ -94,7 +117,7 @@ function CoachStart({ label, onStart }) {
           ]).start(() => {
             if (cancelled) return;
             motivationY.setValue(8);
-            setMotivationIndex((i) => (i + 1) % MOTIVATIONS.length);
+            setMotivationIndex((i) => (i + 1) % lines.length);
             setTimeout(() => !cancelled && showNext(), MOTIVATION_GAP_MS);
           });
         }, MOTIVATION_MS);
@@ -105,7 +128,7 @@ function CoachStart({ label, onStart }) {
 
     // Jack nudges from the floating bubble once the list has settled.
     const hello = setTimeout(
-      () => sayFromJack("Let's go — time to start this workout 💪", 7000),
+      () => sayFromJack(MOM_HELLO[bodyPart] || "Let's go — time to start this workout 💪", 7000),
       900,
     );
 
@@ -164,7 +187,7 @@ function CoachStart({ label, onStart }) {
           }}
         >
           <ExpoImage
-            source={EXPRESSION_IMAGES[MOTIVATIONS[motivationIndex].expression]}
+            source={EXPRESSION_IMAGES[lines[motivationIndex % lines.length].expression]}
             style={styles.coachMascot}
             contentFit="contain"
             transition={{ duration: 420, effect: "cross-dissolve" }}
@@ -183,7 +206,7 @@ function CoachStart({ label, onStart }) {
             ]}
             numberOfLines={2}
           >
-            {MOTIVATIONS[motivationIndex].text}
+            {lines[motivationIndex % lines.length].text}
           </Animated.Text>
         </View>
       </View>
@@ -387,55 +410,40 @@ export default function WorkoutListingScreen({ route }) {
 
   // Rows are plain views: no per-row scroll animation to recompute every
   // frame. expo-image decodes each photo at thumbnail size, not full size.
-  const renderWorkoutItem = ({ item }) => {
+  // Rows form one grouped card (hairline dividers) instead of ten separate
+  // shadowed cards: step number, thumbnail, name, then reps/time in grey.
+  const renderWorkoutItem = ({ item, index }) => {
+    const first = index === 0;
+    const last = index === workoutCount - 1;
     return (
       <TouchableOpacity
-        activeOpacity={0.86}
+        activeOpacity={0.7}
         onPress={() => openImagePreview(item?.photo, item?.name)}
+        style={[styles.row, first && styles.rowFirst, last && styles.rowLast]}
       >
-        <View style={styles.workoutItem}>
-          <View style={styles.workoutImageWrapper}>
-            <ExpoImage
-              style={styles.workoutImage}
-              source={item?.photo}
-              contentFit="contain"
-            />
-          </View>
+        <Text style={styles.rowIndex}>{index + 1}</Text>
 
-          <View style={styles.workoutInfo}>
-            <View style={styles.workoutTopRow}>
-              <Text style={styles.workoutName} numberOfLines={1}>
-                {item.name}
+        <View style={styles.rowThumb}>
+          <ExpoImage style={styles.rowImage} source={item?.photo} contentFit="contain" />
+        </View>
+
+        <View style={[styles.rowInfo, !first && styles.rowDivider]}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.rowName} numberOfLines={1}>
+              {item.name}
+            </Text>
+            <View style={styles.rowMeta}>
+              <Ionicons
+                name={item.reps ? "repeat" : "time-outline"}
+                size={moderateScale(13)}
+                color={colors.textLight}
+              />
+              <Text style={styles.rowMetaText}>
+                {item.reps ? `${item.reps} reps` : item.time}
               </Text>
             </View>
-
-            {item.reps ? (
-              <View style={styles.metaRow}>
-                <View style={styles.softChip}>
-                  <Text style={styles.softChipText}>x {item.reps} reps</Text>
-                </View>
-              </View>
-            ) : (
-              <View style={styles.workoutDetails}>
-                <IconWithText
-                  icon={
-                    <Ionicons name="time-outline" size={14} color={colors.primary} />
-                  }
-                  label={item.time}
-                  size={12}
-                  textStyle={styles.detailText}
-                  orientation="horizontal"
-                />
-              </View>
-            )}
           </View>
-
-          <Ionicons
-            name="chevron-forward"
-            size={20}
-            color="#C8CDD6"
-            style={styles.chevron}
-          />
+          <Ionicons name="chevron-forward" size={moderateScale(16)} color="#C8CDD6" />
         </View>
       </TouchableOpacity>
     );
@@ -443,7 +451,23 @@ export default function WorkoutListingScreen({ route }) {
 
   // An element, not a component defined in render: a new component type on
   // every render made the list unmount and remount its header each time.
+  // Recovery plans have one gentle level, so they say "Gentle" instead of a
+  // level, and carry a safety note above the list.
+  const isRecovery = !!workouts.recovery;
+  const levelLabel = isRecovery ? "Gentle" : workouts.level;
+
   const listHeader = (
+    <View>
+    {isRecovery ? (
+      <View style={styles.recoveryNote}>
+        <Ionicons name="medkit-outline" size={18} color="#B45309" />
+        <Text style={styles.recoveryNoteText}>
+          Please take care while performing these exercises. Move slowly and
+          stop if anything hurts. If your doctor or physiotherapist has
+          recommended rest, avoid the stretches.
+        </Text>
+      </View>
+    ) : null}
     <View style={styles.listHeaderCard}>
       <View>
         <Text style={styles.totalWorkoutTitle}>{`Total Workouts`}</Text>
@@ -460,6 +484,7 @@ export default function WorkoutListingScreen({ route }) {
           <Text style={styles.totalRepsText}>{totalReps} total reps</Text>
         ) : null}
       </View>
+    </View>
     </View>
   );
 
@@ -495,7 +520,7 @@ export default function WorkoutListingScreen({ route }) {
               </Text>
 
               <Text style={styles.headerSubtitle} numberOfLines={1}>
-                {workouts.level} • {workoutCount} workouts
+                {levelLabel} • {workoutCount} workouts
               </Text>
             </View>
 
@@ -517,7 +542,7 @@ export default function WorkoutListingScreen({ route }) {
         ]}
       >
         <Animated.Image
-          source={workouts?.img}
+          source={workouts?.headerImg || workouts?.img}
           style={[
             styles.headerImage,
             {
@@ -562,13 +587,16 @@ export default function WorkoutListingScreen({ route }) {
             },
           ]}
         >
-          <Text style={styles.overlayTitle} numberOfLines={2}>
-            {workouts.bodyPart}
-          </Text>
+          {/* Recovery posters carry their own title, so the big one is hidden. */}
+          {isRecovery ? null : (
+            <Text style={styles.overlayTitle} numberOfLines={2}>
+              {workouts.bodyPart}
+            </Text>
+          )}
 
           <View style={styles.overlayMeta}>
             <View style={styles.levelBadge}>
-              <Text style={styles.levelBadgeText}>Level: {workouts.level}</Text>
+              <Text style={styles.levelBadgeText}>{isRecovery ? levelLabel : `Level: ${workouts.level}`}</Text>
             </View>
 
             <View style={styles.overlayCalories}>
@@ -600,7 +628,11 @@ export default function WorkoutListingScreen({ route }) {
       />
 
       <View style={styles.bottomBar}>
-        <CoachStart label={t("start")} onStart={handleStartWorkout} />
+        <CoachStart
+          label={t("start")}
+          onStart={handleStartWorkout}
+          bodyPart={bodyPartObj?.name}
+        />
 
         <View style={styles.bannerContainer}>
           <BannerAd
@@ -686,6 +718,77 @@ export default function WorkoutListingScreen({ route }) {
 }
 
 const styles = StyleSheet.create({
+  recoveryNote: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    backgroundColor: "#FFF7ED",
+    borderWidth: 1,
+    borderColor: "#FED7AA",
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 12,
+  },
+  recoveryNoteText: {
+    flex: 1,
+    fontFamily: "OpenSans_400Regular",
+    fontSize: moderateScale(12.5),
+    lineHeight: moderateScale(18),
+    color: "#7C2D12",
+  },
+  // ── Exercise rows (one grouped card) ──
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    paddingLeft: moderateScale(12),
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: "#EEF0F4",
+  },
+  rowFirst: {
+    borderTopWidth: 1,
+    borderTopLeftRadius: moderateScale(18),
+    borderTopRightRadius: moderateScale(18),
+    paddingTop: moderateScale(4),
+  },
+  rowLast: {
+    borderBottomWidth: 1,
+    borderBottomLeftRadius: moderateScale(18),
+    borderBottomRightRadius: moderateScale(18),
+    paddingBottom: moderateScale(4),
+  },
+  rowIndex: {
+    width: moderateScale(18),
+    fontSize: moderateScale(12),
+    fontFamily: "OpenSans_600SemiBold",
+    color: colors.textLight,
+  },
+  rowThumb: {
+    width: moderateScale(52),
+    height: moderateScale(52),
+    borderRadius: moderateScale(12),
+    backgroundColor: "#F5F7FA",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    marginVertical: moderateScale(8),
+  },
+  rowImage: { width: "92%", height: "92%" },
+  // The divider starts after the thumbnail, like an inset list.
+  rowInfo: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "stretch",
+    marginLeft: moderateScale(12),
+    paddingRight: moderateScale(12),
+  },
+  rowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "#E6E9EF" },
+  rowName: { fontSize: moderateScale(14.5), fontFamily: "OpenSans_600SemiBold", color: colors.text },
+  rowMeta: { flexDirection: "row", alignItems: "center", gap: moderateScale(4), marginTop: 2 },
+  rowMetaText: { fontSize: moderateScale(12.5), fontFamily: "OpenSans_400Regular", color: colors.textLight },
+
   container: {
     flex: 1,
     backgroundColor: "#F7F8FA",
@@ -1034,7 +1137,7 @@ const styles = StyleSheet.create({
 
   totalWorkoutCount: {
     fontSize: moderateScale(22),
-    fontFamily: "OpenSans_800ExtraBold",
+    fontFamily: "OpenSans_700Bold",
     color: colors.text,
   },
 

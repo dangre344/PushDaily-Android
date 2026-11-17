@@ -1,4 +1,3 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { MotiView } from "moti";
 import { useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
@@ -224,9 +223,7 @@ export default function MeasurementsStep({
         transition={{ type: "timing", duration: 280 }}
       >
         <Text style={styles.stepTitle}>Your measurements</Text>
-        <Text style={styles.stepSubtitle}>
-          Drag the ruler, tap ± or tap the number to type it.
-        </Text>
+        <Text style={styles.stepSubtitle}>Drag the ruler or tap the number to type.</Text>
       </MotiView>
 
       <RulerCard
@@ -293,21 +290,15 @@ export default function MeasurementsStep({
         </MotiView>
       ) : null}
 
-      <View style={styles.note}>
-        <Ionicons name="information-circle-outline" size={ms(15)} color={colors.primary} />
-        <Text style={styles.noteText}>
-          Accurate values give you accurate calorie burn and daily water targets.
-        </Text>
-      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 14, paddingBottom: 24 },
+  container: { gap: 10, paddingBottom: 24 },
 
   stepTitle: {
-    fontSize: ms(24),
+    fontSize: ms(22),
     fontFamily: "OpenSans_800ExtraBold",
     color: colors.text,
     letterSpacing: -0.4,
@@ -316,7 +307,7 @@ const styles = StyleSheet.create({
     fontSize: ms(13.5),
     fontFamily: "OpenSans_500Medium",
     color: colors.textLight,
-    marginTop: 4,
+    marginTop: 2,
     lineHeight: ms(19),
   },
 
@@ -326,7 +317,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     borderRadius: 18,
     paddingHorizontal: 18,
-    paddingVertical: 14,
+    paddingVertical: 10,
   },
   bmiLabel: {
     fontSize: ms(11.5),
@@ -335,8 +326,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
   },
   bmiValue: {
-    fontSize: ms(24),
-    fontFamily: "OpenSans_800ExtraBold",
+    fontSize: ms(20),
+    fontFamily: "OpenSans_700Bold",
     fontVariant: ["tabular-nums"],
   },
   bmiNote: {

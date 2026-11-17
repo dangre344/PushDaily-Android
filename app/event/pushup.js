@@ -2,6 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import * as Speech from "expo-speech";
+import { coachVoice } from "../../constants/coachVoice";
 import { Component, useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -70,7 +71,22 @@ const angleAt = (a, b, c) => {
   return (Math.acos(cos) * 180) / Math.PI;
 };
 
+// Event rules: the clock starts at the first counted push-up. The set ends
+// and uploads by itself when 2 minutes are up, or after 10 seconds with no
+// push-up — resting can't add to the score.
+const EVENT_MS = 2 * 60 * 1000;
+const IDLE_MS = 10 * 1000;
+const IDLE_WARN_MS = 5 * 1000;
+const fmtClock = (ms) => {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+};
+
 const ONBOARDING = [
+  {
+    icon: "timer-outline",
+    text: "You get 2 minutes from your first push-up. 10 seconds without one ends the set.",
+  },
   {
     icon: "phone-portrait-outline",
     text: "Lean your phone ~1.5 m away, facing you (front angle).",
@@ -153,6 +169,13 @@ export default function PushupScreen() {
   const [down, setDown] = useState(false);
   const [posture, setPosture] = useState("positioning"); // positioning | ready
   const [debugInfo, setDebugInfo] = useState("");
+  // Timer state: null until the first push-up.
+  const [timeLeft, setTimeLeft] = useState(null);
+  const [idleLeft, setIdleLeft] = useState(null); // shown in the last 5 s
+  const countRef = useRef(0);
+  const startedAtRef = useRef(0);
+  const lastRepAtRef = useRef(0);
+  const finishedRef = useRef(false);
 
   const repPhaseRef = useRef("up");
   const baseUpRef = useRef(null);
@@ -191,11 +214,16 @@ export default function PushupScreen() {
   }, [phase]);
 
   const bumpRep = () => {
+    if (finishedRef.current) return;
+    const now = Date.now();
+    if (!startedAtRef.current) startedAtRef.current = now;
+    lastRepAtRef.current = now;
+    countRef.current += 1;
     setCount((c) => {
       const next = c + 1;
       if (next % 5 === 0) {
         Speech.stop();
-        Speech.speak(String(next), { rate: 0.95, pitch: 1.0 });
+        Speech.speak(String(next), coachVoice({ rate: 0.95 }));
       }
       return next;
     });
@@ -337,7 +365,7 @@ export default function PushupScreen() {
           repPhaseRef.current = "up";
           setPosture("ready");
           Speech.stop();
-          Speech.speak("Start", { rate: 0.95 });
+          Speech.speak("Start", coachVoice({ rate: 0.95 }));
           Logger.log("[Pushup] ✅ Posture good — counting started");
         }
       } else {
@@ -523,18 +551,41 @@ export default function PushupScreen() {
     loggedSampleRef.current = false;
     loggedStructRef.current = false;
     setCount(0);
+    countRef.current = 0;
+    startedAtRef.current = 0;
+    lastRepAtRef.current = 0;
+    finishedRef.current = false;
+    setTimeLeft(null);
+    setIdleLeft(null);
     setDown(false);
     setPhase("counting");
   };
 
-  const finish = async () => {
+  const finish = async (reason) => {
+    if (finishedRef.current) return;
+    finishedRef.current = true;
+    // Read the ref: the timer calls this from an interval whose closure holds
+    // an old `count`.
+    const count = countRef.current;
+    if (count === 0) {
+      router.back();
+      return;
+    }
     Speech.stop();
+    if (reason === "time") {
+      Speech.speak(`Time's up! ${count} push-ups`, coachVoice({ rate: 0.95 }));
+    } else if (reason === "idle") {
+      Speech.speak(`Set over. ${count} push-ups`, coachVoice({ rate: 0.95 }));
+    }
     const best = await savePushupBest(count);
     const lifetime = await addPushupTotal(count); // all-time reps
     const sessionsToday = await incrementTodaySession();
-    // Upload the best score to the global leaderboard (best-effort, non-blocking).
-    // The row is stamped in UTC so every country shares the same challenge day.
-    saveScore(user?._id, user?.name, best, getDeviceCountry()).catch(() => {});
+    // Upload the best score to the global leaderboard. The row is stamped in
+    // UTC so every country shares the same challenge day. The screen closes at
+    // once; the toast below reports what actually happened.
+    const upload = saveScore(user?._id, user?.name, best, getDeviceCountry()).catch(
+      () => false,
+    );
     trackEvent("Pushup Event", {
       count,
       best,
@@ -548,9 +599,35 @@ export default function PushupScreen() {
       "Last Pushup Count": count,
       "Total Pushups": lifetime,
     });
-    Toast.success(`Great! ${count} push-ups uploaded 🎉`, "top");
     router.back();
+    if (await upload) {
+      Toast.success(`Great! ${count} push-ups uploaded 🎉`, "top");
+    } else {
+      // Kept on the phone and re-sent when the Event tab loads.
+      Toast.info(`${count} push-ups saved — will upload when you're back online`, "top");
+    }
   };
+
+  // The event clock: ticks from the first push-up, ends the set on time-out or
+  // 10 s of no push-ups. finish() is kept in a ref so the interval always
+  // calls the current one.
+  const finishRef = useRef(finish);
+  finishRef.current = finish;
+  useEffect(() => {
+    if (phase !== "counting") return;
+    const id = setInterval(() => {
+      const start = startedAtRef.current;
+      if (!start || finishedRef.current) return;
+      const now = Date.now();
+      const left = EVENT_MS - (now - start);
+      const idle = now - lastRepAtRef.current;
+      setTimeLeft(left);
+      setIdleLeft(idle >= IDLE_WARN_MS ? IDLE_MS - idle : null);
+      if (left <= 0) finishRef.current("time");
+      else if (idle >= IDLE_MS) finishRef.current("idle");
+    }, 250);
+    return () => clearInterval(id);
+  }, [phase]);
 
   // ---- Onboarding ----
   if (phase === "onboarding") {
@@ -687,6 +764,17 @@ export default function PushupScreen() {
         <View style={styles.countOverlay} pointerEvents="none">
           <Text style={styles.countLabel}>ACTIVE REPS</Text>
           <Text style={styles.countValue}>{count}</Text>
+          <View style={styles.timerPill}>
+            <Ionicons name="timer-outline" size={ms(14)} color="#FFFFFF" />
+            <Text style={styles.timerText}>
+              {timeLeft == null ? "2:00 · starts at your first push-up" : fmtClock(timeLeft)}
+            </Text>
+          </View>
+          {idleLeft != null ? (
+            <Text style={styles.idleText}>
+              {`Keep going! Ends in ${Math.max(1, Math.ceil(idleLeft / 1000))}s`}
+            </Text>
+          ) : null}
           {debugInfo ? (
             <Text style={{ color: "rgba(255,255,255,0.3)", fontSize: ms(10) }}>
               {debugInfo}
@@ -698,7 +786,7 @@ export default function PushupScreen() {
       <TouchableOpacity
         style={[styles.doneBtn, count === 0 && styles.doneBtnDisabled]}
         activeOpacity={0.9}
-        onPress={finish}
+        onPress={() => finish("done")}
         disabled={count === 0}
       >
         <Ionicons name="checkmark-circle" size={ms(20)} color="#FFFFFF" />
@@ -894,6 +982,29 @@ const styles = StyleSheet.create({
     fontSize: ms(11),
     letterSpacing: 2,
     color: "rgba(255,255,255,0.75)",
+  },
+  timerPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: ms(4),
+    paddingHorizontal: ms(12),
+    paddingVertical: ms(5),
+    borderRadius: 999,
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  timerText: {
+    fontFamily: "OpenSans_700Bold",
+    fontSize: ms(13),
+    color: "#FFFFFF",
+  },
+  idleText: {
+    marginTop: ms(6),
+    fontFamily: "OpenSans_700Bold",
+    fontSize: ms(14),
+    color: "#FDBA74",
+    textShadowColor: "rgba(0,0,0,0.6)",
+    textShadowRadius: 6,
   },
   countValue: {
     fontFamily: "OpenSans_800ExtraBold",
