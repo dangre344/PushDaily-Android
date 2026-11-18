@@ -65,7 +65,7 @@ export default function StatsModal({ visible, setVisible }) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#F8FAFC" },
+  screen: { flex: 1, backgroundColor: colors.screen },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: ms(16),
     paddingTop: ms(8),
     paddingBottom: ms(12),
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderBottomWidth: 1,
     borderBottomColor: "#E6EEF6",
   },

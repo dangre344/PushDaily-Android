@@ -330,7 +330,7 @@ export default function MilestonesModal({ visible, setVisible }) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#F7F8FA",
+    backgroundColor: colors.screen,
   },
 
   header: {
@@ -340,15 +340,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: ms(16),
     paddingTop: ms(8),
     paddingBottom: ms(12),
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderBottomWidth: 1,
-    borderBottomColor: "#EEF0F4",
+    borderBottomColor: colors.hairline,
   },
   closeBtn: {
     width: ms(42),
     height: ms(42),
     borderRadius: ms(21),
-    backgroundColor: "#F4F6F8",
+    backgroundColor: colors.screen,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -380,11 +380,11 @@ const styles = StyleSheet.create({
 
   // ── Summary ──
   summaryCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: ms(22),
     padding: ms(18),
     borderWidth: 1,
-    borderColor: "#EEF0F4",
+    borderColor: colors.hairline,
     marginBottom: ms(18),
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 6 },
@@ -427,7 +427,7 @@ const styles = StyleSheet.create({
   },
   summaryTrack: {
     height: ms(10),
-    backgroundColor: "#E9EDF3",
+    backgroundColor: colors.track,
     borderRadius: ms(999),
     overflow: "hidden",
   },
@@ -475,12 +475,12 @@ const styles = StyleSheet.create({
   // ── Card ──
   card: {
     flexDirection: "row",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: ms(18),
     padding: ms(14),
     marginBottom: ms(10),
     borderWidth: 1,
-    borderColor: "#EEF0F4",
+    borderColor: colors.hairline,
     gap: ms(12),
   },
   emojiWrap: {
@@ -543,7 +543,7 @@ const styles = StyleSheet.create({
   },
   progressTrack: {
     height: ms(7),
-    backgroundColor: "#EEF1F5",
+    backgroundColor: colors.screen,
     borderRadius: ms(999),
     overflow: "hidden",
   },
@@ -563,8 +563,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     minHeight: ms(52),
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderTopWidth: 1,
-    borderTopColor: "#EEF0F4",
+    borderTopColor: colors.hairline,
   },
 });

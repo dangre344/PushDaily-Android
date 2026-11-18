@@ -19,7 +19,7 @@ import Share from "react-native-share";
 import { RewardedAdManager } from "../../ads/Admobmanager";
 import { bubbleScrollFade } from "../../constants/bubbleMessage";
 
-import { colors } from "../../constants/colors";
+import { colors, isDark } from "../../constants/colors";
 import {
   getLeaderboard,
   getTodaySessionCount,
@@ -449,11 +449,11 @@ export default function EventScreen() {
 }
 
 // Soft brand tint for hero cards (same as the home plan card).
-const TINT = "#FFF5F0";
-const TINT_BORDER = "#FFE0D3";
+const TINT = colors.primarySoft;
+const TINT_BORDER = isDark ? "#4A2E20" : "#FFE0D3";
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#F7F8FA" },
+  screen: { flex: 1, backgroundColor: colors.screen },
 
   // ── Hero ──
   hero: {
@@ -496,7 +496,7 @@ const styles = StyleSheet.create({
     width: ms(38),
     height: ms(38),
     borderRadius: ms(19),
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: TINT_BORDER,
     alignItems: "center",
@@ -506,7 +506,7 @@ const styles = StyleSheet.create({
   meCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: ms(16),
     paddingVertical: ms(10),
     marginTop: ms(12),
@@ -564,13 +564,13 @@ const styles = StyleSheet.create({
 
   // ── Podium chart ──
   chartCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: ms(20),
     paddingTop: ms(18),
     paddingBottom: ms(16),
     paddingHorizontal: ms(6),
     borderWidth: 1,
-    borderColor: "#EEF0F4",
+    borderColor: colors.hairline,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.05,
@@ -678,7 +678,7 @@ const styles = StyleSheet.create({
   },
   tauntPill: {
     alignSelf: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: colors.primary + "33",

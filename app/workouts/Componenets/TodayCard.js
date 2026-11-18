@@ -15,7 +15,7 @@ import {
 
 import { dayPartsLabel, localDayKey } from "../../../constants/bodyPartCodes";
 import { openAttendanceOn } from "../../../constants/tabNavigation";
-import { colors } from "../../../constants/colors";
+import { colors, isDark } from "../../../constants/colors";
 import { tapHaptic } from "../../../constants/haptics";
 import { scaling } from "../../../constants/useScaling";
 import { resolveTodayMood } from "../../../constants/todayMood";
@@ -489,8 +489,8 @@ function TodayCard({
 }
 
 // Soft brand tint for the card, and its border / empty-dot shade.
-const TINT = "#FFF5F0";
-const TINT_BORDER = "#FFE0D3";
+const TINT = colors.primarySoft;
+const TINT_BORDER = isDark ? "#4A2E20" : "#FFE0D3";
 
 const styles = StyleSheet.create({
   shadow: {
@@ -585,7 +585,7 @@ const styles = StyleSheet.create({
   dot: { width: ms(28), height: ms(28), borderRadius: ms(14), alignItems: "center", justifyContent: "center" },
   dotDone: { backgroundColor: colors.primary },
   dotDoneToday: { borderWidth: 2, borderColor: colors.accent },
-  dotToday: { borderWidth: 2, borderColor: colors.primary, backgroundColor: "#FFFFFF" },
+  dotToday: { borderWidth: 2, borderColor: colors.primary, backgroundColor: colors.card },
   dotMiss: { backgroundColor: TINT_BORDER },
   todayPip: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.primary },
 
@@ -604,7 +604,7 @@ const styles = StyleSheet.create({
   // ── recommendation panel ──
   result: {
     marginTop: 10,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: 18,
     padding: 12,
     borderWidth: 1,
@@ -655,7 +655,7 @@ const styles = StyleSheet.create({
     gap: 9,
     padding: 12,
     borderRadius: 14,
-    backgroundColor: "#FFF7ED",
+    backgroundColor: colors.primarySoft,
     marginBottom: 10,
   },
   restEmoji: { fontSize: ms(18) },
@@ -685,7 +685,7 @@ const styles = StyleSheet.create({
     width: ms(30),
     height: ms(30),
     borderRadius: ms(15),
-    backgroundColor: "#F3F4F6",
+    backgroundColor: colors.screen,
     alignItems: "center",
     justifyContent: "center",
   },

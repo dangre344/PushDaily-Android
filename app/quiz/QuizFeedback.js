@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: ms(20),
   },
   card: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: ms(22),
     padding: ms(18),
   },
@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
     minHeight: ms(58),
     maxHeight: ms(110),
     borderRadius: ms(12),
-    backgroundColor: "#F7F8FA",
+    backgroundColor: colors.screen,
     borderWidth: 1,
     borderColor: "#E6E9EF",
     paddingHorizontal: ms(12),

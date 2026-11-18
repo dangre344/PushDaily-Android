@@ -21,7 +21,7 @@ import QuizFeedback from "./QuizFeedback";
 import { praiseQuiz, sayFromJack, setBubbleHidden } from "../../constants/bubbleMessage";
 import { Image } from "expo-image";
 
-import { colors } from "../../constants/colors";
+import { colors, isDark } from "../../constants/colors";
 import {
   successHaptic,
   tapHaptic,
@@ -1003,8 +1003,8 @@ export default function QuizScreen() {
 }
 
 // Soft brand tint for hero cards (same as the home plan card).
-const TINT = "#FFF5F0";
-const TINT_BORDER = "#FFE0D3";
+const TINT = colors.primarySoft;
+const TINT_BORDER = isDark ? "#4A2E20" : "#FFE0D3";
 
 const styles = StyleSheet.create({
   playCount: {
@@ -1022,13 +1022,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: ms(10),
     paddingVertical: ms(3),
     borderRadius: 999,
-    backgroundColor: "#F4F6F8",
+    backgroundColor: colors.screen,
   },
   qMetaDot: { width: ms(7), height: ms(7), borderRadius: ms(4) },
-  screen: { flex: 1, backgroundColor: "#F7F8FA" },
+  screen: { flex: 1, backgroundColor: colors.screen },
 
   inlineLoading: { alignItems: "center", paddingVertical: ms(48), gap: ms(12) },
-  loadingText: { fontSize: ms(13), color: "#64748B", fontWeight: "600" },
+  loadingText: { fontSize: ms(13), color: colors.textMuted, fontWeight: "600" },
 
   // ── Hero ──
   hero: {
@@ -1060,7 +1060,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   rankPill: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: 999,
     paddingHorizontal: ms(10),
     paddingVertical: ms(4),
@@ -1088,12 +1088,12 @@ const styles = StyleSheet.create({
   // ── Home body ──
   body: { padding: ms(16), paddingBottom: ms(170) },
   card: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: ms(18),
     padding: ms(16),
     marginBottom: ms(14),
     borderWidth: 1,
-    borderColor: "#EEF0F4",
+    borderColor: colors.hairline,
   },
   doneCard: { alignItems: "center", paddingVertical: ms(20) },
   doneMascot: { width: ms(96), height: ms(96) },
@@ -1108,11 +1108,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     alignSelf: "stretch",
     marginTop: ms(18),
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.screen,
     borderRadius: ms(16),
     paddingVertical: ms(14),
     borderWidth: 1,
-    borderColor: "#EEF0F4",
+    borderColor: colors.hairline,
   },
   dayStat: { flex: 1, alignItems: "center" },
   dayValue: { fontFamily: "OpenSans_700Bold", fontSize: ms(20) },
@@ -1122,7 +1122,7 @@ const styles = StyleSheet.create({
     color: colors.textLight,
     marginTop: ms(2),
   },
-  dayDivider: { width: 1, height: ms(30), backgroundColor: "#E2E8F0" },
+  dayDivider: { width: 1, height: ms(30), backgroundColor: colors.track },
 
   ctaWrap: {
     position: "absolute",
@@ -1193,12 +1193,12 @@ const styles = StyleSheet.create({
     paddingBottom: ms(88), // clears the floating tab bar
   },
   qCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: ms(22),
     paddingHorizontal: ms(16),
     paddingVertical: ms(18),
     borderWidth: 1,
-    borderColor: "#EEF0F4",
+    borderColor: colors.hairline,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.07,
@@ -1240,7 +1240,7 @@ const styles = StyleSheet.create({
   segmentCurrent: { backgroundColor: "#FFB089" },
   segmentDone: { backgroundColor: colors.primary },
   comboPill: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: 999,
     paddingHorizontal: ms(9),
     paddingVertical: ms(4),
@@ -1272,7 +1272,7 @@ const styles = StyleSheet.create({
     width: ms(25),
     height: ms(25),
     borderRadius: ms(9),
-    backgroundColor: "#EEF1F5",
+    backgroundColor: colors.screen,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1381,12 +1381,12 @@ const styles = StyleSheet.create({
   },
   resultBody: { padding: ms(16), paddingTop: ms(24), paddingBottom: ms(190) },
   resultCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: ms(24),
     padding: ms(22),
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#EEF0F4",
+    borderColor: colors.hairline,
     marginBottom: ms(14),
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
@@ -1415,7 +1415,7 @@ const styles = StyleSheet.create({
   resultXp: { fontFamily: "OpenSans_700Bold", color: "#B45309" },
   flawlessBadge: {
     marginTop: ms(12),
-    backgroundColor: "#FFF7ED",
+    backgroundColor: colors.primarySoft,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: "#FDE3C4",

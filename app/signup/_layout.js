@@ -891,7 +891,7 @@ const styles = StyleSheet.create({
 
   successCard: {
     width: "100%",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: 24,
     paddingHorizontal: 22,
     paddingVertical: 28,

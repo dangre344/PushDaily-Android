@@ -131,10 +131,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: ms(10),
     paddingVertical: ms(6),
     borderRadius: 999,
-    backgroundColor: "#FFF1EA",
+    backgroundColor: colors.primarySoft,
   },
   tipChipText: { fontFamily: "OpenSans_600SemiBold", fontSize: ms(12), color: colors.text },
-  screen: { flex: 1, backgroundColor: "#F7F8FA" },
+  screen: { flex: 1, backgroundColor: colors.screen },
   body: { padding: ms(20), paddingBottom: ms(10) },
 
   iconWrap: {
@@ -168,12 +168,12 @@ const styles = StyleSheet.create({
   step: {
     flexDirection: "row",
     gap: ms(11),
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: ms(16),
     padding: ms(13),
     marginBottom: ms(10),
     borderWidth: 1,
-    borderColor: "#EEF0F4",
+    borderColor: colors.hairline,
   },
   stepEmoji: { fontSize: ms(18) },
   stepTitle: {
@@ -192,11 +192,11 @@ const styles = StyleSheet.create({
   refRow: { flexDirection: "row", gap: ms(10), marginBottom: ms(14) },
   refCard: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: ms(16),
     padding: ms(12),
     borderWidth: 1,
-    borderColor: "#EEF0F4",
+    borderColor: colors.hairline,
     alignItems: "center",
   },
   refBadge: {

@@ -4,6 +4,7 @@ import { memo } from "react";
 import { StyleSheet } from "react-native";
 
 import EXERCISE_VIDEOS from "../../assets/exercise-videos";
+import { colors } from "../../constants/colors";
 
 // ─── Exercise videos ─────────────────────────────────────────────────────────
 // The library's animations pre-rendered to short looping MP4s
@@ -58,5 +59,5 @@ function ExerciseVideoPlayer({ slug, playing = true, style, onError }) {
 export default memo(ExerciseVideoPlayer);
 
 const styles = StyleSheet.create({
-  video: { width: "100%", height: "100%", backgroundColor: "#F5F5F5" },
+  video: { width: "100%", height: "100%", backgroundColor: colors.screen },
 });

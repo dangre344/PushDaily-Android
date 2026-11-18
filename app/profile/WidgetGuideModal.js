@@ -13,6 +13,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
+
+import { WIDGET_THEMES } from "../../constants/widgetData";
 
 import { colors } from "../../constants/colors";
 import { tapHaptic } from "../../constants/haptics";
@@ -25,6 +28,7 @@ import {
   trackWidgetGuideDismissed,
   WIDGET_SOCIAL_PROOF,
 } from "../../constants/widgetPromo";
+import WidgetStepsPlayer from "./WidgetStepsPlayer";
 
 const ms = (n) => scaling().moderateScale(n);
 
@@ -34,23 +38,6 @@ const ms = (n) => scaling().moderateScale(n);
  */
 const PREVIEW_HOURS = [8, 11, 14, 17, 20];
 
-const STEPS = [
-  {
-    emoji: "👆",
-    title: "Long-press your home screen",
-    text: "Press and hold any empty space until the menu appears.",
-  },
-  {
-    emoji: "🧩",
-    title: "Tap Widgets",
-    text: "Then scroll to find Push Daily in the list.",
-  },
-  {
-    emoji: "🤏",
-    title: "Drag it into place",
-    text: "Hold the Push Daily widget and drop it where you'll see it.",
-  },
-];
 
 /**
  * Explains how to add the home-screen widget. Android has no API to add a
@@ -166,10 +153,27 @@ export default function WidgetGuideModal({
               ],
             }}
           >
+            <View style={styles.proof}>
+              <Text style={styles.proofEmoji}>📈</Text>
+              <Text style={styles.proofText}>{WIDGET_SOCIAL_PROOF}</Text>
+            </View>
+
+            <Text style={styles.sectionTitle}>How to add it</Text>
+            {/* Step-by-step walkthrough, auto-playing like a short video */}
+            <WidgetStepsPlayer />
+
+            <Text style={styles.sectionTitle}>What you&apos;ll see</Text>
             {/* Live preview of what lands on their home screen */}
             <View style={styles.phone}>
               <View style={styles.phoneNotch} />
               <Animated.View style={[styles.widget, { opacity: swap }]}>
+                {/* Same mood background the real widget uses */}
+                <LinearGradient
+                  colors={WIDGET_THEMES[shown.bucket] || ["#FFE88A", "#FFD23F"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
                 <Image
                   source={EXPRESSION_IMAGES[shown.expression]}
                   style={styles.widgetChar}
@@ -193,26 +197,7 @@ export default function WidgetGuideModal({
               <Text style={styles.phoneHint}>Preview</Text>
             </View>
 
-            <View style={styles.proof}>
-              <Text style={styles.proofEmoji}>📈</Text>
-              <Text style={styles.proofText}>{WIDGET_SOCIAL_PROOF}</Text>
-            </View>
 
-            <Text style={styles.sectionTitle}>How to add it</Text>
-
-            {STEPS.map((s, i) => (
-              <View key={s.title} style={styles.step}>
-                <View style={styles.stepNum}>
-                  <Text style={styles.stepNumText}>{i + 1}</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.stepTitle}>
-                    {s.emoji}  {s.title}
-                  </Text>
-                  <Text style={styles.stepText}>{s.text}</Text>
-                </View>
-              </View>
-            ))}
 
             <View style={styles.note}>
               <Ionicons
@@ -314,8 +299,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: ms(11),
     alignSelf: "stretch",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#FFD23F",
     borderRadius: ms(16),
+    overflow: "hidden",
     padding: ms(12),
   },
   widgetChar: { width: ms(52), height: ms(52) },

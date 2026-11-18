@@ -44,7 +44,7 @@ AsyncStorage.getItem(K_VOICE_MUTED)
 // background is #F5F5F5 — the box matches it.
 const SCREEN = Dimensions.get("window");
 const VIDEO_BOX = Math.round(Math.min(SCREEN.width, SCREEN.height * 0.46));
-const VIDEO_BG = "#F5F5F5";
+const VIDEO_BG = colors.screen;
 
 export default function CurrentWorkout({
   workout,
@@ -752,7 +752,7 @@ export default function CurrentWorkout({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.screen,
   },
   scrollContent: {
     flexGrow: 1,
@@ -764,7 +764,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 40,
     borderBottomRightRadius: 40,
     overflow: "hidden",
-    backgroundColor: "#fff",
+    backgroundColor: colors.card,
   },
   exerciseImage: {
     width: "100%",
@@ -830,7 +830,7 @@ const styles = StyleSheet.create({
   exerciseName: {
     fontFamily: "OpenSans_700Bold",
     fontSize: moderateScale(20),
-    color: "#1E293B",
+    color: colors.textStrong,
     marginBottom: 8,
   },
   repsContainer: {
@@ -851,7 +851,7 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   tag: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
@@ -862,7 +862,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   timerContainer: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 28,
     padding: 22,
     marginBottom: 28,
@@ -898,14 +898,14 @@ const styles = StyleSheet.create({
   timerLabel: {
     fontSize: scaling().moderateScale(14),
     fontFamily: "OpenSans_700Bold",
-    color: "#1E293B",
+    color: colors.textStrong,
   },
 
   timerSubLabel: {
     marginTop: 2,
     fontSize: scaling().moderateScale(13),
     fontFamily: "OpenSans_400Regular",
-    color: "#64748B",
+    color: colors.textMuted,
   },
 
   timerDisplay: {
@@ -929,7 +929,7 @@ const styles = StyleSheet.create({
     width: "100%",
     height: scaleHeight(8),
     borderRadius: 20,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: colors.track,
     overflow: "hidden",
     marginBottom: 16,
   },
@@ -944,7 +944,7 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.screen,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 999,
@@ -967,11 +967,11 @@ const styles = StyleSheet.create({
 
   statusText: {
     fontSize: 13,
-    color: "#475569",
+    color: colors.textMuted,
     fontFamily: "OpenSans_600SemiBold",
   },
   instructionsContainer: {
-    backgroundColor: "white",
+    backgroundColor: colors.card,
     borderRadius: 24,
     padding: 24,
     shadowColor: "#000",
@@ -983,7 +983,7 @@ const styles = StyleSheet.create({
   instructionsTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#1E293B",
+    color: colors.textStrong,
     marginBottom: 20,
   },
   instructionsList: {
@@ -1011,7 +1011,7 @@ const styles = StyleSheet.create({
   instructionText: {
     flex: 1,
     fontSize: 16,
-    color: "#475569",
+    color: colors.textMuted,
     lineHeight: 24,
   },
   nextButtonContainer: {
@@ -1021,7 +1021,7 @@ const styles = StyleSheet.create({
     right: 0,
     padding: 20,
     paddingBottom: 40,
-    backgroundColor: "white",
+    backgroundColor: colors.card,
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     shadowColor: "#000",
@@ -1055,7 +1055,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: "white",
+    backgroundColor: colors.card,
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     maxHeight: scaleHeight(600),
@@ -1066,12 +1066,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 24,
     borderBottomWidth: 1,
-    borderBottomColor: "#E2E8F0",
+    borderBottomColor: colors.hairline,
   },
   modalTitle: {
     fontSize: 24,
     fontFamily: "OpenSans_700Bold",
-    color: "#1E293B",
+    color: colors.textStrong,
   },
   modalBody: {
     padding: 24,
@@ -1100,19 +1100,19 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontFamily: "OpenSans_400Regular",
-    color: "#475569",
+    color: colors.textMuted,
     lineHeight: 24,
   },
   tipsContainer: {
     marginTop: 24,
     paddingTop: 24,
     borderTopWidth: 1,
-    borderTopColor: "#E2E8F0",
+    borderTopColor: colors.hairline,
   },
   tipsTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#1E293B",
+    color: colors.textStrong,
     marginBottom: 16,
   },
   tipItem: {

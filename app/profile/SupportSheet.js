@@ -375,7 +375,7 @@ const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: "rgba(15,23,42,0.55)" },
 
   sheet: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderTopLeftRadius: ms(26),
     borderTopRightRadius: ms(26),
     paddingHorizontal: ms(18),
@@ -398,7 +398,7 @@ const styles = StyleSheet.create({
     width: ms(50),
     height: ms(50),
     borderRadius: ms(16),
-    backgroundColor: "#FFF7ED",
+    backgroundColor: colors.primarySoft,
     borderWidth: 1,
     borderColor: "#FED7AA",
     alignItems: "center",
@@ -473,7 +473,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: "#CDEFD9",
@@ -515,9 +515,9 @@ const styles = StyleSheet.create({
     paddingVertical: ms(11),
     paddingHorizontal: ms(13),
     borderRadius: ms(14),
-    backgroundColor: "#F7F8FA",
+    backgroundColor: colors.screen,
     borderWidth: 1,
-    borderColor: "#EEF0F4",
+    borderColor: colors.hairline,
   },
   copyLabel: {
     flex: 1,
@@ -538,7 +538,7 @@ const styles = StyleSheet.create({
     marginTop: ms(14),
     marginBottom: ms(4),
   },
-  orLine: { flex: 1, height: 1, backgroundColor: "#EEF0F4" },
+  orLine: { flex: 1, height: 1, backgroundColor: colors.track },
   orText: {
     fontFamily: "OpenSans_600SemiBold",
     fontSize: ms(10.5),
@@ -584,11 +584,11 @@ const styles = StyleSheet.create({
   },
   qrCard: {
     alignItems: "center",
-    backgroundColor: "#F7F8FA",
+    backgroundColor: colors.screen,
     borderRadius: ms(18),
     padding: ms(14),
     borderWidth: 1,
-    borderColor: "#EEF0F4",
+    borderColor: colors.hairline,
   },
   qr: { width: ms(190), height: ms(190) },
   qrHint: {

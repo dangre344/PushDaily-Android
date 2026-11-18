@@ -488,11 +488,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 10,
     borderRadius: 14,
-    backgroundColor: "#FFF5F0",
+    backgroundColor: colors.primarySoft,
     borderWidth: 1,
     borderColor: "#FFE0D3",
   },
-  pointsChipLevel: { fontFamily: "OpenSans_500Medium", fontSize: 11.5, color: "#636E72" },
+  pointsChipLevel: { fontFamily: "OpenSans_500Medium", fontSize: 11.5, color: colors.textMuted },
   pointsChipValue: { fontFamily: "OpenSans_700Bold", fontSize: 16, color: "#FF6B35", marginTop: 1 },
   overlay: {
     flex: 1,
@@ -505,7 +505,7 @@ const styles = StyleSheet.create({
   modalCard: {
     width: "100%",
     maxHeight: "84%",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: 26,
     padding: 18,
     shadowColor: "#000",
@@ -529,12 +529,12 @@ const styles = StyleSheet.create({
   badgeContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.screen,
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: colors.hairline,
     flex: 1,
   },
 
@@ -571,7 +571,7 @@ const styles = StyleSheet.create({
   badgeSubtitle: {
     fontFamily: "OpenSans_400Regular",
     fontSize: 12,
-    color: "#64748B",
+    color: colors.textMuted,
     marginTop: 2,
   },
 
@@ -581,7 +581,7 @@ const styles = StyleSheet.create({
 
   miniProgressTrack: {
     height: 6,
-    backgroundColor: "#E2E8F0",
+    backgroundColor: colors.track,
     borderRadius: 10,
     overflow: "hidden",
   },
@@ -595,7 +595,7 @@ const styles = StyleSheet.create({
   miniProgressText: {
     fontFamily: "OpenSans_500Medium",
     fontSize: 10,
-    color: "#64748B",
+    color: colors.textMuted,
     marginTop: 4,
   },
 
@@ -615,7 +615,7 @@ const styles = StyleSheet.create({
   modalSubtitle: {
     fontFamily: "OpenSans_400Regular",
     fontSize: 13,
-    color: "#64748B",
+    color: colors.textMuted,
     lineHeight: 19,
     marginTop: 5,
     maxWidth: 280,
@@ -666,12 +666,12 @@ const styles = StyleSheet.create({
   },
 
   progressCard: {
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.screen,
     borderRadius: 18,
     padding: 14,
     marginBottom: 18,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: colors.hairline,
   },
 
   progressHeader: {
@@ -690,7 +690,7 @@ const styles = StyleSheet.create({
   progressSubtitle: {
     fontFamily: "OpenSans_500Medium",
     fontSize: 12,
-    color: "#64748B",
+    color: colors.textMuted,
     marginTop: 3,
   },
 
@@ -710,7 +710,7 @@ const styles = StyleSheet.create({
 
   progressTrack: {
     height: 10,
-    backgroundColor: "#E2E8F0",
+    backgroundColor: colors.track,
     borderRadius: 20,
     overflow: "hidden",
   },
@@ -724,7 +724,7 @@ const styles = StyleSheet.create({
   remainingText: {
     fontFamily: "OpenSans_400Regular",
     fontSize: 12,
-    color: "#475569",
+    color: colors.textMuted,
     lineHeight: 18,
     marginTop: 10,
   },
@@ -738,7 +738,7 @@ const styles = StyleSheet.create({
   },
 
   infoBox: {
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.screen,
     borderRadius: 14,
     padding: 12,
     marginBottom: 12,
@@ -747,16 +747,16 @@ const styles = StyleSheet.create({
   infoText: {
     fontFamily: "OpenSans_400Regular",
     fontSize: 13,
-    color: "#475569",
+    color: colors.textMuted,
     lineHeight: 20,
   },
 
   weightRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: colors.hairline,
     borderRadius: 14,
     padding: 12,
     marginBottom: 10,
@@ -781,18 +781,18 @@ const styles = StyleSheet.create({
   weightDesc: {
     fontFamily: "OpenSans_400Regular",
     fontSize: 11,
-    color: "#64748B",
+    color: colors.textMuted,
     marginTop: 2,
   },
 
   levelCard: {
     flexDirection: "row",
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.screen,
     borderRadius: 16,
     padding: 12,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: colors.hairline,
   },
 
   activeLevelCard: {
@@ -804,7 +804,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     alignItems: "center",
     justifyContent: "center",
     marginEnd: 12,
@@ -836,7 +836,7 @@ const styles = StyleSheet.create({
   levelDescription: {
     fontFamily: "OpenSans_400Regular",
     fontSize: 11,
-    color: "#64748B",
+    color: colors.textMuted,
     lineHeight: 16,
     marginTop: 4,
   },

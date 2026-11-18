@@ -24,7 +24,7 @@ import {
 import BrandGradient from "../../../components/ui/BrandGradient";
 import { praiseWorkout, sayFromJack } from "../../../constants/bubbleMessage";
 import { maybeAskForReview } from "../../../constants/appReview";
-import { colors } from "../../../constants/colors";
+import { colors, isDark } from "../../../constants/colors";
 import { useUser } from "../../../constants/UserContext";
 import { Logger } from "../../../constants/Logger";
 import { trackEvent } from "../../../constants/mixpanel";
@@ -306,7 +306,7 @@ const CongratsScreen = ({
     { id: "energetic", label: "Felt Energetic ⚡", color: "#F59E0B" },
     { id: "challenging", label: "Challenging 🔥", color: colors.primary },
     { id: "easy", label: "Too Easy 😅", color: "#10B981" },
-    { id: "tired", label: "Tired 😓", color: "#64748B" },
+    { id: "tired", label: "Tired 😓", color: colors.textMuted },
     { id: "amazing", label: "Amazing 🚀", color: "#7C3AED" },
   ];
 
@@ -713,8 +713,8 @@ const CongratsScreen = ({
 };
 
 // Soft brand tint (same as the home plan card).
-const TINT = "#FFF5F0";
-const TINT_BORDER = "#FFE0D3";
+const TINT = colors.primarySoft;
+const TINT_BORDER = isDark ? "#4A2E20" : "#FFE0D3";
 
 const styles = StyleSheet.create({
   // ── Workout complete card ──
@@ -745,7 +745,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
   },
   donePillText: { fontFamily: "OpenSans_600SemiBold", fontSize: 12, color: colors.primary },
   donePartial: { fontFamily: "OpenSans_500Medium", fontSize: 12, color: colors.textLight, marginTop: 8 },
@@ -758,7 +758,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     height: 42,
     borderRadius: 14,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: TINT_BORDER,
   },
@@ -766,10 +766,10 @@ const styles = StyleSheet.create({
 
   // ── Badge row ──
   badgeRowCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: "#EEF0F4",
+    borderColor: colors.hairline,
     padding: 14,
     marginBottom: 12,
     alignSelf: "stretch",
@@ -820,7 +820,7 @@ const styles = StyleSheet.create({
 
   container: {
     flex: 1,
-    backgroundColor: "#F7F8FA",
+    backgroundColor: colors.screen,
   },
 
   // Bound the scroll area so the pinned banner below it always stays on screen.
@@ -895,11 +895,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginTop: 12,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: 16,
     paddingVertical: scaling().moderateScale(14),
     borderWidth: 1,
-    borderColor: "#EEF0F4",
+    borderColor: colors.hairline,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.06,
@@ -943,7 +943,7 @@ const styles = StyleSheet.create({
     width: 1,
     alignSelf: "stretch",
     marginVertical: scaling().moderateScale(6),
-    backgroundColor: "#EEF0F4",
+    backgroundColor: colors.track,
   },
 
   congratsTitle: {
@@ -984,13 +984,13 @@ const styles = StyleSheet.create({
   },
 
   progressContainer: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     padding: scaling().moderateScale(16),
     borderRadius: scaling().moderateScale(22),
     marginTop: scaling().scaleHeight(14),
     width: "100%",
     borderWidth: 1,
-    borderColor: "#EEF0F4",
+    borderColor: colors.hairline,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.06,
@@ -1032,7 +1032,7 @@ const styles = StyleSheet.create({
 
   progressBarContainer: {
     height: scaling().moderateScale(12),
-    backgroundColor: "#E9EDF3",
+    backgroundColor: colors.track,
     borderRadius: scaling().moderateScale(999),
     overflow: "hidden",
     marginTop: scaling().scaleHeight(16),
@@ -1056,11 +1056,11 @@ const styles = StyleSheet.create({
   badgeCard: {
     width: "100%",
     marginTop: scaling().scaleHeight(16),
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: scaling().moderateScale(24),
     padding: scaling().moderateScale(18),
     borderWidth: 1,
-    borderColor: "#EEF0F4",
+    borderColor: colors.hairline,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.06,
@@ -1137,7 +1137,7 @@ const styles = StyleSheet.create({
 
   badgeProgressTrack: {
     height: scaling().moderateScale(10),
-    backgroundColor: "#E9EDF3",
+    backgroundColor: colors.track,
     borderRadius: scaling().moderateScale(999),
     overflow: "hidden",
   },
@@ -1203,7 +1203,7 @@ const styles = StyleSheet.create({
   },
 
   caloriesDetailsCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: scaling().moderateScale(28),
     padding: scaling().moderateScale(20),
     width: width - scaling().moderateScale(40),
@@ -1274,7 +1274,7 @@ const styles = StyleSheet.create({
 
   divider: {
     height: 1,
-    backgroundColor: "#E9EDF3",
+    backgroundColor: colors.track,
     marginVertical: scaling().scaleHeight(14),
   },
 
@@ -1285,7 +1285,7 @@ const styles = StyleSheet.create({
   equivalentItem: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F7F8FA",
+    backgroundColor: colors.screen,
     borderRadius: scaling().moderateScale(16),
     paddingHorizontal: scaling().scaleWidth(12),
     paddingVertical: scaling().scaleHeight(11),
@@ -1317,11 +1317,11 @@ const styles = StyleSheet.create({
   ratingCard: {
     width: "100%",
     marginTop: 0,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: scaling().moderateScale(24),
     padding: scaling().moderateScale(18),
     borderWidth: 1,
-    borderColor: "#EEF0F4",
+    borderColor: colors.hairline,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.06,
@@ -1360,8 +1360,8 @@ const styles = StyleSheet.create({
     paddingVertical: scaling().scaleHeight(8),
     borderRadius: scaling().moderateScale(999),
     borderWidth: 1.5,
-    borderColor: "#E2E8F0",
-    backgroundColor: "#F7F8FA",
+    borderColor: colors.hairline,
+    backgroundColor: colors.screen,
   },
   feelingChipText: {
     fontFamily: "OpenSans_600SemiBold",

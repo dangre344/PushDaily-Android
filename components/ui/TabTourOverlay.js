@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
     paddingBottom: ms(120),
   },
   card: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: ms(24),
     paddingHorizontal: ms(22),
     paddingVertical: ms(24),
@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
     width: ms(7),
     height: ms(7),
     borderRadius: ms(4),
-    backgroundColor: "#E2E8F0",
+    backgroundColor: colors.track,
   },
   dotActive: {
     backgroundColor: colors.primary,

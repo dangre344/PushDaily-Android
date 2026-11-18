@@ -55,7 +55,7 @@ const styles = StyleSheet.create({
 
   table: {
     width: "100%",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: ms(8),
     borderWidth: 1,
     borderColor: "#D7DDE5",
@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
   },
   tableCompact: { maxWidth: ms(190), alignSelf: "center" },
   tableTop: {
-    backgroundColor: "#EEF1F5",
+    backgroundColor: colors.screen,
     paddingVertical: ms(4),
     paddingHorizontal: ms(7),
   },
@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
     paddingVertical: ms(3),
     paddingHorizontal: ms(7),
     borderBottomWidth: 1,
-    borderBottomColor: "#EEF1F5",
+    borderBottomColor: colors.hairline,
   },
   rowLast: { borderBottomWidth: 0 },
   rowLabel: {

@@ -249,6 +249,12 @@ export const cancelJack = async (match) => {
 // tap is kept so two sources (expo + Notifee) can't navigate twice.
 let navReady = false;
 let queuedNav = null;
+let homeMounted = false; // is the home tab navigator on screen right now?
+
+/** Called when the home screen unmounts (e.g. sign-out). */
+export const markNavigationGone = () => {
+  homeMounted = false;
+};
 
 const runNav = (fn) => {
   try {
@@ -266,6 +272,7 @@ export const navigateWhenReady = (fn) => {
 
 /** Called once the home screen has mounted; runs the queued tap, if any. */
 export const markNavigationReady = () => {
+  homeMounted = true;
   if (navReady) return;
   navReady = true;
   const fn = queuedNav;
@@ -276,9 +283,14 @@ export const markNavigationReady = () => {
 
 const openTab = (tab) =>
   navigateWhenReady(() => {
-    // Already under /home when the app was launched normally; replace keeps
-    // the stack flat if the tap came from another screen.
-    router.replace("/home");
+    // Home is already mounted in almost every case: close any screen pushed
+    // on top of it instead of re-creating it (re-mounting home restarted its
+    // startup work and could leave the tab navigator half set up).
+    if (homeMounted) {
+      if (router.canDismiss()) router.dismissAll();
+    } else {
+      router.replace("/home");
+    }
     // The tab navigator mounts under /home; select the tab once it exists.
     setTimeout(() => runNav(() => switchToTab(tab)), 450);
   });
@@ -288,7 +300,17 @@ const openTab = (tab) =>
  * response listener and Notifee's press events, so every source routes alike.
  * Returns true when it handled the data.
  */
+let lastOpen = { key: "", at: 0 };
 export const openFromNotification = (data = {}) => {
+  // One tap can be reported by several sources (Notifee's initial
+  // notification, its background event and the foreground event). Act once.
+  let key = "";
+  try {
+    key = JSON.stringify(data || {});
+  } catch {}
+  const now = Date.now();
+  if (key && key === lastOpen.key && now - lastOpen.at < 3000) return true;
+  lastOpen = { key, at: now };
   const type = data?.type || (data?.screen === "Home" ? "workout" : "");
   switch (type) {
     case "workout":
@@ -318,17 +340,14 @@ export const openFromNotification = (data = {}) => {
   }
 };
 
-// Notifee presses while the app is in the background arrive here before the
-// app is on screen; hold them until it is. Registered at module load, as
-// Notifee requires, so it exists whenever the JS runtime is alive.
-let pendingOpen = null;
-if (notifee) {
-  try {
-    notifee.onBackgroundEvent(async ({ type, detail }) => {
-      if (type === NF.EventType.PRESS) pendingOpen = detail?.notification?.data || null;
-    });
-  } catch {}
-}
+// Notifee presses while the app is in the background arrive before the app
+// is on screen. The handler is registered in index.js (it must exist before
+// anything else loads) and leaves the tap in globalThis.__pendingJackOpen.
+const takePendingOpen = () => {
+  const d = globalThis.__pendingJackOpen || null;
+  globalThis.__pendingJackOpen = null;
+  return d;
+};
 
 /**
  * Wires Notifee taps to `onOpen` (default: openFromNotification): a tap that
@@ -342,11 +361,11 @@ export const listenForJackTaps = (onOpen = openFromNotification) => {
   let unsubFg = () => {};
   let appSub = null;
   const flush = () => {
-    if (!pendingOpen) return;
-    const d = pendingOpen;
-    pendingOpen = null;
-    onOpen(d);
+    const d = takePendingOpen();
+    if (d) onOpen(d);
   };
+  // index.js hands background-delivered taps straight to us while we're alive.
+  globalThis.__onJackOpen = (d) => onOpen(d);
 
   canUseNotifee().then((ok) => {
     if (!ok) return;
@@ -366,5 +385,6 @@ export const listenForJackTaps = (onOpen = openFromNotification) => {
   return () => {
     unsubFg();
     appSub?.remove();
+    globalThis.__onJackOpen = null;
   };
 };

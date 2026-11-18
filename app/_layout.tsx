@@ -17,6 +17,7 @@ import * as Notifications from "expo-notifications";
 import { router, Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
+import { isDark } from "../constants/colors";
 import { useEffect, useRef, useState } from "react";
 import { AppState, AppStateStatus } from "react-native";
 import mobileAds from "react-native-google-mobile-ads";
@@ -313,7 +314,7 @@ export default function RootLayout() {
 
   return (
     <UserProvider>
-      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+      <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="index" options={{ headerShown: false }} />
 
@@ -332,7 +333,7 @@ export default function RootLayout() {
           <Stack.Screen name="modal" options={{ presentation: "modal" }} />
         </Stack>
 
-        <StatusBar style="auto" />
+        <StatusBar style={isDark ? "light" : "dark"} />
 
         {/* Draggable chat bubble, above every screen (hides itself on the
             chat, signup and camera routes). */}

@@ -16,7 +16,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { maybeAskForReview } from "../../constants/appReview";
 import { bubbleScrollFade } from "../../constants/bubbleMessage";
-import { colors } from "../../constants/colors";
+import { colors, isDark } from "../../constants/colors";
 import { bodyParts, workoutListGlobal } from "../../constants/Constants";
 import { tapHaptic } from "../../constants/haptics";
 import {
@@ -217,14 +217,32 @@ export default function WorkoutScreen() {
     return result;
   }, []);
 
-  // Recover from Injury: one gentle plan per area, no level picker.
-  const recoveryWorkouts = useMemo(
-    () => workoutListGlobal.filter((item) => item.recovery),
-    [],
-  );
+  // Recover from Injury: one card per area. Most areas have one gentle plan
+  // and open straight away; an area with several levels (Neck Recovery)
+  // opens the level picker first.
+  const recoveryWorkouts = useMemo(() => {
+    const seen = new Set();
+    const list = workoutListGlobal.filter((item) => {
+      if (!item.recovery || seen.has(item.bodyPart)) return false;
+      seen.add(item.bodyPart);
+      return true;
+    });
+    // Neck goes second (after Back); the rest keep their order.
+    const neck = list.findIndex((i) => i.bodyPart === "Neck Recovery");
+    if (neck > 1) list.splice(1, 0, ...list.splice(neck, 1));
+    return list;
+  }, []);
   const openRecovery = useCallback(
     (item) => {
       tapHaptic();
+      const levels = workoutListGlobal.filter(
+        (w) => w.recovery && w.bodyPart === item.bodyPart,
+      ).length;
+      if (levels > 1) {
+        setSelectedBodyPart(item);
+        setOpenModal(true);
+        return;
+      }
       router.push({
         pathname: "/workouts/workoutlisting",
         params: {
@@ -341,7 +359,7 @@ export default function WorkoutScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="dark" backgroundColor="#F7F8FA" />
+      <StatusBar style={isDark ? "light" : "dark"} backgroundColor={colors.screen} />
 
       <View style={styles.animatedContainer}>
         <ScrollView
@@ -433,7 +451,7 @@ export default function WorkoutScreen() {
 
           <SectionHeader
             title="Recover from Injury"
-            subtitle="Gentle moves for back, shoulder and knee recovery"
+            subtitle="Gentle moves for back, neck, shoulder and knee recovery"
             icon="medkit-outline"
           />
           <FlatList
@@ -498,7 +516,7 @@ export default function WorkoutScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F7F8FA" },
+  container: { flex: 1, backgroundColor: colors.screen },
   animatedContainer: { flex: 1 },
   // Room for the tab bar and the floating Jack bubble.
   scrollContent: { paddingBottom: scaleHeight(110) },
@@ -529,7 +547,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 3,
-    backgroundColor: "#FFF1E8",
+    backgroundColor: colors.primarySoft,
     borderRadius: 999,
     paddingVertical: 5,
     paddingLeft: 8,
@@ -549,7 +567,7 @@ const styles = StyleSheet.create({
     width: ms(22),
     height: ms(22),
     borderRadius: ms(11),
-    backgroundColor: "#FFF1E8",
+    backgroundColor: colors.primarySoft,
     alignItems: "center",
     justifyContent: "center",
   },

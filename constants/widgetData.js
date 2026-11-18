@@ -267,7 +267,28 @@ function resolveWidget(state = {}) {
   };
 }
 
+// Background per mood, Duolingo-style: the widget's colour itself tells you
+// how today is going. All light, warm-enough tints so Jack's dark outline and
+// the dark text keep their contrast (see plugins/withWidget.js).
+// [gradient start, gradient end] — top-left to bottom-right.
+const WIDGET_THEMES = {
+  done_today: ["#C9F7D6", "#7FE0A0"], // fresh green: job done
+  streak_danger: ["#FFD0B8", "#FF9A6B"], // hot orange: streak at risk
+  streak_proud: ["#FFE88A", "#FFC233"], // gold: streak alive
+  morning: ["#FFF1B8", "#FFC98A"], // sunrise
+  midmorning: ["#D6F0FF", "#9FD6FF"], // clear sky
+  afternoon: ["#D6F0FF", "#8CCBFF"], // bright sky
+  late_afternoon: ["#FFE7A3", "#FFCF5C"], // warm light
+  prime_time: ["#FFE07A", "#FFC23D"], // brand yellow, workout time
+  evening: ["#E6DBFF", "#BDA5FF"], // dusk lavender
+  night: ["#DCD6FF", "#A99BFF"], // calm night
+  comeback: ["#FFDCE6", "#FFA9C0"], // soft pink: welcome back
+  long_gone: ["#FFDCE6", "#FF9FB8"],
+  welcome: ["#FFE88A", "#FFD23F"],
+};
+
 module.exports = {
+  WIDGET_THEMES,
   EXPRESSIONS,
   BUCKETS,
   pickBucket,

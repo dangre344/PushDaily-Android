@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
   },
 
   card: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 24,
     borderWidth: 1,
     borderColor: "#EEF1F4",
@@ -296,15 +296,15 @@ const styles = StyleSheet.create({
   addPill: {
     flex: 1,
     alignItems: "center",
-    paddingVertical: 7,
+    paddingVertical: 5,
     borderRadius: 999,
-    backgroundColor: "#FFF3EE",
+    backgroundColor: colors.primarySoft,
     borderWidth: 1,
     borderColor: "#FFD9C9",
   },
   addPillText: {
     fontFamily: "OpenSans_700Bold",
-    fontSize: scaling().moderateScale(13),
+    fontSize: scaling().moderateScale(11),
     color: colors.primary,
   },
 
@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 10,
     borderRadius: 999,
-    backgroundColor: "#FFF3EE",
+    backgroundColor: colors.primarySoft,
   },
   amountText: {
     fontFamily: "OpenSans_700Bold",
@@ -390,7 +390,7 @@ const styles = StyleSheet.create({
     width: scaling().moderateScale(22),
     height: scaling().moderateScale(22),
     borderRadius: 999,
-    backgroundColor: "#FFF3EE",
+    backgroundColor: colors.primarySoft,
     alignItems: "center",
     justifyContent: "center",
   },

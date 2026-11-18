@@ -1071,7 +1071,7 @@ const styles = StyleSheet.create({
     width: ms(64),
     height: ms(64),
     borderRadius: ms(32),
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: ms(4),
@@ -1092,7 +1092,7 @@ const styles = StyleSheet.create({
     marginTop: ms(10),
     marginHorizontal: ms(12),
     marginBottom: ms(10),
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: ms(22),
     padding: ms(16),
   },
@@ -1118,7 +1118,7 @@ const styles = StyleSheet.create({
     marginTop: ms(14),
     padding: ms(12),
     borderRadius: ms(14),
-    backgroundColor: "#F7F8FA",
+    backgroundColor: colors.screen,
   },
   blockTitle: {
     fontFamily: "OpenSans_800ExtraBold",
@@ -1202,7 +1202,7 @@ const styles = StyleSheet.create({
     gap: ms(8),
     height: ms(44),
     borderRadius: ms(14),
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderWidth: 1.5,
     borderColor: colors.primary,
     marginTop: ms(10),
@@ -1229,7 +1229,7 @@ const styles = StyleSheet.create({
     borderRadius: ms(12),
     backgroundColor: "rgba(0,0,0,0.4)",
   },
-  tabOn: { backgroundColor: "#FFFFFF" },
+  tabOn: { backgroundColor: colors.card },
   tabText: {
     fontFamily: "OpenSans_700Bold",
     fontSize: ms(12),
@@ -1237,7 +1237,7 @@ const styles = StyleSheet.create({
   },
   tabTextOn: { color: colors.primary },
 
-  pane: { flex: 1, backgroundColor: "#F7F8FA" },
+  pane: { flex: 1, backgroundColor: colors.screen },
 
   repeatBox: {
     flexDirection: "row",
@@ -1300,7 +1300,7 @@ const styles = StyleSheet.create({
   },
   workingCard: {
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: ms(20),
     paddingVertical: ms(24),
     paddingHorizontal: ms(22),
@@ -1332,7 +1332,7 @@ const styles = StyleSheet.create({
   },
   dialog: {
     width: "100%",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: ms(22),
     padding: ms(20),
     alignItems: "center",

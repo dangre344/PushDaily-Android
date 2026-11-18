@@ -367,11 +367,11 @@ const styles = StyleSheet.create({
 
   // Flat white cards with a hairline border (no tinted shadows).
   card: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: ms(18),
     padding: ms(16),
     borderWidth: 1,
-    borderColor: "#EEF0F4",
+    borderColor: colors.hairline,
   },
 
   // ── Today ──
@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
     width: ms(48),
     height: ms(48),
     borderRadius: ms(14),
-    backgroundColor: "#F4F6F8",
+    backgroundColor: colors.screen,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -413,7 +413,7 @@ const styles = StyleSheet.create({
     width: ms(36),
     height: ms(36),
     borderRadius: ms(18),
-    backgroundColor: "#FFF1EA",
+    backgroundColor: colors.primarySoft,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -431,10 +431,10 @@ const styles = StyleSheet.create({
   },
   whyTitle: { fontFamily: "OpenSans_600SemiBold", fontSize: ms(12.5), color: colors.textLight },
   whyBody: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: ms(16),
     borderWidth: 1,
-    borderColor: "#EEF0F4",
+    borderColor: colors.hairline,
     padding: ms(14),
     gap: ms(10),
   },

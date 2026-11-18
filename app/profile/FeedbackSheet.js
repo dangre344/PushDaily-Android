@@ -212,7 +212,7 @@ export default function FeedbackSheet({ visible, setVisible, user }) {
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: "rgba(15,23,42,0.55)" },
   sheet: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderTopLeftRadius: ms(26),
     borderTopRightRadius: ms(26),
     paddingHorizontal: ms(18),
@@ -266,9 +266,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: ms(12),
     paddingVertical: ms(8),
     borderRadius: 999,
-    backgroundColor: "#F7F8FA",
+    backgroundColor: colors.screen,
     borderWidth: 1,
-    borderColor: "#EEF0F4",
+    borderColor: colors.hairline,
   },
   chipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText: {

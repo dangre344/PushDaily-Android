@@ -22,7 +22,7 @@ import { FemaleIcon, ManIconSVG } from "../../assets/AllSvgs";
 import NotificationDialog from "../../components/ui/NotificationDialog";
 import { maybeAskForReview } from "../../constants/appReview";
 import { bubbleScrollFade } from "../../constants/bubbleMessage";
-import { colors } from "../../constants/colors";
+import { colors, isDark } from "../../constants/colors";
 import { tapHaptic } from "../../constants/haptics";
 import { Logger } from "../../constants/Logger";
 import { trackEvent } from "../../constants/mixpanel";
@@ -45,6 +45,7 @@ import { PrivacyPolicyModal } from "./privacy/PrivacyPolicyModal";
 import StatsModal from "./StatsModal";
 import SupportSheet from "./SupportSheet";
 import FeedbackSheet from "./FeedbackSheet";
+import ThemeToggleButton from "./ThemeToggleButton";
 import WidgetGuideModal from "./WidgetGuideModal";
 
 const ms = (n) => scaling().moderateScale(n);
@@ -54,7 +55,7 @@ const buildVersion = nativeBuildVersion ?? "1";
 
 // One icon style for every menu row (Instagram keeps its brand gradient).
 const ROW_TINT = colors.primary;
-const ROW_TINT_BG = "#FFF1E8";
+const ROW_TINT_BG = colors.primarySoft;
 
 // 18400 → "18.4k", so four numbers fit side by side.
 const compact = (n) => {
@@ -161,7 +162,12 @@ const MENU_SECTIONS = [
   {
     title: "More",
     items: [
-      { label: "Home-screen widget", icon: "grid-outline", key: "widget" },
+      {
+        label: "Home-screen widget",
+        icon: "grid-outline",
+        key: "widget",
+        subtitle: "80% of users stay consistent after adding it",
+      },
       {
         label: "Follow on Instagram",
         icon: "logo-instagram",
@@ -546,7 +552,7 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <StatusBar style="dark" backgroundColor={PAGE_BG} />
+      <StatusBar style={isDark ? "light" : "dark"} backgroundColor={PAGE_BG} />
       <Animated.ScrollView
         {...bubbleScrollFade}
         style={styles.scrollView}
@@ -558,6 +564,11 @@ export default function ProfileScreen() {
         )}
         scrollEventThrottle={16}
       >
+        {/* Sun / moon: switches Bright <-> Night (asks first, then restarts). */}
+        <View style={styles.themeToggleRow}>
+          <ThemeToggleButton />
+        </View>
+
         <Animated.View
           style={[
             styles.profileHeader,
@@ -879,9 +890,9 @@ export default function ProfileScreen() {
 // ═════════════════════════════════════════════════════════════════════════════
 // Page background shared with the Workouts screen, and the soft brand tint
 // used for the identity card (same as the home plan card).
-const PAGE_BG = "#F7F8FA";
-const TINT = "#FFF5F0";
-const TINT_BORDER = "#FFE0D3";
+const PAGE_BG = colors.screen;
+const TINT = colors.primarySoft;
+const TINT_BORDER = isDark ? "#4A2E20" : "#FFE0D3";
 
 const styles = StyleSheet.create({
   editPill: {
@@ -893,7 +904,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: ms(10),
     paddingVertical: ms(4),
     borderRadius: 999,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: TINT_BORDER,
   },
@@ -925,6 +936,12 @@ const styles = StyleSheet.create({
   },
 
   // ── Profile header
+  themeToggleRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginHorizontal: ms(16),
+    marginBottom: ms(8),
+  },
   profileHeader: {
     alignItems: "center",
     marginTop: ms(5),
@@ -955,7 +972,7 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
     borderRadius: ms(55),
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
@@ -1010,10 +1027,10 @@ const styles = StyleSheet.create({
     marginLeft: ms(4),
   },
   sectionCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#EEF0F4",
+    borderColor: colors.hairline,
     overflow: "hidden",
   },
 
@@ -1023,10 +1040,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginHorizontal: ms(16),
     marginTop: ms(20),
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#EEF0F4",
+    borderColor: colors.hairline,
   },
   duoBtn: {
     flex: 1,
@@ -1036,7 +1053,7 @@ const styles = StyleSheet.create({
     gap: ms(7),
     paddingVertical: ms(14),
   },
-  duoDivider: { width: 1, height: ms(22), backgroundColor: "#EEF0F4" },
+  duoDivider: { width: 1, height: ms(22), backgroundColor: colors.track },
   duoText: {
     fontFamily: "OpenSans_600SemiBold",
     fontSize: ms(13.5),
@@ -1048,10 +1065,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: ms(12),
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: ms(16),
     borderWidth: 1,
-    borderColor: "#EEF0F4",
+    borderColor: colors.hairline,
     paddingVertical: ms(13),
     paddingHorizontal: ms(14),
     marginHorizontal: ms(16),
@@ -1085,7 +1102,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: ms(14),
     paddingVertical: ms(12),
     borderRadius: 16,
-    backgroundColor: "#FFF7ED",
+    backgroundColor: colors.primarySoft,
     borderWidth: 1,
     borderColor: "#FDE3C4",
   },
@@ -1137,13 +1154,13 @@ const statStyles = StyleSheet.create({
     marginTop: ms(12),
     paddingVertical: ms(14),
     paddingRight: ms(14),
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#EEF0F4",
+    borderColor: colors.hairline,
   },
   colWrap: { flex: 1, flexDirection: "row", alignItems: "center" },
-  divider: { width: 1, height: ms(28), backgroundColor: "#EEF0F4" },
+  divider: { width: 1, height: ms(28), backgroundColor: colors.track },
   col: { flex: 1, alignItems: "center", paddingHorizontal: 4 },
   value: {
     fontFamily: "OpenSans_700Bold",

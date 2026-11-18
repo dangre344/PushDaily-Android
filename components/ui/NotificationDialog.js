@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
 
   card: {
     width: "100%",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: 26,
     paddingHorizontal: 22,
     paddingTop: 28,
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
   message: {
     fontFamily: "OpenSans_400Regular",
     fontSize: 14,
-    color: "#64748B",
+    color: colors.textMuted,
     textAlign: "center",
     lineHeight: 21,
     marginTop: 8,
@@ -165,9 +165,9 @@ const styles = StyleSheet.create({
   },
 
   secondaryButton: {
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.screen,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: colors.hairline,
   },
 
   primaryText: {

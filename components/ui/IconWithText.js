@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
   label: {
     marginTop: 6,
     fontSize: 12,
-    color: "#222",
+    color: colors.textStrong,
     maxWidth: 100,
     textAlign: "center",
     fontFamily: "OpenSans_600SemiBold",

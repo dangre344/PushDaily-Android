@@ -17,6 +17,7 @@ const CODES = {
   "Back Recovery": "BR",
   "Shoulder Recovery": "SR",
   "Knee Recovery": "KR",
+  "Neck Recovery": "NR",
   "Mobility & Flexibility": "M",
   Pregnancy: "Pg",
   "Post Pregnancy": "PP",
@@ -30,6 +31,7 @@ const NAMES = {
   "Back Recovery": "Back care",
   "Shoulder Recovery": "Shoulder care",
   "Knee Recovery": "Knee care",
+  "Neck Recovery": "Neck care",
   "Mobility & Flexibility": "Mobility",
   "Post Pregnancy": "Postpartum",
 };

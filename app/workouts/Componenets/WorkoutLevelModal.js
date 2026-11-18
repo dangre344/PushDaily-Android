@@ -130,6 +130,11 @@ const WorkoutLevelModal = ({
                 Start only after your doctor clears you (often around 6 weeks, longer after a C-section). Stop if you feel pain, heaviness or bleeding.
               </Text>
             ) : null}
+            {selectedBodyPart?.bodyPart === "Neck Recovery" ? (
+              <Text style={styles.healthNote}>
+                Start with Basic. Move slowly and stay pain-free. See a doctor first after an accident, or if you have numbness, tingling or arm weakness.
+              </Text>
+            ) : null}
 
             <View style={styles.optionsContainer}>
               <OptionCardController
@@ -194,7 +199,7 @@ const styles = StyleSheet.create({
     fontFamily: "OpenSans_500Medium",
     fontSize: 12,
     color: "#B45309",
-    backgroundColor: "#FFF7ED",
+    backgroundColor: colors.primarySoft,
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -212,7 +217,7 @@ const styles = StyleSheet.create({
   },
 
   content: {
-    backgroundColor: "#fff",
+    backgroundColor: colors.card,
     padding: 24,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,

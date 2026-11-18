@@ -513,7 +513,7 @@ export default function ProgressScreen() {
               textDayHeaderFontFamily: "OpenSans_700Bold",
               textDayHeaderFontSize: scaleWidth(11),
               textDisabledColor: "#CBD5E1",
-              backgroundColor: "#FFFFFF",
+              backgroundColor: colors.card,
             }}
             style={styles.calendar}
           />
@@ -690,7 +690,7 @@ export default function ProgressScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#F7F8FA",
+    backgroundColor: colors.screen,
   },
 
   listContent: {
@@ -707,7 +707,7 @@ const styles = StyleSheet.create({
   },
 
   monthChip: {
-    backgroundColor: "#FFF1E8",
+    backgroundColor: colors.primarySoft,
     borderRadius: 999,
     paddingHorizontal: scaleWidth(10),
     paddingVertical: scaleHeight(5),
@@ -726,11 +726,11 @@ const styles = StyleSheet.create({
   },
 
   calendarCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: scaleWidth(20),
     padding: scaleWidth(10),
     borderWidth: 1,
-    borderColor: "#EEF0F4",
+    borderColor: colors.hairline,
     shadowColor: "#000",
     shadowOpacity: 0.05,
     shadowRadius: 12,
@@ -768,12 +768,12 @@ const styles = StyleSheet.create({
   dayCard: {
     marginTop: scaleHeight(12),
     marginBottom: scaleHeight(14),
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: scaleWidth(18),
     paddingVertical: scaleHeight(14),
     paddingHorizontal: scaleWidth(14),
     borderWidth: 1,
-    borderColor: "#EEF0F4",
+    borderColor: colors.hairline,
   },
 
   dayRow: {
@@ -894,7 +894,7 @@ const styles = StyleSheet.create({
     width: scaleWidth(38),
     height: scaleWidth(38),
     borderRadius: scaleWidth(12),
-    backgroundColor: "#F7F8FA",
+    backgroundColor: colors.screen,
   },
 
   workoutSectionTitle: {
@@ -915,13 +915,13 @@ const cardStyles = StyleSheet.create({
   card: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: scaleWidth(16),
     paddingVertical: scaleWidth(9),
     paddingLeft: scaleWidth(9),
     paddingRight: scaleWidth(12),
     borderWidth: 1,
-    borderColor: "#EEF0F4",
+    borderColor: colors.hairline,
     shadowColor: "#000",
     shadowOpacity: 0.04,
     shadowRadius: 8,
@@ -933,7 +933,7 @@ const cardStyles = StyleSheet.create({
     width: scaleWidth(52),
     height: scaleWidth(52),
     borderRadius: scaleWidth(12),
-    backgroundColor: "#F5F7FA",
+    backgroundColor: colors.screen,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",

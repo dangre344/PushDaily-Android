@@ -17,7 +17,7 @@ import { Calendar } from "react-native-calendars";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Toast } from "toastify-react-native";
 
-import { colors } from "../../constants/colors";
+import { colors, isDark } from "../../constants/colors";
 import { selectionHaptic, tapHaptic } from "../../constants/haptics";
 import { Logger } from "../../constants/Logger";
 import {
@@ -52,8 +52,8 @@ import { EXPRESSION_IMAGES } from "../../constants/widgetPromo";
 const ms = (n) => scaling().moderateScale(n);
 
 export const ROSE = "#E8466B";
-const ROSE_SOFT = "#FFF1F4";
-const ROSE_LINE = "#FAD4DE";
+const ROSE_SOFT = isDark ? "#3A1E26" : "#FFF1F4";
+const ROSE_LINE = isDark ? "#5A2C38" : "#FAD4DE";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -344,7 +344,7 @@ function CareSheet({ visible, onClose }) {
 function DelayChip({ delay }) {
   if (delay === null || delay === undefined) {
     return (
-      <View style={[styles.chip, { backgroundColor: "#F3F4F6" }]}>
+      <View style={[styles.chip, { backgroundColor: colors.screen }]}>
         <Text style={[styles.chipText, { color: colors.textLight }]}>First log</Text>
       </View>
     );
@@ -975,7 +975,7 @@ const styles = StyleSheet.create({
   scrollContent: { padding: ms(16), paddingBottom: ms(28) },
 
   card: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: ms(20),
     padding: ms(16),
     marginBottom: ms(14),
@@ -1078,7 +1078,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: ROSE_LINE,
@@ -1108,7 +1108,7 @@ const styles = StyleSheet.create({
     width: ms(32),
     height: ms(32),
     borderRadius: ms(16),
-    backgroundColor: "#F3F4F6",
+    backgroundColor: colors.screen,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1119,7 +1119,7 @@ const styles = StyleSheet.create({
   cycleTrack: {
     height: ms(10),
     borderRadius: 999,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     overflow: "hidden",
     marginTop: ms(12),
     borderWidth: 1,
@@ -1165,7 +1165,7 @@ const styles = StyleSheet.create({
   // do / don't
   segment: {
     flexDirection: "row",
-    backgroundColor: "#F3F4F6",
+    backgroundColor: colors.screen,
     borderRadius: ms(12),
     padding: 3,
     marginTop: ms(10),
@@ -1181,7 +1181,7 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   segmentBtnOn: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     shadowColor: "#000",
     shadowOpacity: 0.06,
     shadowRadius: 4,
@@ -1243,7 +1243,7 @@ const styles = StyleSheet.create({
   // sheet
   sheetOverlay: { flex: 1, backgroundColor: "rgba(15,23,42,0.45)", justifyContent: "flex-end" },
   sheet: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderTopLeftRadius: ms(24),
     borderTopRightRadius: ms(24),
     paddingHorizontal: ms(16),
@@ -1255,7 +1255,7 @@ const styles = StyleSheet.create({
     width: ms(40),
     height: 4,
     borderRadius: 2,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: colors.track,
     marginBottom: ms(12),
   },
   sheetTitle: { fontFamily: "OpenSans_700Bold", fontSize: ms(17), color: colors.text },

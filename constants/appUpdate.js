@@ -1,4 +1,4 @@
-import { Platform } from "react-native";
+import { Alert, AppState, Platform } from "react-native";
 import SpInAppUpdates, {
   IAUInstallStatus,
   IAUUpdateKind,
@@ -68,12 +68,41 @@ export const checkForAppUpdate = async (kind = "flexible") => {
     // show Play's "restart to install" prompt. This is what actually applies
     // the update — and it preserves all local data.
     if (updateType === IAUUpdateKind.FLEXIBLE) {
+      // Installing restarts the app, so never do it on its own while the user
+      // is in the middle of something (it looked like the app closing by
+      // itself, e.g. right after opening it from a notification). Ask first;
+      // if they say later, install the next time the app goes to background.
       const onStatus = (status) => {
-        if (status?.status === IAUInstallStatus.DOWNLOADED) {
-          Logger.log("[Update] Download complete — prompting install.");
-          updater.installUpdate();
-          updater.removeStatusUpdateListener(onStatus);
-        }
+        if (status?.status !== IAUInstallStatus.DOWNLOADED) return;
+        updater.removeStatusUpdateListener(onStatus);
+        Logger.log("[Update] Download complete — asking to restart.");
+        const install = () => {
+          try {
+            updater.installUpdate();
+          } catch (e) {
+            Logger.log("[Update] install failed:", String(e));
+          }
+        };
+        Alert.alert(
+          "Update ready",
+          "A new version of PushDaily is ready. Restart now to use it?",
+          [
+            {
+              text: "Later",
+              style: "cancel",
+              onPress: () => {
+                const sub = AppState.addEventListener("change", (s) => {
+                  if (s === "background") {
+                    sub.remove();
+                    install();
+                  }
+                });
+              },
+            },
+            { text: "Restart", onPress: install },
+          ],
+          { cancelable: false },
+        );
       };
       updater.addStatusUpdateListener(onStatus);
     }

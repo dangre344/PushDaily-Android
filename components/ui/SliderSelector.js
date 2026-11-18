@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: "OpenSans_400Regular",
     marginBottom: 8,
-    color: "#333",
+    color: colors.text,
   },
   sliderRow: {
     flexDirection: "row",
@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
   valueText: {
     fontSize: scaling().moderateScale(26),
     fontFamily: "OpenSans_700Bold",
-    color: "#000",
+    color: colors.textStrong,
   },
   unitText: {
     fontSize: scaling().moderateScale(16),

@@ -798,7 +798,7 @@ export default function PushupScreen() {
 
 // (Styles remain exactly as before – copy from the previous version or keep them unchanged)
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#FFFFFF" },
+  screen: { flex: 1, backgroundColor: colors.card },
   darkScreen: { flex: 1, backgroundColor: "#0F172A" },
   header: {
     flexDirection: "row",
@@ -811,7 +811,7 @@ const styles = StyleSheet.create({
     width: ms(40),
     height: ms(40),
     borderRadius: ms(20),
-    backgroundColor: "#F2F4F7",
+    backgroundColor: colors.screen,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -831,7 +831,7 @@ const styles = StyleSheet.create({
     width: "100%",
     height: ms(170),
     borderRadius: ms(16),
-    backgroundColor: "#F2F4F7",
+    backgroundColor: colors.screen,
   },
   onbImageCaption: {
     fontFamily: "OpenSans_600SemiBold",
@@ -913,7 +913,7 @@ const styles = StyleSheet.create({
   camFallbackText: {
     fontFamily: "OpenSans_500Medium",
     fontSize: ms(12),
-    color: "#94A3B8",
+    color: colors.textMuted,
     textAlign: "center",
   },
   topBar: {

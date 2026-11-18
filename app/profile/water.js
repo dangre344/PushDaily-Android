@@ -151,7 +151,7 @@ export default function WaterAndPeriodsScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#F7F8FA" },
+  screen: { flex: 1, backgroundColor: colors.screen },
 
   header: {
     flexDirection: "row",
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: ms(16),
     paddingTop: ms(8),
     paddingBottom: ms(10),
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
   },
   backBtn: {
     width: ms(42),
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
   subtitle: { fontFamily: "OpenSans_500Medium", fontSize: ms(11), color: colors.textLight, marginTop: 2 },
 
   tabsWrap: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     paddingHorizontal: ms(16),
     paddingBottom: ms(12),
     borderBottomWidth: 1,
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
   },
   tabs: {
     flexDirection: "row",
-    backgroundColor: "#F3F4F6",
+    backgroundColor: colors.screen,
     borderRadius: ms(14),
     padding: 3,
   },
@@ -195,9 +195,9 @@ const styles = StyleSheet.create({
     bottom: 3,
     left: 3,
     borderRadius: ms(11),
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: colors.hairline,
     zIndex: 0,
   },
   tabBtn: {
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     minHeight: ms(52),
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderTopWidth: 1,
     borderTopColor: "#F0E6E0",
   },

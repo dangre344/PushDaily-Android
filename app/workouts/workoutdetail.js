@@ -717,7 +717,7 @@ export const styles = StyleSheet.create({
   },
   sessionProgressTrack: {
     height: scaling().moderateScale(7),
-    backgroundColor: "#E2E8F0",
+    backgroundColor: colors.track,
     borderRadius: 999,
     overflow: "hidden",
   },
@@ -763,7 +763,7 @@ export const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#E2E8F0",
+    backgroundColor: colors.track,
     marginHorizontal: 3,
   },
 
@@ -797,7 +797,7 @@ export const styles = StyleSheet.create({
 
   progressBar: {
     height: scaling().moderateScale(4),
-    backgroundColor: "#E2E8F0",
+    backgroundColor: colors.track,
     borderRadius: scaling().moderateScale(2),
     overflow: "hidden",
   },
@@ -940,7 +940,7 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#E2E8F0",
+    borderBottomColor: colors.hairline,
   },
 
   stepsToggleText: {
@@ -1004,7 +1004,7 @@ export const styles = StyleSheet.create({
   // Timer
   timerSection: {
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     padding: 25,
     borderRadius: 20,
     marginTop: 10,
@@ -1039,8 +1039,8 @@ export const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
-    backgroundColor: "#F7FAFC",
+    borderColor: colors.hairline,
+    backgroundColor: colors.screen,
   },
 
   timeButtonText: {
@@ -1057,7 +1057,7 @@ export const styles = StyleSheet.create({
     paddingVertical: 10,
     backgroundColor: colors.lightColor,
     borderTopWidth: 1,
-    borderTopColor: "#E2E8F0",
+    borderTopColor: colors.hairline,
   },
 
   navButton: {
@@ -1073,8 +1073,8 @@ export const styles = StyleSheet.create({
 
   prevButton: {
     borderWidth: 1,
-    borderColor: "#E2E8F0",
-    backgroundColor: "#FFFFFF",
+    borderColor: colors.hairline,
+    backgroundColor: colors.card,
   },
 
   nextButtonContainer: {
@@ -1084,7 +1084,7 @@ export const styles = StyleSheet.create({
     right: 0,
     padding: 20,
     paddingBottom: 40,
-    backgroundColor: "white",
+    backgroundColor: colors.card,
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     shadowColor: "#000",
@@ -1145,7 +1145,7 @@ export const styles = StyleSheet.create({
 
   quitCard: {
     width: "100%",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: scaling().moderateScale(24),
     paddingHorizontal: scaling().moderateScale(20),
     paddingVertical: scaling().moderateScale(24),
@@ -1187,7 +1187,7 @@ export const styles = StyleSheet.create({
     flex: 1,
     height: scaling().moderateScale(8),
     borderRadius: 999,
-    backgroundColor: "#EEF0F4",
+    backgroundColor: colors.track,
     overflow: "hidden",
   },
 
@@ -1245,7 +1245,7 @@ export const styles = StyleSheet.create({
   quitYesText: {
     fontFamily: "OpenSans_700Bold",
     fontSize: scaling().moderateScale(13.5),
-    color: "#94A3B8",
+    color: colors.textMuted,
   },
 
   quitNoText: {

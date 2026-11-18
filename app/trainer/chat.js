@@ -57,7 +57,7 @@ const CHIP_COLUMNS = [PLAN_CHIP, ...QUICK_QUESTIONS].reduce((cols, q, i) => {
 
 // The chip strip scrolls sideways, which users didn't notice. Edge fades use
 // the screen background so they blend in (must match styles.screen).
-const CHIP_FADE_BG = "#F7F8FA";
+const CHIP_FADE_BG = colors.screen;
 const CHIP_FADE_CLEAR = "rgba(247,248,250,0)";
 // The "it scrolls" nudge plays once per app launch, not on every visit.
 let chipsNudged = false;
@@ -1155,7 +1155,7 @@ export default function TrainerChat() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#F7F8FA" },
+  screen: { flex: 1, backgroundColor: colors.screen },
 
   // ── Header ──
   header: {
@@ -1164,15 +1164,15 @@ const styles = StyleSheet.create({
     gap: ms(10),
     paddingHorizontal: ms(14),
     paddingVertical: ms(10),
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderBottomWidth: 1,
-    borderBottomColor: "#EEF0F4",
+    borderBottomColor: colors.hairline,
   },
   backBtn: {
     width: ms(40),
     height: ms(40),
     borderRadius: ms(20),
-    backgroundColor: "#F2F4F7",
+    backgroundColor: colors.screen,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1252,10 +1252,10 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: ms(6),
   },
   bubbleTrainer: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderBottomLeftRadius: ms(6),
     borderWidth: 1,
-    borderColor: "#EEF0F4",
+    borderColor: colors.hairline,
   },
   bubbleTextUser: {
     fontFamily: "OpenSans_500Medium",
@@ -1320,7 +1320,7 @@ const styles = StyleSheet.create({
     width: ms(30),
     height: ms(30),
     borderRadius: ms(15),
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.primary + "4D",
     alignItems: "center",
@@ -1349,7 +1349,7 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: ms(999),
     paddingHorizontal: ms(11),
     paddingVertical: ms(4),
@@ -1376,10 +1376,10 @@ const styles = StyleSheet.create({
   suggestBox: {
     marginHorizontal: ms(14),
     marginBottom: ms(8),
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: ms(14),
     borderWidth: 1,
-    borderColor: "#EEF0F4",
+    borderColor: colors.hairline,
     overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
@@ -1394,7 +1394,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: ms(12),
     paddingVertical: ms(8),
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#EEF0F4",
+    borderBottomColor: colors.hairline,
   },
   suggestText: {
     flex: 1,
@@ -1417,7 +1417,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: ms(12),
     paddingVertical: ms(9),
     borderRadius: ms(16),
-    backgroundColor: "#FFF4EE",
+    backgroundColor: colors.primarySoft,
     borderWidth: 1,
     borderColor: colors.primary + "40",
   },
@@ -1461,7 +1461,7 @@ const styles = StyleSheet.create({
   // ── Top action bar (Plan / Analyze / picker) ──
   topActions: {
     paddingTop: ms(10),
-    backgroundColor: "#F7F8FA",
+    backgroundColor: colors.screen,
   },
 
   // ── Plan today's workout (FREE) ──
@@ -1547,9 +1547,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: ms(13),
     paddingVertical: ms(8),
     borderRadius: ms(999),
-    backgroundColor: "#F2F4F7",
+    backgroundColor: colors.screen,
     borderWidth: 1.5,
-    borderColor: "#E2E8F0",
+    borderColor: colors.hairline,
   },
   pickerChipSuggested: {
     backgroundColor: colors.primary + "16",
@@ -1571,16 +1571,16 @@ const styles = StyleSheet.create({
     gap: ms(10),
     paddingHorizontal: ms(14),
     paddingVertical: ms(10),
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderTopWidth: 1,
-    borderTopColor: "#EEF0F4",
+    borderTopColor: colors.hairline,
   },
   input: {
     flex: 1,
     minHeight: ms(46),
     maxHeight: ms(110),
     borderRadius: ms(23),
-    backgroundColor: "#F2F4F7",
+    backgroundColor: colors.screen,
     paddingHorizontal: ms(16),
     paddingTop: ms(12),
     paddingBottom: ms(12),
@@ -1612,8 +1612,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     minHeight: ms(52),
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderTopWidth: 1,
-    borderTopColor: "#EEF0F4",
+    borderTopColor: colors.hairline,
   },
 });

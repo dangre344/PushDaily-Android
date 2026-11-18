@@ -859,7 +859,7 @@ export default function StatsScreen({ onPickBodyPart, hideHeader = false }) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.screen,
   },
   scroll: {
     flexGrow: 1,
@@ -869,7 +869,7 @@ const styles = StyleSheet.create({
   },
   loader: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.screen,
     alignItems: "center",
     justifyContent: "center",
     gap: ms(12),
@@ -882,13 +882,13 @@ const styles = StyleSheet.create({
   headerCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: ms(20),
     paddingHorizontal: ms(10),
     paddingVertical: ms(10),
     marginBottom: ms(18),
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: colors.hairline,
   },
   headerIconWrap: {
     borderRadius: ms(15),
@@ -903,12 +903,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontFamily: "OpenSans_800ExtraBold",
     fontSize: ms(18),
-    color: "#0F172A",
+    color: colors.textStrong,
   },
   headerSub: {
     fontFamily: "OpenSans_500Medium",
     fontSize: ms(12),
-    color: "#64748B",
+    color: colors.textMuted,
     marginTop: ms(3),
     lineHeight: ms(17),
   },
@@ -931,13 +931,13 @@ const styles = StyleSheet.create({
   emptyText: {
     fontFamily: "OpenSans_700Bold",
     fontSize: ms(20),
-    color: "#0F172A",
+    color: colors.textStrong,
     textAlign: "center",
   },
   emptySubText: {
     fontFamily: "OpenSans_400Regular",
     fontSize: ms(13),
-    color: "#64748B",
+    color: colors.textMuted,
     textAlign: "center",
     lineHeight: ms(20),
     marginTop: ms(8),
@@ -953,7 +953,7 @@ const styles = StyleSheet.create({
   emptyGridTitle: {
     fontFamily: "OpenSans_700Bold",
     fontSize: ms(14),
-    color: "#0F172A",
+    color: colors.textStrong,
   },
   emptyGridIcon: {
     width: ms(30),
@@ -972,13 +972,13 @@ const styles = StyleSheet.create({
   },
   emptyGridItem: {
     width: "31%",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: ms(18),
     paddingVertical: ms(12),
     alignItems: "center",
     gap: ms(8),
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: colors.hairline,
   },
   emptyGridLabel: {
     fontFamily: "OpenSans_600SemiBold",

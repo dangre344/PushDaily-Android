@@ -23,7 +23,7 @@ import { AD_UNIT_IDS } from "../../ads/Admobmanager.js";
 import { Button } from "../../components/ui/Button.js";
 import IconWithText from "../../components/ui/IconWithText";
 import { sayFromJack } from "../../constants/bubbleMessage";
-import { colors } from "../../constants/colors";
+import { colors, isDark } from "../../constants/colors";
 import { workoutListGlobal } from "../../constants/Constants.js";
 import { Logger } from "../../constants/Logger.js";
 import { scaling } from "../../constants/useScaling.js";
@@ -451,10 +451,14 @@ export default function WorkoutListingScreen({ route }) {
 
   // An element, not a component defined in render: a new component type on
   // every render made the list unmount and remount its header each time.
-  // Recovery plans have one gentle level, so they say "Gentle" instead of a
-  // level, and carry a safety note above the list.
+  // Recovery plans carry a safety note above the list. Most have one gentle
+  // level, so they say "Gentle" instead of a level; Neck Recovery has three
+  // levels and shows its level like other plans.
   const isRecovery = !!workouts.recovery;
-  const levelLabel = isRecovery ? "Gentle" : workouts.level;
+  const recoveryLevels = isRecovery
+    ? workoutListGlobal.filter((w) => w.recovery && w.bodyPart === workouts.bodyPart).length
+    : 0;
+  const levelLabel = isRecovery && recoveryLevels < 2 ? "Gentle" : workouts.level;
 
   const listHeader = (
     <View>
@@ -565,7 +569,7 @@ export default function WorkoutListingScreen({ route }) {
         >
           <SafeAreaView edges={["top"]}>
             <StatusBar
-              barStyle="dark-content"
+              barStyle={isDark ? "light-content" : "dark-content"}
               backgroundColor={colors.background}
             />
             <TouchableOpacity
@@ -596,7 +600,7 @@ export default function WorkoutListingScreen({ route }) {
 
           <View style={styles.overlayMeta}>
             <View style={styles.levelBadge}>
-              <Text style={styles.levelBadgeText}>{isRecovery ? levelLabel : `Level: ${workouts.level}`}</Text>
+              <Text style={styles.levelBadgeText}>{levelLabel === "Gentle" ? levelLabel : `Level: ${workouts.level}`}</Text>
             </View>
 
             <View style={styles.overlayCalories}>
@@ -722,7 +726,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 10,
-    backgroundColor: "#FFF7ED",
+    backgroundColor: colors.primarySoft,
     borderWidth: 1,
     borderColor: "#FED7AA",
     borderRadius: 14,
@@ -740,11 +744,11 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     paddingLeft: moderateScale(12),
     borderLeftWidth: 1,
     borderRightWidth: 1,
-    borderColor: "#EEF0F4",
+    borderColor: colors.hairline,
   },
   rowFirst: {
     borderTopWidth: 1,
@@ -768,7 +772,7 @@ const styles = StyleSheet.create({
     width: moderateScale(52),
     height: moderateScale(52),
     borderRadius: moderateScale(12),
-    backgroundColor: "#F5F7FA",
+    backgroundColor: colors.screen,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
@@ -791,7 +795,7 @@ const styles = StyleSheet.create({
 
   container: {
     flex: 1,
-    backgroundColor: "#F7F8FA",
+    backgroundColor: colors.screen,
   },
 
   zoomBadge: {
@@ -820,7 +824,7 @@ const styles = StyleSheet.create({
 
   imagePreviewCard: {
     width: "100%",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: 26,
     padding: 16,
     shadowColor: "#000",
@@ -857,7 +861,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: colors.screen,
     alignItems: "center",
     justifyContent: "center",
     marginLeft: 12,
@@ -867,7 +871,7 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 360,
     borderRadius: 22,
-    backgroundColor: "#F7F8FA",
+    backgroundColor: colors.screen,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
@@ -900,7 +904,7 @@ const styles = StyleSheet.create({
     width: moderateScale(44),
     height: moderateScale(44),
     borderRadius: moderateScale(22),
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     alignItems: "center",
     justifyContent: "center",
     elevation: 2,
@@ -926,9 +930,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 1000,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderBottomWidth: 1,
-    borderBottomColor: "#EEF0F4",
+    borderBottomColor: colors.hairline,
     shadowColor: "#000",
     shadowOpacity: 0.06,
     shadowRadius: 10,
@@ -940,7 +944,7 @@ const styles = StyleSheet.create({
   },
 
   fixedHeaderSafeArea: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
   },
 
   fixedHeaderContent: {
@@ -956,7 +960,7 @@ const styles = StyleSheet.create({
     width: moderateScale(42),
     height: moderateScale(42),
     borderRadius: moderateScale(21),
-    backgroundColor: "#F4F6F8",
+    backgroundColor: colors.screen,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1115,7 +1119,7 @@ const styles = StyleSheet.create({
   },
 
   listHeaderCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     marginTop: moderateScale(20),
 
     borderRadius: moderateScale(20),
@@ -1171,12 +1175,12 @@ const styles = StyleSheet.create({
   workoutItem: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     marginBottom: moderateScale(12),
     padding: moderateScale(12),
     borderRadius: moderateScale(18),
     borderWidth: 1,
-    borderColor: "#EEF0F4",
+    borderColor: colors.hairline,
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
@@ -1191,7 +1195,7 @@ const styles = StyleSheet.create({
     width: moderateScale(76),
     height: moderateScale(76),
     borderRadius: moderateScale(18),
-    backgroundColor: "#F5F7FA",
+    backgroundColor: colors.screen,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
@@ -1279,11 +1283,11 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     paddingTop: moderateScale(10),
     paddingHorizontal: moderateScale(16),
     borderTopWidth: 1,
-    borderTopColor: "#EEF0F4",
+    borderTopColor: colors.hairline,
     shadowColor: "#000",
     shadowOpacity: 0.08,
     shadowRadius: 16,
@@ -1316,7 +1320,7 @@ const styles = StyleSheet.create({
   coachBubble: {
     flex: 1,
     marginLeft: moderateScale(10),
-    backgroundColor: "#FFF3EE",
+    backgroundColor: colors.primarySoft,
     borderRadius: moderateScale(14),
     paddingHorizontal: moderateScale(12),
     paddingVertical: moderateScale(7),
@@ -1331,7 +1335,7 @@ const styles = StyleSheet.create({
     marginTop: -moderateScale(5),
     width: moderateScale(10),
     height: moderateScale(10),
-    backgroundColor: "#FFF3EE",
+    backgroundColor: colors.primarySoft,
     transform: [{ rotate: "45deg" }],
   },
 

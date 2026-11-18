@@ -354,7 +354,7 @@ const styles = StyleSheet.create({
 
   card: {
     width: "100%",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: 28,
     paddingHorizontal: 20,
     paddingTop: 26,
@@ -390,7 +390,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontFamily: "OpenSans_400Regular",
     fontSize: 13,
-    color: "#64748B",
+    color: colors.textMuted,
     textAlign: "center",
     lineHeight: 20,
     marginTop: 8,
@@ -408,10 +408,10 @@ const styles = StyleSheet.create({
   badgeBox: {
     flex: 1,
     minHeight: 128,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.screen,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: colors.hairline,
     alignItems: "center",
     justifyContent: "center",
     padding: 12,
@@ -445,7 +445,7 @@ const styles = StyleSheet.create({
   badgeLabel: {
     fontFamily: "OpenSans_500Medium",
     fontSize: 11,
-    color: "#64748B",
+    color: colors.textMuted,
     marginTop: 3,
     textAlign: "center",
   },
@@ -459,11 +459,11 @@ const styles = StyleSheet.create({
   progressSection: {
     width: "100%",
     marginTop: 24,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.screen,
     borderRadius: 18,
     padding: 14,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: colors.hairline,
   },
 
   progressHeader: {
@@ -487,7 +487,7 @@ const styles = StyleSheet.create({
 
   progressTrack: {
     height: 10,
-    backgroundColor: "#E2E8F0",
+    backgroundColor: colors.track,
     borderRadius: 20,
     overflow: "hidden",
   },
@@ -501,7 +501,7 @@ const styles = StyleSheet.create({
   progressText: {
     fontFamily: "OpenSans_500Medium",
     fontSize: 12,
-    color: "#64748B",
+    color: colors.textMuted,
     marginTop: 8,
   },
 
@@ -519,7 +519,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: "OpenSans_500Medium",
     fontSize: 12,
-    color: "#475569",
+    color: colors.textMuted,
     lineHeight: 18,
     marginStart: 8,
   },

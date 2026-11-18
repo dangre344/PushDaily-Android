@@ -12,12 +12,15 @@ import {
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useEffect, useRef, useState } from "react";
-import { markNavigationReady } from "../../constants/jackNotifications";
+import {
+  markNavigationGone,
+  markNavigationReady,
+} from "../../constants/jackNotifications";
 import TabTourOverlay, {
   hasSeenTabTour,
 } from "../../components/ui/TabTourOverlay.js";
 import { runAfterStartup } from "../../constants/afterStartup.js";
-import { colors } from "../../constants/colors.js";
+import { colors, isDark } from "../../constants/colors.js";
 import { trackScreen } from "../../constants/mixpanel.js";
 import { syncPeriodReminders } from "../../constants/periodReminders.js";
 import { scheduleQuizReminder } from "../../constants/quizNotifications.js";
@@ -221,6 +224,7 @@ export default function AppLayout() {
   // (navigating earlier closes the app). Release it now.
   useEffect(() => {
     markNavigationReady();
+    return markNavigationGone;
   }, []);
 
   // Period reminders go to everyone; the gender only picks the wording ("your"
@@ -264,7 +268,7 @@ export default function AppLayout() {
 
   return (
     <SafeAreaView style={layoutStyles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.background} />
       <Tab.Navigator
         initialRouteName="Workouts" // 👈 Added: set Workouts as default tab
         tabBar={(props) => <CustomTabBar {...props} />}
@@ -297,7 +301,7 @@ const tabStyles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderTopWidth: 1,
     borderTopColor: colors.border,
     borderTopLeftRadius: ms(24),

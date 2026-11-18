@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
   },
   card: {
     width: "100%",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: ms(26),
     paddingHorizontal: ms(22),
     paddingTop: ms(18),
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
   segment: {
     alignSelf: "stretch",
     flexDirection: "row",
-    backgroundColor: "#F3F4F6",
+    backgroundColor: colors.screen,
     borderRadius: ms(12),
     padding: 3,
     marginBottom: ms(14),
@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   segmentBtnOn: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     shadowColor: "#000",
     shadowOpacity: 0.06,
     shadowRadius: 4,

@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: colors.primary + "12",
   },
-  allBtnOn: { backgroundColor: "#F1F3F6" },
+  allBtnOn: { backgroundColor: colors.screen },
   allText: { fontSize: ms(12), fontFamily: "OpenSans_700Bold", color: colors.primary },
   allTextOn: { color: colors.textLight },
 
@@ -182,8 +182,8 @@ const styles = StyleSheet.create({
     height: ms(52),
     borderRadius: ms(16),
     borderWidth: 1.5,
-    borderColor: "#E7EAEF",
-    backgroundColor: "#FFFFFF",
+    borderColor: colors.hairline,
+    backgroundColor: colors.card,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderRadius: 14,
-    backgroundColor: "#F7F8FA",
+    backgroundColor: colors.screen,
   },
   hintText: { flex: 1, fontSize: ms(12.5), fontFamily: "OpenSans_600SemiBold" },
 });

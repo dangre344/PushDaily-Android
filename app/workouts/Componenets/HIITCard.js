@@ -6,7 +6,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { colors } from "../../../constants/colors";
 import { scaling } from "../../../constants/useScaling";
-const { scaleHeight, scaleWidth, moderateScale: ms } = scaling();
+const { scaleWidth, moderateScale: ms } = scaling();
 
 // Card width + gap. workoutscreen uses this for snapping, so the two can't drift.
 export const HIIT_CARD_WIDTH = scaleWidth(280);
@@ -26,16 +26,18 @@ function HIITCard({ item, onClick, trending = false, note = null }) {
       accessibilityRole="button"
       accessibilityLabel={`${item.bodyPart} quick workout`}
     >
-      <ExpoImage style={styles.banner} source={item.img} contentFit="cover" />
+      {note && !trending ? (
+        <View style={styles.noteStrip}>
+          <Ionicons name="heart" size={ms(12)} color="#FFFFFF" />
+          <Text style={styles.noteText} numberOfLines={1}>
+            {note}
+          </Text>
+        </View>
+      ) : null}
+      <ExpoImage style={styles.banner} source={item.img} contentFit="contain" />
       {trending ? (
         <View style={styles.trendingTag}>
           <Text style={styles.trendingText}>🔥 Trending</Text>
-        </View>
-      ) : note ? (
-        <View style={[styles.trendingTag, styles.noteTag]}>
-          <Text style={styles.trendingText} numberOfLines={1}>
-            {note}
-          </Text>
         </View>
       ) : null}
 
@@ -72,14 +74,17 @@ const styles = StyleSheet.create({
   card: {
     width: HIIT_CARD_WIDTH,
     marginEnd: HIIT_CARD_GAP,
+    // Don't stretch to the tallest card in the row (the ones with a note strip).
+    alignSelf: "flex-start",
     borderRadius: 16,
     overflow: "hidden",
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: "#EEF0F4",
   },
-  // Was 190 tall; 152 keeps the artwork readable without dominating.
-  banner: { width: "100%", height: scaleHeight(152) },
+  // Matches the posters' 1200×593 shape so nothing is cropped on any screen
+  // (a fixed height cropped the sides on some phones and the top on others).
+  banner: { width: "100%", aspectRatio: 1200 / 593, backgroundColor: "#FFFFFF" },
   meta: {
     flexDirection: "row",
     alignItems: "center",
@@ -97,8 +102,16 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: colors.primary,
   },
-  // Sits over the poster's own top-left label, in the poster's colour.
-  noteTag: { backgroundColor: "#E2547A", maxWidth: HIIT_CARD_WIDTH - 20 },
+  // "For your wife…" strip above the poster, so it never covers the artwork.
+  noteStrip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: "#E2547A",
+  },
+  noteText: { flex: 1, fontFamily: "OpenSans_700Bold", fontSize: ms(11.5), color: "#FFFFFF" },
   trendingText: { fontFamily: "OpenSans_700Bold", fontSize: ms(11), color: "#FFFFFF" },
   title: {
     fontSize: ms(14),

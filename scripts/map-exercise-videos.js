@@ -88,6 +88,23 @@ const ALIASES = {
   "Neck Stretch": "neck_side_stretch",
   "Cat Cow": "cat_cow_stretch",
   "Spine Stretch": "seated_spine_stretch",
+  // Neck Recovery: the slower, smaller-range neck versions (neck_*), not the originals.
+  "Slow Shoulder Rolls": "neck_shoulder_rolls",
+  "Gentle Chin Tucks": "neck_chin_tucks",
+  "Gentle Neck Nods": "neck_nods",
+  "Gentle Shoulder Blade Squeeze": "neck_shoulder_blade_squeeze",
+  "Lying Chin Nod": "neck_lying_chin_nod",
+  "Posture Wall Hold": "neck_wall_posture_hold",
+  "Isometric Neck Press (Front)": "neck_isometric_front",
+  "Isometric Neck Press (Side)": "neck_isometric_side",
+  "Upper Trap Stretch": "neck_upper_trap_stretch",
+  "Wall Chest Stretch": "neck_chest_stretch",
+  "Gentle Cat Cow": "neck_cat_cow",
+  "Chin Tuck Head Lift": "neck_chin_tuck_head_lift",
+  "Prone T Raise": "neck_prone_t_raise",
+  "Slow Reverse Snow Angels": "neck_reverse_snow_angels",
+  "Slow Bird Dog": "neck_bird_dog",
+  "Gentle Thoracic Rotation": "neck_thoracic_rotation",
 };
 
 const resolve = (name) => {

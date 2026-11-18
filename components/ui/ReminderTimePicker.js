@@ -150,7 +150,7 @@ export default function ReminderTimePicker({ form }) {
 const styles = StyleSheet.create({
   card: {
     marginTop: ms(12),
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: ms(18),
     borderWidth: 1,
     borderColor: colors.grey,
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
     width: ms(56),
     height: ms(46),
     borderRadius: ms(12),
-    backgroundColor: "#F4F6F8",
+    backgroundColor: colors.screen,
     alignItems: "center",
     justifyContent: "center",
     marginVertical: ms(6),

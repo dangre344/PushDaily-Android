@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
   },
   card: {
     width: "100%",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: ms(24),
     paddingHorizontal: ms(20),
     paddingTop: ms(6),
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
     width: ms(56),
     height: ms(56),
     borderRadius: ms(28),
-    backgroundColor: "#FFF7ED",
+    backgroundColor: colors.primarySoft,
     borderWidth: 1,
     borderColor: "#FED7AA",
     alignItems: "center",

@@ -329,12 +329,12 @@ export default function RulerCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: 24,
     paddingTop: 12,
     paddingBottom: 8,
     borderWidth: 1,
-    borderColor: "#EEF0F4",
+    borderColor: colors.hairline,
     shadowColor: "#1F2937",
     shadowOpacity: 0.06,
     shadowRadius: 14,
@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
 
   toggle: {
     flexDirection: "row",
-    backgroundColor: "#F1F3F6",
+    backgroundColor: colors.screen,
     borderRadius: 999,
     padding: 3,
   },
@@ -431,7 +431,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  stepperDisabled: { backgroundColor: "#F1F3F6" },
+  stepperDisabled: { backgroundColor: colors.screen },
 
   chipRow: { alignItems: "center", marginTop: 2 },
   chip: {
